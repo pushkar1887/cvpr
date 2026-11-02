@@ -1,0 +1,4 @@
+# Normalize line endings; shell and Python files must stay LF so they run on Kaggle and SSH servers.
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf

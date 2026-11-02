@@ -245,10 +245,11 @@ def build_radimagenet(parquet_path: Path, out_root: Path,
         raise KeyError(f"RadImageNet parquet lacks columns {missing}; has {list(df.columns)}")
     meta = df["metadata"].apply(lambda m: m if isinstance(m, dict) else (json.loads(m) if isinstance(m, str) else {}))
     content = meta.apply(lambda m: str(m.get("content_type", "")).lower())
+    template = meta.apply(lambda m: str(m.get("question_id", "")).lower())
     qtype = df["question_type"].astype(str).str.lower()
     print("question_type values:", dict(Counter(qtype)))
     print("metadata.content_type values:", dict(Counter(content)))
-    print("metadata.question_id values:", dict(Counter(meta.apply(lambda m: str(m.get("question_id", ""))))))
+    print("metadata.question_id values:", dict(Counter(template)))
 
     def image_key(img) -> tuple[str, bytes]:
         data = img["bytes"] if isinstance(img, dict) else img
@@ -256,7 +257,8 @@ def build_radimagenet(parquet_path: Path, out_root: Path,
 
     subsets = {
         "rin_anat_mc": (content.str.contains("anatom")) & qtype.str.contains("mc|multiple|choice"),
-        "rin_abn_closed": (content.str.contains("abnormal")) & qtype.str.contains("closed|yes|binary"),
+        # The source calls this content "pathology"; disease-specific closed questions are a different task.
+        "rin_abn_closed": template.eq("abnormal_closed") & content.eq("pathology") & qtype.eq("closed"),
     }
     if datasets is not None:
         unknown = set(datasets) - set(subsets)
@@ -443,7 +445,7 @@ def main() -> None:
     parser.add_argument("--only", default="slake,omnimedvqa,natural", help="comma list: slake,omnimedvqa,natural,radimagenet")
     parser.add_argument("--skip", default="", help="comma list of sources to skip")
     parser.add_argument("--models", default="lingshu7b,qwen3vl8b,huatuo7b")
-    parser.add_argument("--datasets", default="", help="masks: comma list of datasets (default: every manifest)")
+    parser.add_argument("--datasets", default="", help="comma list: RadImageNet build subsets, or mask manifests")
     args = parser.parse_args()
     bundle = args.bundle
     bundle.mkdir(parents=True, exist_ok=True)

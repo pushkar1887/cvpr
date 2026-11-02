@@ -25,8 +25,8 @@ def test_radimagenet_template_ids_do_not_collapse_distinct_images(tmp_path):
         Image.fromarray(np.full((8, 8, 3), value, np.uint8)).save(buffer, format="PNG")
         image = {"bytes": buffer.getvalue(), "path": None}
         for content, qtype, template, answer in (
-            ("Anatomy Identification", "multiple-choice", "anatomy_mc", "A"),
-            ("Abnormality Detection", "yes/no", "abnormality_closed", "yes"),
+            ("anatomy", "multiple_choice", "anatomy_mc", "A"),
+            ("pathology", "closed", "abnormal_closed", "yes"),
         ):
             rows.append({"image": image, "question": "Which region?", "choices": ["A. Chest", "B. Brain"],
                          "answer": answer, "question_type": qtype,
@@ -79,3 +79,26 @@ def test_radimagenet_can_build_only_the_requested_anatomy_subset(tmp_path):
     out = tmp_path / "out"
     assert build_radimagenet(source, out, datasets=("rin_anat_mc",)) == {"rin_anat_mc": 1}
     assert not (out / "manifests" / "rin_abn_closed.jsonl").exists()
+
+
+def test_radimagenet_abnormality_uses_observed_template_not_specific_pathology(tmp_path):
+    """Source receipt: content_type=pathology, question_id=abnormal_closed (not pathology_closed_*)."""
+    buffer = io.BytesIO()
+    Image.fromarray(np.full((8, 8, 3), 100, np.uint8)).save(buffer, format="PNG")
+    rows = []
+    for content, template, question, answer in (
+        ("pathology_specific", "pathology_closed_pos", "Is there evidence of a mass?", "yes"),
+        ("pathology_specific", "pathology_closed_neg", "Is there evidence of a fracture?", "no"),
+        ("pathology", "abnormal_closed", "Does the ankle foot look abnormal?", "yes"),
+    ):
+        rows.append({"image": {"bytes": buffer.getvalue(), "path": None}, "question": question,
+                     "choices": [], "answer": answer, "question_type": "closed",
+                     "metadata": {"content_type": content, "question_id": template, "modality": "MRI"}})
+    source = tmp_path / "source.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), source)
+    out = tmp_path / "out"
+    assert build_radimagenet(source, out, datasets=("rin_abn_closed",)) == {"rin_abn_closed": 1}
+    sample, = load_manifest(out, "rin_abn_closed")
+    assert sample.question == "Does the ankle foot look abnormal?"
+    assert sample.qid.endswith("/abnormal_closed")
+    assert sample.answer_type == "yesno" and sample.prompt_style == "judgement"

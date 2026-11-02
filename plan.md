@@ -15,10 +15,10 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 | Stage | Work | Where | GPU-h | Dates (IST) | Exit gate |
 |---|---|---|---|---|---|
 | 0 | Accounts, access, repo | Laptop, Hugging Face, Kaggle, GitHub | 0 | Nov 2 | Kaggle accounts ready; HF secret `cvpr`; RadImageNet access — **passed Nov 2** |
-| 1 | Code and tests | Laptop CPU | 0 | Nov 2 | `pytest -q` green, incl. masking ≡ token removal — **passed Nov 2 (61 tests)** |
-| 2 | Data bundle | Kaggle CPU (or SSH) | 0 | Nov 2 | Counts match §C2; masks eyeballed |
-| 3 | Validation and calibration (E0) | Kaggle GPU, A (+0.5 h on B) | 3.0 | Nov 2–3 | fp16 stable; Full SLAKE-en within 2 pts; rates measured |
-| 4 | Kill test (E1) + diagnostics (E2) | GPU A + CPU | 3.3 | Nov 3 | Decisions K1, K2 |
+| 1 | Code and tests | Laptop CPU | 0 | Nov 2–3 | **84 tests passed Nov 3**, incl. identity/resume and actual RIN template regressions |
+| 2 | Data bundle | Kaggle CPU (or SSH) | 0 | Nov 2 | **Built and rebuilt with revised masks**; counts in committed manifest and Work log |
+| 3 | Validation and calibration (E0) | Kaggle GPU, A (+0.5 h on B) | 3.0 | Nov 2–3 | 50-item component checks passed on both models; **full SLAKE baseline target unresolved** (77.19%, different published judge) |
+| 4 | Kill test (E1) + diagnostics (E2) | GPU A + CPU | 3.3 + repairs | Nov 3 | **K1 GO; K2 H1 alive**, independently checked; 43-item text-only truncation retry running |
 | 5 | Main grid (E3) + modality panel (E4) | GPU A, B | 33.1 | Nov 3–5 | Table 1, Fig. 2 drafts → **enrollment Nov 10 AoE** |
 | 6 | Curves, ablations, natural control (E5, E6-P1, E7) | GPU A, B | 16.8 | Nov 6–8 | Decisions K3, K4 |
 | 7 | Supplementary runs (E6-P2, E8, E9) | GPU C | 10.0 | Nov 7–12 | — |
@@ -130,11 +130,11 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 
 | # | Experiment | Prediction | Confidence | Outcome |
 |---|---|---|---|---|
-| P1 | E1, RadImageNet anatomy MC, Lingshu, 10% | Standard FastV < Random@L2 by ≥ 8; pre-LLM FastV < Random@L0 by ≥ 10 (MedSTP: 37.5 vs 55.6) | 65% / 80% | |
-| P2 | E1, SLAKE-en | Full 81–85; FastV − Random ≤ −4 on CT+MRI (66 images), ≥ 0 on X-ray (30) | 55% | |
-| P3 | E2 | BRR(FastV) ≥ 1.3 on CT/MRI | 65% | |
-| P4 | E2 | Keep-mass ≥ 1.5× uniform in bottom-right (Lingshu/Qwen3-VL), bottom rows (HuatuoGPT) | 60% | |
-| P5 | E2/E6 | High-norm artifacts over-selected ≥ 2× | 35% | |
+| P1 | E1, RadImageNet anatomy MC, Lingshu, 10% | Standard FastV < Random@L2 by ≥ 8; pre-LLM FastV < Random@L0 by ≥ 10 (MedSTP: 37.5 vs 55.6) | 65% / 80% | Supported on Lingshu seed 0: 38.1 vs 79.3, Δ −41.2 [−45.0, −37.6]; pre-LLM 37.4 vs 79.2, Δ −41.8 [−45.5, −38.2]. Corrected per-image Random; Nov 3. |
+| P2 | E1, SLAKE-en | Full 81–85; FastV − Random ≤ −4 on CT+MRI (66 images), ≥ 0 on X-ray (30) | 55% | Mixed: Full 77.19 misses target; CT/MRI Δ −18.14 [−22.41, −14.00] supports forecast; X-ray Δ −1.94 [−4.93, +0.87] has the wrong point-estimate sign but no significant difference. |
+| P3 | E2 | BRR(FastV) ≥ 1.3 on CT/MRI | 65% | Supported for heuristic-mask background: RIN 2.32 [2.25, 2.39], coverage 874/1,000; SLAKE 1.67 [1.57, 1.76], 700/700 CT/MRI questions. Association, not causal proof. |
+| P4 | E2 | Keep-mass ≥ 1.5× uniform in bottom-right (Lingshu/Qwen3-VL), bottom rows (HuatuoGPT) | 60% | Contradicted on Lingshu: bottom-right concentration 0.018× uniform (RIN), 0.427× (SLAKE CT/MRI); strongest RIN concentration is top-left (2.52×). Other models untested. |
+| P5 | E2/E6 | High-norm artifacts over-selected ≥ 2× | 35% | Norm-threshold proxy supports over-selection: 2.62× RIN and 5.07× SLAKE. These tokens are not independently annotated artifacts; E6 ablation and causal interpretation remain open. |
 | P6 | E3 | Gate+FastV − FastV ≥ +8 on CT/MRI; \|Δ\| ≤ 1 on dermoscopy/microscopy | 55% | |
 | P7 | E3 | Gate+Uniform within 3 of Gate+FastV on CT/MRI | 50% | |
 | P8 | E3/E6 | Gate adds ≥ 3 on top of RoPE-free on CT/MRI | 50% | |
@@ -434,7 +434,12 @@ that used it.
 ## Stage 3 — Validation and calibration (E0)
 
 **In one sentence:** before any experiment, prove the GPU pipeline gives sound numbers and measure how fast it is.
-**Status: LATER (after Stage 2).**
+**Status: COMPONENT CHECKS PASSED; FULL-SET BASELINE TARGET UNRESOLVED.** Claude's 50-question E0 reports passed on
+both models (Work log, Nov 2). The subsequent 1,061-question Lingshu Full run scores 77.19% with normalized exact
+match, below the registered 81–85% forecast. Published Lingshu/MedSTP results use an LLM judge. The 50-item result
+must not be treated as proof that full-set published-baseline comparability has passed; resolve this scoring
+contract before claiming a reproduction or committing the large Stage 5 grid. E1 has already run and its within-
+pipeline paired comparisons can be reported with this limitation.
 
 **Before you start**
 - [ ] Stage 2 done; `medprune-data` attached to the notebook.
@@ -497,12 +502,14 @@ python -m medprune.run_eval --exp E0 --model lingshu7b --bundle $DATA --out $RES
 ## Stage 4 — Kill test (E1) and first diagnostics (E2)
 
 **In one sentence:** in one day, find out whether standard FastV really is worse than random in our pipeline (K1) and
-whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **Status: LATER.**
+whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **Status: PRIMARY DECISIONS VERIFIED
+(Nov 3); registered text-only truncation retry running.** K1 is GO and K2 leaves H1 alive in this Lingshu setup.
+This does not prove the cause, validate the gate as a competitive fix, or close the Stage 3 scoring issue.
 
 **Before you start**
-- [ ] Stage 3 passed.
+- [x] Stage 3 component checks passed on 50 items per model; full-set baseline comparability remains open above.
 - [x] Analysis module and notebook section ready (task T3).
-- [ ] RadImageNet built in the session:
+- [x] RadImageNet anatomy built and its 1,000-image identity contract verified in the repair session:
 ```bash
 python -m medprune.data build --out /tmp/medprune-rin --work /tmp/medprune-work --only radimagenet
 python -m medprune.data masks --bundle /tmp/medprune-rin --datasets rin_anat_mc,rin_abn_closed --models lingshu7b
@@ -552,10 +559,11 @@ does → reframe to "pre-LLM attention selection fails" and discuss with the men
 5% on `rin_anat_mc` (0.17 h; with 224² images there are only 64 tokens, so 10% may be lenient) before stopping.
 
 **Checks**
-- [ ] Every pruned answer has `k_keep == round(0.1 × n_vis)`.
-- [ ] `n_vis` per dataset recorded (SLAKE 512² → 324; RadImageNet → ____ tokens, k = ____).
-- [ ] Truncated answers < 1%.
-- [ ] RadImageNet field values, counts and image size in the Work log.
+- [x] Every pruned answer has `k_keep == round(0.1 × n_vis)`.
+- [x] `n_vis` recorded: SLAKE 324 tokens, k = 32; RadImageNet 64 tokens (8×8), k = 6.
+- [ ] Truncated answers < 1%: only SLAKE text-only exceeded it (43/1,061); registered 512-token retry running.
+- [ ] RadImageNet fields/counts recorded in Work log and source-schema receipt; raw image dimensions were not logged
+  (processed Lingshu grid is 8×8). Log raw dimensions in the next real build.
 
 ### E2 — Why does it fail? (analysis only, laptop)
 
@@ -882,9 +890,15 @@ The first E1 output used template-only IDs. Preserve its original files. Non-ran
 arrays can be recovered offline by joining each original row to its saved image ID and preserving verified shard
 order; the recovery writes a separate provenance audit. The two RadImageNet Random conditions require fresh
 inference because template-only seeding gave every image one fixed spatial keep-set. They are excluded from K1
-until rerun. The anatomy-only repair build explicitly selects `--datasets rin_anat_mc`; the abnormality filter is
-still unresolved because the observed source uses `content_type=pathology`, not `abnormality`. Do not guess a new
-clinical task mapping or start the Stage 5 abnormality grid before inspecting the actual question templates.
+until rerun. The anatomy-only repair build explicitly selects `--datasets rin_anat_mc`; its fresh Random outputs
+have 1,000 distinct IDs and keep-sets each, and K1 was independently verified after merging them.
+
+**RadImageNet abnormality mapping correction (2026-11-03).** The saved source-schema receipt identifies the intended
+generic abnormality task as `metadata.question_id == "abnormal_closed"`, `content_type == "pathology"`,
+`question_type == "closed"` (1,000 rows; example: "Does the ankle foot look abnormal?"). The disease-specific
+`pathology_closed_pos/neg` templates are different tasks and must be excluded. The builder and regression fixtures
+now use these observed values. Before the Stage 5 abnormality grid, verify a real build gives 1,000 unique IDs and
+the same image-ID set as anatomy; the schema summary alone does not verify this paired-image contract.
 
 | ID | Source | Size ✓ | Access | Subset rule | Questions | Images |
 |---|---|---|---|---|---|---|
@@ -893,7 +907,7 @@ clinical task mapping or start the Stage 5 abnormality grid before inspecting th
 | `omni_anat` | `foreverbeliever/OmniMedVQA` | zip 10.70 GB | public, per-source licenses (bundle private) | open-access, `question_type == "Anatomy Identification"`; expect MedSTP's 3,329 — verify | ~3,329 MC | verify |
 | `omni_panel` | same | same | same | open-access; 8 modalities (CT, MRI, X-Ray, Ultrasound, OCT, Fundus, Dermoscopy, Microscopy) × 150, seed 0, ≤ 3/image, disjoint from `omni_anat` | 1,200 | ≥ 400 |
 | `rin_anat_mc` | `raidium/RadImageNet-VQA` | benchmark parquet 361 MB (9,000 QA / 1,000 images, CT/MRI) | gated, research-use, **no redistribution** | anatomy × multiple choice, one per image (verify field values) | ~1,000 | 1,000 |
-| `rin_abn_closed` | same | same | same | abnormality × yes/no, one per image | ~1,000 | same 1,000 |
+| `rin_abn_closed` | same | same | same | template `abnormal_closed`, content `pathology`, type `closed`; yes/no, one per image | 1,000 source rows; build pending | verify same 1,000 |
 | `natural` | `lmms-lab/GQA`, `lmms-lab/POPE` | 2.1 + 65.6 MB; 85 MB | public | 500 GQA testdev-balanced + 500 POPE adversarial, seed 0 | 1,000 | ~900 |
 
 SLAKE-en mix ✓: Organ 253, Position 186, Abnormality 150, KG 148, Modality 108, Size 65, Plane 58, Quantity 52, Color
@@ -1338,7 +1352,8 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 | T5 | 7 | `medprune/huatuo_llava.py` + validation | open | Stage 5 done |
 | T6 | 7 | E9 latency measurement | open | T2 |
 | T7 | 8 | table and figure builders (Tables 1–4, Figs 1–5) | open | T3 |
-| T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | in progress (Codex, Nov 3) | original E1 outputs downloaded |
+| T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | K1/K2 verified; 43-item registered text-only retry in progress (Codex, Nov 3) | original and corrected receipts preserved |
+| T9 | 5 preflight | Verify real abnormality build/image pairing; resolve full SLAKE scoring comparability before broad grid | next | T8 primary decisions verified; large Qwen grid remains idle |
 
 **T1 — data bundle notebook (Kaggle CPU, internet on).** Cells, in order:
 1. `from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")`.
@@ -1580,3 +1595,38 @@ run IDs, counts, accuracies with CIs. Template:
   exists and is usable, but the Stage 5 abnormality subset must be resolved from real template metadata first.
 - Next: targeted Random repair, independent paired/statistical verification, then the K1/K2 report. Raw data,
   response files and diagnostic arrays remain in git-ignored `results/`.
+
+### 2026-11-03 — Codex — corrected E1 decisions and source-template repair
+- Committed/pushed the identity/resume correction as `dbe9ab5` after 83 CPU tests and a focused review. All original
+  E1 files remain in `results/receipts/e1_lingshu_v2_20261103`; recovered data live separately in
+  `results/stage4_lingshu_20261103` with `identity_recovery_audit.json`.
+- Role A (University), long-lived notebook `medprune-gpu-lingshu7b`: v3 stopped before model loading because Kaggle's
+  base Transformers was 5.16.1, not E1's 4.57.1. V4 restored the existing project pin and completed the two corrected
+  Random conditions. Both have 1,000 unique IDs, images and per-image keep-sets; all rebuilt input fields and gate
+  arrays match recovered E1. Torch 2.11.0+cu128, Transformers 4.57.1, Python 3.13.15, two T4s, fp16; Lingshu model
+  revision `b98aecd41dfd9d7545a6b8e2f4743ae8471bd7a9`. No model changes or new dependency-version choice.
+- Fresh Random inference: 1,000×0.356 s (L2) + 1,000×0.352 s (L0), about 11.8 minutes of question evaluation,
+  excluding download/model load. Receipt: `results/receipts/random_repair_v4_20261103`.
+- **K1 GO:** RIN Full 89.0, Random@L2 79.3, FastV 38.1, Gate+FastV 51.3 (%). FastV−Random = −41.2 points,
+  paired 95% CI [−45.0, −37.6]. Pre-LLM: 37.4 vs 79.2, Δ −41.8 [−45.5, −38.2]. Independently reproduced all six
+  all-question paired CIs from image-cluster sums (2,000 bootstrap draws, seed 0), outside the analysis helper.
+- **K2 H1 alive:** FastV BRR 2.320 [2.251, 2.391] on 874 eligible RIN images and 1.668 [1.573, 1.764] on SLAKE
+  CT/MRI; corrected Random BRR 0.974 [0.924, 1.025] and 0.999 [0.983, 1.014]. The registered background-fraction
+  [0.05,0.95] eligibility rule is applied. This is over-selection against a heuristic mask, not causal attribution.
+- The gate gains 13.2 [10.3,16.2] points on RIN, but recovers only 25.9% of Full−FastV and remains 28.0 points below
+  Random. On SLAKE CT/MRI it gains 19.29 [15.41,23.33]. Do not claim a universally competitive fix from this pilot.
+- Preserved failed predictions: Full SLAKE 77.19 misses 81–85; X-ray FastV−Random point estimate is −1.94
+  [−4.93,+0.87]; Lingshu attention-selection mass is top/top-left rather than predicted bottom-right. P1–P5 Outcome
+  cells updated without changing any frozen forecast. Keep regression and positional/norm causal controls remain.
+- The V4 source-schema summary resolves the empty abnormality subset: `abnormal_closed` / `pathology` / `closed`,
+  not `content_type` containing `abnormal`. Corrected the selector and replaced invented fixture values with the
+  actual schema; added a distractor-first regression excluding disease-specific templates. Two tests failed before
+  the correction; **84 CPU tests now pass**. Focused independent review found no important defect. Real 1,000-image
+  build/pairing remains a Stage 5 prerequisite.
+- Role A v5 is running only the 43/1,061 truncated SLAKE text-only items at the already registered 512-token limit.
+  It pins the same model revision/runtime and verifies unchanged greedy prefixes. K1/K2 do not depend on these
+  text-only answers; image-dependent-subset tables remain provisional until this retry is checked and merged.
+- The Sonatype dependency-check endpoint returned HTTP 401; no security-audit success is claimed. The remote
+  installation restores the existing approved Transformers pin to match E1, rather than adding a dependency.
+- Qwen main grid remains idle pending the full-baseline scoring and real abnormality-build preflight. No `rin_open`
+  condition was added. Raw responses, numerical diagnostics, operational notebooks and receipts stay ignored.

@@ -5,7 +5,9 @@ import numpy as np
 from PIL import Image
 
 from medprune.data import Sample, write_manifest
-from medprune.run_eval import RunSpec, estimate_hours, load_runs, run_many
+import pytest
+
+from medprune.run_eval import RunSpec, bundle_for, estimate_hours, load_runs, run_many
 
 RUNS = Path(__file__).resolve().parent.parent / "configs" / "runs.yaml"
 
@@ -26,6 +28,16 @@ def test_runs_yaml_expands_like_the_plan():
 def test_run_id_has_no_experiment_and_encodes_budget():
     assert RunSpec("lingshu7b", "slake_en", "gate_fastv", 0.10, 0).run_id("t4x2") == \
         "lingshu7b__slake_en__gate_fastv__r010__s0__t4x2"
+
+
+def test_bundle_for_searches_roots_in_order(tmp_path):
+    shared, session = tmp_path / "shared", tmp_path / "session"
+    write_manifest([], shared, "slake_en")
+    write_manifest([], session, "rin_anat_mc")
+    assert bundle_for([shared, session], "slake_en") == shared
+    assert bundle_for([shared, session], "rin_anat_mc") == session
+    with pytest.raises(FileNotFoundError):
+        bundle_for([shared, session], "omni_anat")
 
 
 def _tiny_bundle(root: Path) -> None:

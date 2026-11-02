@@ -419,6 +419,7 @@ def main() -> None:
     parser.add_argument("--only", default="slake,omnimedvqa,natural", help="comma list: slake,omnimedvqa,natural,radimagenet")
     parser.add_argument("--skip", default="", help="comma list of sources to skip")
     parser.add_argument("--models", default="lingshu7b,qwen3vl8b,huatuo7b")
+    parser.add_argument("--datasets", default="", help="masks: comma list of datasets (default: every manifest)")
     args = parser.parse_args()
     bundle = args.bundle
     bundle.mkdir(parents=True, exist_ok=True)
@@ -448,7 +449,8 @@ def main() -> None:
                 _download("raidium/RadImageNet-VQA", "benchmark/test-00000-of-00001.parquet", args.work), bundle))
         print(json.dumps(counts, indent=2))
     elif args.command == "masks":
-        datasets = sorted(p.stem for p in (bundle / "manifests").glob("*.jsonl"))
+        datasets = [d for d in args.datasets.split(",") if d] or \
+            sorted(p.stem for p in (bundle / "manifests").glob("*.jsonl"))
         build_masks(bundle, datasets, args.models.split(","))
     else:
         print(json.dumps(write_summary(bundle), indent=2, ensure_ascii=False))

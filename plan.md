@@ -1,7 +1,10 @@
 # Plan — Pruning the Air
 
 Single source of truth for the project: research (Part A), execution by stages (Part B), protocol (Part C), code
-design (Part D), compute backends incl. SSH A100 (Part E). Version 2 (merged), 2026-11-02.
+design (Part D), compute backends incl. SSH A100 (Part E), agent handbook and task queue (Part F), work log (Part G,
+the last section). Version 2 (merged), 2026-11-02.
+
+**AI agents (Codex, Gemini, Claude): read Part F first, then the newest entries of the Work log (Part G).**
 
 Conventions: ✓ = verified on 2026-11-02 against the named source. Stages run in order; a stage starts only when the
 previous stage's **exit gate** is met (parallel work is marked). Tick boxes on GitHub as work completes. Predictions in
@@ -11,7 +14,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 | Stage | Work | Where | GPU-h | Dates (IST) | Exit gate |
 |---|---|---|---|---|---|
-| 0 | Accounts, access, OpenReview profiles, repo | Laptop, Hugging Face, Kaggle, GitHub, OpenReview | 0 | Nov 2 | Three Kaggle accounts ready; RadImageNet access; all authors on OpenReview |
+| 0 | Accounts, access, repo | Laptop, Hugging Face, Kaggle, GitHub | 0 | Nov 2 | Kaggle accounts ready; HF secret set — **passed Nov 2** (RadImageNet terms to confirm before Stage 4) |
 | 1 | Code and tests | Laptop CPU | 0 | Nov 2 | `pytest -q` green, incl. masking ≡ token removal — **passed Nov 2 (61 tests)** |
 | 2 | Data bundle | Kaggle CPU (or SSH) | 0 | Nov 2 | Counts match §C2; masks eyeballed |
 | 3 | Validation and calibration (E0) | Kaggle GPU, A (+0.5 h on B) | 3.0 | Nov 2–3 | fp16 stable; Full SLAKE-en within 2 pts; rates measured |
@@ -228,34 +231,40 @@ surprising under that stage before moving on.
 
 | | |
 |---|---|
-| **Goal** | Every person and account can do its job before any code runs |
-| **Why** | RadImageNet-VQA is gated; Kaggle needs phone verification for internet; quotas decide the schedule; CVPR enrollment needs an OpenReview profile for every author, and new profiles without an institutional email can wait days for moderation |
-| **Where / when** | Laptop, browser · Nov 2 · 0 GPU-h, ~1 h of human time |
+| **Goal** | Every account can do its job before any code runs |
+| **Why** | RadImageNet-VQA is gated; Kaggle needs internet and secrets; quotas decide the schedule |
+| **Where / when** | Laptop, browser · Nov 2 · 0 GPU-h |
 | **Entry** | None |
 
-**Steps**
-1. GitHub `pushkar1887/cvpr`: kept **public** (decision 2026-11-02); add teammates as collaborators.
-2. OpenReview: every author creates or updates a profile (institutional email if possible), adds DBLP/publications and
-   conflicts of interest. **Do this today** — enrollment on Nov 10 fails for authors without a profile.
-3. Hugging Face, every teammate: open `huggingface.co/datasets/raidium/RadImageNet-VQA`, accept the RadImageNet research
-   agreement, create a *read* token.
-4. Kaggle accounts A, B, C: phone verification (internet), then in any notebook *Add-ons → Secrets*: `HF_TOKEN`
-   (from step 3) and `GITHUB_TOKEN` (fine-grained, read-only on this repo).
-5. Read each account's weekly GPU quota and reset day (profile → settings) and write them below.
-6. Laptop: Python ≥ 3.10 venv; CPU torch (`pip install torch --index-url https://download.pytorch.org/whl/cpu`);
-   `pip install -r requirements.txt`; clone the three references into `third_party/` (Appendix).
+**Team facts (from the user, 2026-11-02).** Pushkar is the only person running experiments and the only one pushing to
+GitHub; others only read. OpenReview enrollment and collaborators are handled by the user and are not tracked here.
+More Kaggle accounts (friends') are available if quota runs short.
+
+**Kaggle accounts → roles.** Roles A/B/C are used throughout this plan and in `configs/runs.yaml`:
+
+| Role | Work | Planned GPU-h | Account | Quota on Nov 2 |
+|---|---|---|---|---|
+| A | Lingshu-7B: E0, E1, E3, E4, E5, E6-P1 | 29.6 | Kaggle-2 | 30 h |
+| B | Qwen3-VL-8B: E3, E4, E5, E6, E7 | 26.6 | Kaggle-3 | 30 h |
+| C | E6-P2, E8 HuatuoGPT, E9 latency, overflow from A/B | 10.0 | Kaggle-1 | 21 h 50 min left |
+
+A is tight (29.6 of 30 h): anything beyond it moves to C, which has ~11.8 h spare. Quotas reset weekly, so the
+Nov 9–12 work (Stages 6–7) gets a fresh allowance.
+
+**Secrets.** The Hugging Face token is stored as the Kaggle secret **`cvpr`** on each account. Notebooks read it with
+`os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")` (from `kaggle_secrets`). The repo is public, so
+notebooks clone it without a GitHub token.
 
 **Checks**
-- [x] Repo on GitHub (public by decision); pushed 2026-11-02.
-- [ ] Collaborators added.
-- [x] Laptop environment: `.venv` with torch 2.14.1 (CPU), transformers 4.57.1; references in `third_party/`.
-- [ ] OpenReview profiles active for all authors.
-- [ ] RadImageNet access works for A and B tokens: `python -c "from huggingface_hub import HfApi; print(len(HfApi().list_repo_files('raidium/RadImageNet-VQA', repo_type='dataset', token='hf_...')))"` prints a number, not an error.
-- [ ] Internet works in a Kaggle notebook on A, B, C (`!curl -sI https://huggingface.co | head -1`).
-- [ ] Quotas recorded: A ___ h (reset ___), B ___ h, C ___ h.
+- [x] Repo on GitHub (public by decision), pushed; the user is the only writer.
+- [x] Laptop environment: `D:\cvpr\.venv`, torch 2.14.1 (CPU), transformers 4.57.1; references in `third_party/`.
+- [x] Quotas recorded: Kaggle-1 21.8 h, Kaggle-2 30 h, Kaggle-3 30 h (Nov 2).
+- [x] HF token stored as Kaggle secret `cvpr`.
+- [ ] The Hugging Face account behind `cvpr` has accepted the RadImageNet-VQA terms (open the dataset page once, accept).
+      Needed before Stage 4; check: `HfApi().list_repo_files("raidium/RadImageNet-VQA", repo_type="dataset")` lists files.
+- [ ] Internet on in each Kaggle notebook (Settings → Internet).
 
-**Exit gate:** all boxes ticked. If a quota is below 20 h, move that account's Stage 6 work to the account with the most
-quota left (§B-allocation in Stage 5).
+**Exit gate:** passed on Nov 2; the RadImageNet terms box must be ticked before Stage 4.
 
 ---
 
@@ -1107,11 +1116,128 @@ On the laptop: `rsync -avz <server>:cvpr/results/ results/`.
 2. If the A100 arrives mid-project, move a *whole* model to it and rerun its grid there (Qwen3-VL P0 ≈ 3.5–4 A100-h).
 3. Never mix profiles in one table; the profile suffix in run IDs lets `02_analyze_results.ipynb` assert this.
 
-**Kaggle operations.** Accelerator GPU T4×2; internet on (phone-verified); secrets `HF_TOKEN`, `GITHUB_TOKEN`;
-attach `medprune-data`. Long runs via "Save Version → Save & Run All (Commit)" (12-hour limit ✓); `run_many` stops
+**Kaggle operations.** Accelerator GPU T4×2; internet on (phone-verified); secret `cvpr` = Hugging Face token (set
+`HF_TOKEN` from it); repo cloned over HTTPS (public, no token); attach `medprune-data`. RadImageNet-VQA is built per
+session under `/tmp/medprune-rin` and passed as a second `--bundle` — never under `/kaggle/working`, whose contents
+become notebook output. Long runs via "Save Version → Save & Run All (Commit)" (12-hour limit ✓); `run_many` stops
 scheduling when elapsed + next estimate > 6 h; runs resume from their JSONL. Weekly GPU quota is not published
 (reports 15–30 h) — read each account's quota page. Model download costs 3–5 min of quota per session; optionally
 mirror a model into a private dataset from a CPU session. `/kaggle/working` (20 GB ✓) is for results only.
+
+---
+
+# Part F — Agent handbook (Codex, Gemini, Claude)
+
+Any agent picking up this project works from this Part. It says where things are, what is allowed, and what to do next.
+
+## F1. Start here
+
+1. Read `README.md`, the Stage tracker at the top of this file, then Part B for the current stage, then the newest
+   entries of the Work log (Part G).
+2. **Current stage** = the first row of the Stage tracker whose exit gate is not passed. **Current task** = the first
+   task in §F4 whose status is `open`, belongs to the current or an earlier stage, and whose prerequisites are done.
+3. Before changing code: `.venv\Scripts\python -m pytest -q` on the laptop (Linux: `python -m pytest -q`) must pass.
+   It currently runs 62 tests in under 10 s.
+4. When you finish (or stop), add a Work log entry (template in Part G) and set the task's status in §F4.
+
+## F2. Rules
+
+- **Frozen science.** Never edit the predictions in §A6 (fill only Outcome). Never change method definitions (§C3 =
+  `selection.METHODS`), prompts (§C1.1 = `data.make_prompt`), scoring (`scoring.py`), fixed settings (§C1) or the run-ID
+  format without (a) updating this plan, (b) updating tests, (c) a log entry saying why. After Stage 4 starts, any such
+  change invalidates finished runs — the affected runs must be deleted and rerun.
+- **Where logic lives.** Notebooks only orchestrate; every function goes in `medprune/` with a CPU test in `tests/`.
+- **Never commit** data, model weights, `results/`, `third_party/`, `research/` or `scripts/retina_microprobe.py`
+  (the last two are a separate project of the user's).
+- **RadImageNet-VQA** (license: no redistribution): never in the shared bundle, never under `/kaggle/working`, never in
+  git, never in a public notebook output. Build it per session under `/tmp/medprune-rin`.
+- **Hardware.** Never put runs from different profiles (`t4x2`, `a100`) in one table.
+- **Results are data.** Do not change code to move a result; report it in the log with its run IDs and CIs.
+- **Who runs what.** The user (Pushkar) runs all Kaggle sessions. Agents write code, notebooks and exact commands, and
+  may commit and push to `main` after the tests pass. Keep commits small; imperative subject ≤ 72 characters; body says
+  what and why; end with your agent's attribution trailer.
+
+## F3. Environment facts
+
+| Item | Value |
+|---|---|
+| Laptop | Windows 11; repo `D:\cvpr`; venv `D:\cvpr\.venv` (torch 2.14.1 CPU, transformers 4.57.1); Git Bash and PowerShell |
+| GitHub | `https://github.com/pushkar1887/cvpr`, public, branch `main` |
+| Kaggle | Roles A/B/C → Kaggle-2/3/1 (Stage 0 table); GPU T4×2; HF token in secret `cvpr`; clone over HTTPS |
+| Data paths | Shared bundle `/kaggle/input/medprune-data` (after Stage 2); RadImageNet `/tmp/medprune-rin` (per session); results `/kaggle/working/results` |
+| Commands | `python -m medprune.data build`, `… masks`, `… summary`; `python -m medprune.run_eval` (`--list`, `--limit`, `--dry-run`, repeatable `--bundle`) |
+| A100 | Not available yet; Part E describes the switch |
+
+## F4. Task queue
+
+Status values: `open`, `in progress (agent, date)`, `done (commit)`.
+
+| ID | Stage | Task | Status | Prerequisites |
+|---|---|---|---|---|
+| T1 | 2 | `notebooks/00_build_data_bundle.ipynb` | open | — |
+| T2 | 3 | `medprune/checks.py` (E0 checks) + `notebooks/01_run_gpu.ipynb` | open | — |
+| T3 | 4 | `medprune/analysis.py` + `notebooks/02_analyze_results.ipynb`, Stage 4 section | open | — (must be ready before E1 ends, Nov 3) |
+| T4 | 6 | static-map builder | open | T3 |
+| T5 | 7 | `medprune/huatuo_llava.py` + validation | open | Stage 5 done |
+| T6 | 7 | E9 latency measurement | open | T2 |
+| T7 | 8 | table and figure builders (Tables 1–4, Figs 1–5) | open | T3 |
+
+**T1 — data bundle notebook (Kaggle CPU, internet on).** Cells, in order:
+1. `from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")`.
+2. `!git clone https://github.com/pushkar1887/cvpr && cd cvpr && bash scripts/setup_env.sh`.
+3. `!df -h /tmp /kaggle/working` — scratch for the 10.7 GB OmniMedVQA zip must be ≥ 25 GB free and must not be
+   `/kaggle/working` (20 GB output cap).
+4. `!python -m medprune.data build --out /kaggle/working/medprune-data --work /tmp/medprune-work --skip radimagenet`.
+5. `!python -m medprune.data masks --bundle /kaggle/working/medprune-data`.
+6. `!python -m medprune.data summary --bundle /kaggle/working/medprune-data`.
+7. Print the counts against §C2 and display 3 overlays per modality.
+8. `!rm -rf /tmp/medprune-work`.
+
+Done when: the notebook is committed; the user has run it; counts match §C2 (or differences are logged); the private
+Kaggle dataset `medprune-data` exists; `configs/bundle_manifest.json` is committed; a log entry records the counts and
+the median background fraction per modality.
+
+**T2 — GPU notebook and E0 checks.** `medprune/checks.py` provides functions, each returning a dict for
+`$RES/e0_report.json`:
+- `fp16_check(adapter_fp16, adapter_vision_fp32, samples)`: identical-answer rate and finite logits (§Stage 3 E0b).
+- `logging_is_inert(adapter, samples)`: answers with a `full` logging state equal answers with no state.
+- `offline_keepsets_match(adapter, samples, budget)`: FastV keep-sets recomputed from logged `scores_l1` equal the
+  keep-sets chosen in the hook.
+- `timing_summary(run_jsonl)`: mean, p50, p95 seconds per question.
+
+Unit-test what can run on CPU with `FakeAdapter`. Notebook cells: env check (`nvidia-smi`, `df -h`); secret; clone and
+`setup_env.sh`; parameters `EXP, MODEL, ACCOUNT, MAX_HOURS, LIMIT`; RadImageNet build
+`python -m medprune.data build --out /tmp/medprune-rin --work /tmp/medprune-work --only radimagenet` and
+`python -m medprune.data masks --bundle /tmp/medprune-rin --datasets rin_anat_mc,rin_abn_closed --models $MODEL`;
+smoke test (5 questions; assert `attention_hook.CALLS["decoder"] > 0`); E0 checks when `EXP == "E0"`;
+`python -m medprune.run_eval --exp $EXP --model $MODEL --bundle /kaggle/input/medprune-data --bundle /tmp/medprune-rin
+--out /kaggle/working/results --max-hours $MAX_HOURS`; per-run summary table; zip `/kaggle/working/results`.
+Done when: both files are committed, CPU tests pass, and a log entry lists the exact parameters for E0 on roles A and B.
+
+**T3 — analysis module and Stage 4 notebook section.** `medprune/analysis.py`:
+`load_runs(results_dir) -> DataFrame` (one row per question, §C6 columns plus run fields parsed from the run ID),
+`load_diag(results_dir, run_id) -> dict[qid, dict[str, array]]`, `image_dependent(df, model)`,
+`accuracy_table(df, by=[...])` with cluster CIs, `paired_delta(df, method_a, method_b, dataset)`,
+`retention_by_modality(df, masks)` (BRR), `keep_maps(df)`, `query_dependence(df)` (Jaccard across questions of one
+image), `high_norm_rates(df, diag)`. Notebook section "Stage 4" writes `$RES/tables/stage4_*.csv` and
+`$RES/figures/stage4_keepmaps.pdf` and prints the K1/K2 decision numbers. Done when: tests on synthetic run files pass
+and a log entry shows the notebook output on the dry-run results.
+
+**T4 — static maps.** `python -m medprune.analysis static-maps --results results --bundle ...` builds
+`results/static_maps/<model>__for_<dataset>.npy` from the `full` runs' `scores_l1` of the *other* anchor dataset
+(SLAKE-en → RadImageNet datasets; RadImageNet anatomy → SLAKE) with `stats.static_map_from_scores`. Done when: tested
+and logged.
+
+**T5 — HuatuoGPT-Vision port.** §D3 `huatuo_llava.py`. First read `model.safetensors.index.json` to find the vision
+tower weights (the authors' loader uses `init_vision_encoder_from_ckpt=True`). Done when: a 50-question SLAKE
+validation is within 3 points of the authors' numbers and the E8 runs list correctly.
+
+**T6 — latency (E9).** A function timing prefill with CUDA events (10 warm-up, 200 SLAKE-en questions) for `full` and
+`gate_input_fastv` on Lingshu, where Gate-input physically removes background tokens before the LLM; plus theoretical
+FLOPs for every method (§Stage 7). Done when: committed with a notebook cell and logged.
+
+**T7 — paper tables and figures.** Builders in `analysis.py` for Tables 1–4 and Figs 1–5 exactly as §A7 specifies,
+writing `.csv`, `.tex` and `.pdf` under `results/`. Done when: one notebook run regenerates every paper number.
 
 ---
 
@@ -1137,3 +1263,65 @@ git clone --depth 1 https://github.com/FreedomIntelligence/HuatuoGPT-Vision thir
 Registers arXiv 2309.16588 · test-time registers arXiv 2506.08010 · VTC-Bench arXiv 2510.07143 · MedSTP arXiv
 2610.22751 · ViToS arXiv 2606.31599 · Photon arXiv 2603.25155 · MedARC arXiv 2607.26554 · EasyLens arXiv 2606.06379 ·
 [CVPR 2027 CFP](https://cvpr.thecvf.com/Conferences/2027/CallForPapers)
+
+---
+
+# Part G — Work log
+
+Append-only, newest entry last. Every working session (any agent, or the user) adds one entry. Keep numbers exact:
+run IDs, counts, accuracies with CIs. Template:
+
+```
+### YYYY-MM-DD — <agent or person> — Stage <n> — <one-line title>
+- Changed: files and what changed
+- Commits: hashes
+- Verified: tests run, checks passed (with numbers)
+- Results: run IDs with accuracy and 95% CI (if any runs finished)
+- Decisions: what was decided and why
+- Open issues: what is unverified or broken
+- Next: the next task ID from §F4
+```
+
+### 2026-10-31 — Claude — Pre-plan — direction chosen
+- Changed: nothing in the repo (exploration only).
+- Decisions: medical direction = why attention-guided visual token pruning fails on medical images. A literature check
+  found MedSTP (arXiv 2610.22751, Oct 15 2026): a new medical pruner whose own table shows FastV below Random in 5 of
+  8 cells without explanation — that unexplained result is this paper's starting point. Positioned against FEATHER
+  (ICCV 2025), PoRe, Wang et al. (arXiv 2512.07580) and ViToS (ICML 2026).
+- Open issues: MedSTP documents no prompts, subset rules or FastV layer, and prunes every method before the LLM;
+  its numbers can only be a reference block, not mixed into our tables.
+
+### 2026-11-02 — Claude — Planning — plan, repo, verification
+- Changed: `plan.md`, `README.md`, `mentor_brief.tex`, `requirements.txt`, `scripts/setup_env.sh`, `.gitignore`,
+  `.gitattributes`.
+- Commits: d13007c, 34e69a4 (plan and setup), 79e5f3c (detailed Part B).
+- Verified: CVPR 2027 dates from the CFP (enrollment Nov 10 AoE = Nov 11 17:29 IST; paper Nov 16 AoE; supplementary
+  Nov 23 AoE; contemporaneous cut-off Sept 15 2026). Model files on Hugging Face (Lingshu-7B 16.58 GB, Qwen3-VL-8B
+  17.53 GB, HuatuoGPT-Vision-7B 15.87 + 1.71 GB). SLAKE test = 2,094 questions (en 1,061 on 96 images: CT 40, MRI 26,
+  X-ray 30; zh 1,033). transformers 4.57.1: `AttentionInterface`, SDPA's `is_causal` path, mask interface, DeepStack on
+  LLM layers 0–2, M-RoPE text offset (max + 1 on all axes) — the basis of the bottom-right prediction.
+- Decisions: Lingshu-7B + Qwen3-VL-8B on MedSTP's three benchmarks; HuatuoGPT-Vision-7B as the 1D-RoPE third model;
+  repo public (user's decision).
+
+### 2026-11-02 — Claude — Stage 1 — package and tests
+- Changed: `medprune/` (attention_hook, selection, masks, scoring, stats, data, env, models, run_eval),
+  `tests/` (6 files), `configs/runs.yaml`, `pyproject.toml`.
+- Commits: b447543.
+- Verified: 61 CPU tests passed in 7 s, including masking ≡ token deletion and ≡ FastV's physical removal (K = 1, 2) on
+  tiny Qwen2 and Qwen3 models, cached decoding token-identical, logged scores = eager attention, RoPE-free GQA mapping.
+- Decisions: run IDs carry no experiment name (shared runs execute once); 25 methods (the plan had said 26); mask guard
+  so textured, background-free images (dermoscopy, pathology crops) are never gated; HuatuoGPT port moved to Stage 7
+  because its fine-tuned vision tower may sit inside the main checkpoint.
+- Open issues (verify on GPU or real data): RadImageNet field values and image size; Qwen3-VL `get_image_features`
+  return format (used by DivPrune and artifact exclusion); fp16 stability on T4; Lingshu Full accuracy under our
+  pipeline; `omni_anat` count vs MedSTP's 3,329.
+
+### 2026-11-02 — Claude — Stage 0 — accounts closed; agent handbook
+- Changed: Stage 0 rewritten with the user's facts (sole experimenter and GitHub writer; OpenReview and collaborators
+  handled by the user; Kaggle quotas 21.8 / 30 / 30 h mapped to roles C / A / B; HF token in Kaggle secret `cvpr`).
+  Added Part F (agent handbook, task queue T1–T7) and this log. Code: `run_eval --bundle` is repeatable (RadImageNet
+  lives in a session-only root), `data masks --datasets` restricts mask building.
+- Commits: this entry's commit.
+- Verified: 62 CPU tests pass (new: bundle-root search order).
+- Open issues: confirm the RadImageNet terms are accepted on the account behind `cvpr` (Stage 0 check).
+- Next: T1 (data bundle notebook), then T2 and T3 — all three are needed before the Nov 3 kill test.

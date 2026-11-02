@@ -342,7 +342,17 @@ class FakeAdapter:
         return np.random.default_rng(0).normal(size=(len(inputs.vis_pos), 8))
 
 
-def run_many(specs: list[RunSpec], bundle: Path, out: Path, rates: dict, max_hours: float = 6.0,
+def bundle_for(bundles: Path | list[Path], dataset: str) -> Path:
+    """First bundle root holding the dataset's manifest. Several roots let RadImageNet-VQA live in a session-only
+    directory (its license forbids putting it in the shared bundle or in notebook outputs)."""
+    roots = [bundles] if isinstance(bundles, (str, Path)) else list(bundles)
+    for root in roots:
+        if (Path(root) / "manifests" / f"{dataset}.jsonl").exists():
+            return Path(root)
+    raise FileNotFoundError(f"no manifests/{dataset}.jsonl under {[str(r) for r in roots]}")
+
+
+def run_many(specs: list[RunSpec], bundle: Path | list[Path], out: Path, rates: dict, max_hours: float = 6.0,
              limit: int | None = None, dry_run: bool = False, vision_fp32: bool = False,
              max_new_tokens: int = 64) -> list[dict]:
     """Load each model once and run its pending runs until the next one would exceed `max_hours`."""
@@ -355,7 +365,8 @@ def run_many(specs: list[RunSpec], bundle: Path, out: Path, rates: dict, max_hou
     for model in dict.fromkeys(s.model for s in specs):
         adapter = FakeAdapter(model) if dry_run else load_adapter(model, profile, vision_fp32=vision_fp32)
         for spec in [s for s in specs if s.model == model]:
-            samples = load_manifest(bundle, spec.dataset)
+            root = bundle_for(bundle, spec.dataset)
+            samples = load_manifest(root, spec.dataset)
             n_total = min(len(samples), limit) if limit else len(samples)
             remaining = n_total - len(_done_qids(out / "runs" / f"{spec.run_id(profile_name)}.jsonl"))
             if remaining <= 0:
@@ -364,7 +375,7 @@ def run_many(specs: list[RunSpec], bundle: Path, out: Path, rates: dict, max_hou
             if results and (time.time() - start) / 3600 + hours > max_hours:
                 print(f"stopping: next run needs {hours:.2f} h, session budget {max_hours} h reached")
                 return results
-            summary = run_one(adapter, spec, bundle, out, profile_name, limit=limit, max_new_tokens=max_new_tokens,
+            summary = run_one(adapter, spec, root, out, profile_name, limit=limit, max_new_tokens=max_new_tokens,
                               strict_masks=not dry_run)
             print(json.dumps(summary))
             results.append(summary)
@@ -382,7 +393,8 @@ def main() -> None:
     p.add_argument("--account")
     p.add_argument("--dataset")
     p.add_argument("--method")
-    p.add_argument("--bundle", type=Path, default=None)
+    p.add_argument("--bundle", type=Path, action="append", default=None,
+                   help="bundle root; repeat to add a session-only root (e.g. RadImageNet)")
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--list", action="store_true", help="print runs and estimated hours, run nothing")
     p.add_argument("--limit", type=int, default=None, help="questions per run (smoke tests)")
@@ -392,21 +404,24 @@ def main() -> None:
     p.add_argument("--vision-fp32", action="store_true")
     args = p.parse_args()
 
-    bundle = args.bundle or data_root()
+    bundles = args.bundle or [data_root()]
     out = args.out or results_root()
     specs, rates = load_runs(args.runs, args.exp, args.model, args.account, args.dataset, args.method)
     if args.list:
         total = 0.0
         for spec in specs:
-            manifest = bundle / "manifests" / f"{spec.dataset}.jsonl"
-            n = sum(1 for _ in manifest.open(encoding="utf-8")) if manifest.exists() else 0
+            try:
+                manifest = bundle_for(bundles, spec.dataset) / "manifests" / f"{spec.dataset}.jsonl"
+                n = sum(1 for _ in manifest.open(encoding="utf-8"))
+            except FileNotFoundError:
+                n = 0
             n = min(n, args.limit) if args.limit else n
             hours = estimate_hours(spec, n, rates) if n else float("nan")
             total += 0 if n == 0 else hours
             print(f"{spec.run_id('<profile>'):<75} {','.join(spec.exps):<10} n={n:<5} {hours:5.2f} h")
         print(f"{len(specs)} runs, {total:.2f} h (runs whose manifest is missing are not counted)")
         return
-    run_many(specs, bundle, out, rates, max_hours=args.max_hours, limit=args.limit, dry_run=args.dry_run,
+    run_many(specs, bundles, out, rates, max_hours=args.max_hours, limit=args.limit, dry_run=args.dry_run,
              vision_fp32=args.vision_fp32, max_new_tokens=args.max_new_tokens)
 
 

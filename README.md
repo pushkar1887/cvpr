@@ -79,9 +79,12 @@ Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and unif
 **[plan.md](plan.md)** is the single plan: stage tracker (Stages 0–8 with checkboxes and exit gates), research,
 protocol, code design and compute backends. Predictions are pre-registered in plan.md §A6 (2026-11-02).
 
-Status (Nov 2): **Stage 1 done** — the `medprune` package and 61 CPU tests pass, including the proof that masking
-dropped keys equals deleting the tokens. Stage 0 waits on teammates' accounts (OpenReview, RadImageNet access, Kaggle).
-Next: Stage 2 (data bundle). No GPU run yet.
+Status (Nov 2): **Stages 0 and 1 done** — Kaggle accounts and secrets set; the `medprune` package and 62 CPU tests
+pass, including the proof that masking dropped keys equals deleting the tokens. Next: Stage 2 (data bundle). No GPU run
+yet.
+
+**Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
+then read the Work log at the end of plan.md and add an entry when you finish.
 
 Compute: 66.2 Kaggle T4-hours (39.4 h must-have) across three accounts, or ≈ 14–17 h on an A100. Storage: ≤ 2 GB
 persistent; one model (~17 GB) temporarily per GPU session.

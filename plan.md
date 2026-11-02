@@ -11,10 +11,10 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 | Stage | Work | Where | GPU-h | Dates (IST) | Exit gate |
 |---|---|---|---|---|---|
-| 0 | Accounts, access, repo | Laptop, Hugging Face, Kaggle, GitHub | 0 | Nov 2 | All three Kaggle accounts ready; RadImageNet access granted |
+| 0 | Accounts, access, OpenReview profiles, repo | Laptop, Hugging Face, Kaggle, GitHub, OpenReview | 0 | Nov 2 | Three Kaggle accounts ready; RadImageNet access; all authors on OpenReview |
 | 1 | Code and tests | Laptop CPU | 0 | Nov 2 | `pytest -q` green, incl. masking ≡ token removal |
 | 2 | Data bundle | Kaggle CPU (or SSH) | 0 | Nov 2 | Counts match §C2; masks eyeballed |
-| 3 | Validation and calibration (E0) | Kaggle GPU, account A | 3.0 | Nov 2–3 | fp16 stable; Full SLAKE-en within 2 pts; rates measured |
+| 3 | Validation and calibration (E0) | Kaggle GPU, A (+0.5 h on B) | 3.0 | Nov 2–3 | fp16 stable; Full SLAKE-en within 2 pts; rates measured |
 | 4 | Kill test (E1) + diagnostics (E2) | GPU A + CPU | 3.3 | Nov 3 | Decisions K1, K2 |
 | 5 | Main grid (E3) + modality panel (E4) | GPU A, B | 33.1 | Nov 3–5 | Table 1, Fig. 2 drafts → **enrollment Nov 10 AoE** |
 | 6 | Curves, ablations, natural control (E5, E6-P1, E7) | GPU A, B | 16.8 | Nov 6–8 | Decisions K3, K4 |
@@ -157,7 +157,7 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 - **Fig. 4** Accuracy vs budget {5, 10, 25, 50}% for Full, Random, FastV, Gate+FastV, Gate+Uniform; SLAKE-en, RadImageNet MC; both models.
 - **Fig. 5** Accuracy by SLAKE evidence tertile; RadImageNet anatomy vs abnormality.
 - **Table 1** Methods × {SLAKE all/en, OmniMedVQA-anatomy, RadImageNet anatomy MC, RadImageNet abnormality, mean} × 2 models; MedSTP's numbers as a separate grey block.
-- **Table 2** BRR, quadrant concentration, regression coefficients, high-norm rate, static-map accuracy/Jaccard, inverse/oracle gate.
+- **Table 2** BRR, quadrant concentration, regression coefficients, high-norm rate, cross-question keep-set Jaccard, static-map accuracy/Jaccard, inverse/oracle gate.
 - **Table 3** 2×2 factorial; K-sweep; DivPrune/PDrop ± gate; τ, quota.
 - **Table 4** Tokens into the LLM, prefill TFLOPs, measured latency.
 
@@ -179,115 +179,498 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 
 # Part B — Execution by stages
 
-## Stage 0 — Accounts, access, repo (Nov 2, no GPU)
+Each stage below has the same blocks: **goal and why** → **inputs** → **steps** → **runs** (what each run changes, what
+it tells us) → **outputs** (exact paths) → **checks** (tick them) → **exit gate** → **if something goes wrong**. Run
+tables name the prediction (P#, §A6) each run tests, so you can always trace a number back to the question it answers.
 
-- [ ] GitHub repo `pushkar1887/cvpr` private; all teammates added as collaborators.
-- [ ] Every teammate: accept RadImageNet-VQA terms on Hugging Face; create a read token.
-- [ ] Every Kaggle account (A, B, C): phone-verified (internet), secrets `HF_TOKEN` and `GITHUB_TOKEN` added.
-- [ ] Record each account's weekly GPU quota here: A ___ h, B ___ h, C ___ h (unpublished; reports 15–30 h).
-- [ ] Laptop: clone references into `third_party/` (commands in the Appendix); they are git-ignored.
+## B0. Conventions used in every stage
 
-**Exit gate:** three accounts ready; RadImageNet access granted on at least accounts A and B.
+**Paths.** `$DATA` = data bundle root (Kaggle: `/kaggle/input/medprune-data`; SSH: `~/medprune-data`). `$RES` = results
+root (Kaggle: `/kaggle/working/results`; laptop/SSH: `./results`). Model weights live in the Hugging Face cache
+(`/root/.cache/huggingface` on Kaggle), never under `$RES`.
 
-## Stage 1 — Code and tests (Nov 2, laptop CPU)
+**Runs and run IDs.** A *run* = one model × one dataset × one method × one budget × one seed. ID:
+`{exp}__{model}__{dataset}__{method}__r{budget%:03d}__s{seed}__{profile}`. `full` and `text_only` do not depend on the
+method, so they use exp `base` and are shared by every experiment:
+`base__lingshu7b__slake_en__full__r100__s0__t4x2`. A *group* (K, S1, S2, S3, P, N — §C2) expands to several runs.
 
-- [ ] `requirements.txt`, `scripts/setup_env.sh` (done), `.gitignore` (done).
-- [ ] `medprune/env.py`, `data.py`, `masks.py`, `selection.py`, `attention_hook.py`, `models.py`, `scoring.py`,
-      `stats.py`, `run_eval.py` per Part D.
-- [ ] `tests/` per §D5; `pytest -q` passes, including masking ≡ physical token removal on tiny Qwen2 and Qwen3.
-- [ ] `configs/runs.yaml` generated from the run tables in Stages 3–7 (hours from §C4).
+**Every run writes**
+- `$RES/runs/<id>.jsonl` — one line per question (fields in §C6), flushed after each question, so a crash loses at most
+  one question and a restart resumes.
+- `$RES/runs/<id>.meta.json` — model revision, versions, GPU, profile, dtype, `max_pixels`, git hash, timing.
+- `$RES/diag/<id>/part-XXXX.npz` — only for `full` and score-based methods: attention scores at layers 1/7/15,
+  RoPE-free scores, token norms (every 200 questions).
 
-**Exit gate:** tests green; `runs.yaml` lists every run with an hour estimate.
+**Commands** (identical on Kaggle and SSH):
+```bash
+python -m medprune.run_eval --list --exp E1 --model lingshu7b          # print runs + estimated hours, run nothing
+python -m medprune.run_eval --exp E1 --model lingshu7b --limit 5       # smoke test on 5 questions per run
+python -m medprune.run_eval --exp E1 --model lingshu7b --max-hours 6   # run every pending run of the block
+```
 
-## Stage 2 — Data bundle (Nov 2, Kaggle CPU; runs identically over SSH)
+**Question counts per dataset:** `slake_en` 1,061 · `slake_zh` 1,033 · `rin_anat_mc` ~1,000 · `rin_abn_closed` ~1,000 ·
+`omni_anat` ~3,329 · `omni_panel` 1,200 · `natural` 1,000. **Visual tokens per 512² image:** Lingshu 18×18 = 324
+(k = 32 at 10%), Qwen3-VL 16×16 = 256 (k = 26), HuatuoGPT 576 (k = 58). A 224² image gives 64 tokens on both Qwen
+models (k = 6).
 
-- [ ] `00_build_data_bundle.ipynb` (thin wrapper around `python -m medprune.data build --out <dir>`).
-- [ ] Counts match §C2 (✓ rows exactly; record the others, especially `omni_anat` vs MedSTP's 3,329).
-- [ ] Masks for the three model grids; 20 overlays per modality checked by eye.
-- [ ] Publish as private Kaggle dataset `medprune-data` (~0.7 GB); commit `configs/bundle_manifest.json` (counts + hashes).
+**After each stage:** fill the Outcome column of §A6 for the predictions it tested, tick the boxes, and note anything
+surprising under that stage before moving on.
 
-**Exit gate:** counts verified; overlays look right (table removed, lungs kept, padding background).
+---
 
-## Stage 3 — Validation and calibration, E0 (Nov 2–3, GPU A, 3.0 h)
+## Stage 0 — Accounts, access, repository
 
-- [ ] fp16 vs fp32-vision on 50 SLAKE questions: no NaN/inf, ≥ 96% identical answers → choose dtype, fix for all runs.
-- [ ] Hook installed with no pruning ≡ vanilla outputs (50 questions); FastV at 50% → small drop only.
-- [ ] Full SLAKE-en accuracy within 2 points of the published Lingshu reference (≈ 82–84 under MedEvalKit).
-- [ ] Time 50 questions; scale all hours in `runs.yaml` by measured/planned.
+| | |
+|---|---|
+| **Goal** | Every person and account can do its job before any code runs |
+| **Why** | RadImageNet-VQA is gated; Kaggle needs phone verification for internet; quotas decide the schedule; CVPR enrollment needs an OpenReview profile for every author, and new profiles without an institutional email can wait days for moderation |
+| **Where / when** | Laptop, browser · Nov 2 · 0 GPU-h, ~1 h of human time |
+| **Entry** | None |
 
-**Exit gate:** dtype fixed; Full accuracy plausible; rates calibrated. If the factor > 1.5: Random 1 seed outside S1,
-drop `uniform_l2` from E3, move E5's 50% points to Stage 7.
+**Steps**
+1. GitHub `pushkar1887/cvpr`: private until submission (recommended); add teammates as collaborators.
+2. OpenReview: every author creates or updates a profile (institutional email if possible), adds DBLP/publications and
+   conflicts of interest. **Do this today** — enrollment on Nov 10 fails for authors without a profile.
+3. Hugging Face, every teammate: open `huggingface.co/datasets/raidium/RadImageNet-VQA`, accept the RadImageNet research
+   agreement, create a *read* token.
+4. Kaggle accounts A, B, C: phone verification (internet), then in any notebook *Add-ons → Secrets*: `HF_TOKEN`
+   (from step 3) and `GITHUB_TOKEN` (fine-grained, read-only on this repo).
+5. Read each account's weekly GPU quota and reset day (profile → settings) and write them below.
+6. Laptop: Python ≥ 3.10 venv; CPU torch (`pip install torch --index-url https://download.pytorch.org/whl/cpu`);
+   `pip install -r requirements.txt`; clone the three references into `third_party/` (Appendix).
 
-## Stage 4 — Kill test E1 + diagnostics E2 (Nov 3, GPU A 3.3 h + CPU)
+**Checks**
+- [ ] Repo private; collaborators added.
+- [ ] OpenReview profiles active for all authors.
+- [ ] RadImageNet access works for A and B tokens: `python -c "from huggingface_hub import HfApi; print(len(HfApi().list_repo_files('raidium/RadImageNet-VQA', repo_type='dataset', token='hf_...')))"` prints a number, not an error.
+- [ ] Internet works in a Kaggle notebook on A, B, C (`!curl -sI https://huggingface.co | head -1`).
+- [ ] Quotas recorded: A ___ h (reset ___), B ___ h, C ___ h.
 
-E1: Lingshu, group K (`slake_en` + `rin_anat_mc`, 2,061 questions), 10%.
+**Exit gate:** all boxes ticked. If a quota is below 20 h, move that account's Stage 6 work to the account with the most
+quota left (§B-allocation in Stage 5).
 
-| Method | Seeds | Hours |
+---
+
+## Stage 1 — Code and tests
+
+| | |
+|---|---|
+| **Goal** | The `medprune` package and a test suite that proves the method is implemented correctly |
+| **Why** | One hook implements all 26 methods, so one bug corrupts every number. The tests are our answer to the reviewer question "is your FastV really FastV?" and to "does masking equal token removal?" |
+| **Serves** | Validity of every claim |
+| **Where / when** | Laptop CPU · Nov 2 · 0 GPU-h |
+| **Entry** | Stage 0 step 6 done |
+
+**Inputs**
+- Parts C and D of this plan.
+- References: FastV scoring `third_party/FastV/src/FastV/llava-hf/.../modeling_llama.py` L1038–1052; MedEvalKit
+  prompts `utils/question_formats.py`, scoring `utils/utils.py` L95–226; HuatuoGPT template `cli.py` L136–152,
+  padding L214–228.
+
+**Steps** (write each module together with its test; order = dependency order)
+1. `selection.py` + `test_selection.py` — pure NumPy; method registry (§C3) and selectors.
+2. `masks.py` + `test_masks.py` — synthetic images (ellipse, lungs, table strip, white background, padding).
+3. `scoring.py` + `test_scoring.py` — MedEvalKit verdicts on fixed cases.
+4. `stats.py` + `test_stats.py` — bootstrap and retention metrics on hand-checkable data.
+5. `attention_hook.py` + `test_attention_hook.py` — tiny random `Qwen2ForCausalLM` / `Qwen3ForCausalLM`
+   (2–4 layers, hidden 64, fp32, CPU).
+6. `env.py`, `data.py` (builders, `make_prompt`, `python -m medprune.data build`), `models.py`, `huatuo_llava.py`.
+7. `run_eval.py` with `--list`, `--limit`, `--dry-run` (a fake adapter that returns fixed answers, for testing the loop
+   on CPU).
+8. `configs/runs.yaml` in matrix form (exp → model → group → methods → budgets → seeds); `run_eval` expands it into run
+   IDs, so the file stays short and cannot drift from the tables in this Part.
+
+**Outputs:** `medprune/*.py`, `tests/*.py`, `configs/runs.yaml`.
+
+**Checks**
+- [ ] `pytest -q tests/` passes in < 60 s.
+- [ ] The three critical tests pass: masking from layer 0 ≡ deleting the tokens (original position ids kept);
+      masking from layer K ≡ the FastV-style reference that index-selects hidden states at layer K; greedy decoding
+      gives identical tokens (exercises the KV-cache path).
+- [ ] `last_token_attention` equals eager attention probabilities (head mean, last query) to 1e-6.
+- [ ] Scorer verdicts equal MedEvalKit's on every fixed case.
+- [ ] `python -m medprune.run_eval --list --exp E1 --model lingshu7b` prints 13 runs (`full` on `slake_en` comes from
+      Stage 3) totalling ≈ 3.0 h.
+- [ ] Resume works: `--dry-run --limit 20` twice → the second call writes nothing new.
+
+**Exit gate:** all checks green; commit and push (if the repo is private).
+
+**If something goes wrong**
+
+| Symptom | Likely cause | Action |
 |---|---|---|
-| `full`, `random_l2`, `random_l0`, `fastv`, `gate_fastv` | 0 | 5 × 0.462 = 2.31 |
-| `fastv_prellm` | — | 0.60 |
-| `text_only` | — | 0.29 |
-| model load | — | 0.10 |
+| Mask-from-K test fails by a small amount | position ids not preserved for kept tokens, or causal mask missing | compare position ids layer by layer; check `allow_mask` builds the causal part on prefill |
+| Decode test diverges after token 1 | mask not applied on decode steps (query length 1) | apply the key mask whenever `keep` is set and layer ≥ `mask_from` |
+| Scorer disagrees on yes/no | `parse_response` stripping differs | port MedEvalKit lines verbatim, then refactor |
 
-- [ ] E1 runs complete (14,427 question-evaluations).
-- [ ] P1, P2 outcomes recorded in §A6. **Decision K1.**
-- [ ] E2 on E1 logs: BRR, keep-maps, keep regression, high-norm rates. P3–P5 recorded. **Decision K2.**
+---
 
-**Exit gate:** GO (or reframe) agreed with the mentor.
+## Stage 2 — Data bundle
 
-## Stage 5 — Main grid E3 + modality panel E4 (Nov 3–5, GPU A and B, 33.1 h)
+| | |
+|---|---|
+| **Goal** | Frozen manifests, images and per-token foreground masks for every dataset except RadImageNet |
+| **Why** | Every run must read identical questions and identical gates; computing masks once guarantees all methods see the same background; verifying counts now catches subset mistakes before GPU time is spent |
+| **Serves** | Reproducibility; C2 (background fraction per image) |
+| **Where / when** | Kaggle CPU notebook `00_build_data_bundle` (internet on) or any SSH server · Nov 2 · 0 GPU-h · ~30 min compute |
+| **Entry** | Stage 1 builders and `masks.py` tested |
 
-E3 at 10% (Lingshu on A: 12.6 h; Qwen3-VL on B: 16.3 h):
+**Inputs**
 
-| Group | Methods | Image runs | Lingshu h | Qwen3-VL h |
+| Source | Files | Size ✓ |
+|---|---|---|
+| `BoKelvin/SLAKE` | `imgs.zip` (per image: `source.jpg`, `mask.png`, `detection.json`), `test.json`, `mask.txt` | 212 MB + 636 KB |
+| `foreverbeliever/OmniMedVQA` | `OmniMedVQA.zip` (open-access images + QA JSON) | 10.70 GB |
+| `lmms-lab/GQA` | `testdev_balanced_instructions`, `testdev_balanced_images` parquet | 2.1 + 65.6 MB |
+| `lmms-lab/POPE` | adversarial parquet | 85 MB |
+
+RadImageNet-VQA is **not** bundled (license); every GPU session downloads it with its own token.
+
+**Steps**
+1. `!git clone` the repo, `!bash scripts/setup_env.sh`, then
+   `!python -m medprune.data build --out /kaggle/working/medprune-data --skip radimagenet`.
+2. SLAKE: unzip; split `test.json` by `q_lang` → `slake_en` (1,061), `slake_zh` (1,033); keep `mask.png` and
+   `detection.json` beside each image (needed for the oracle gate and evidence sizes).
+3. OmniMedVQA: download the zip once; read `QA_information/Open-access/*.json` without extracting everything.
+   - `omni_anat`: `question_type == "Anatomy Identification"`; record the count next to MedSTP's 3,329.
+   - `omni_panel`: print all `modality_type` values; for the 8 modalities of §C2 sample 150 questions each (seed 0,
+     ≤ 3 per image, no overlap with `omni_anat`).
+   - Extract only the referenced images.
+4. Natural: sample 500 GQA testdev-balanced questions and 500 POPE adversarial questions (seed 0); save their images.
+5. Masks: for every image and every model view — Lingshu (`smart_resize`, cell 28, min 3,136 / max 802,816 px),
+   Qwen3-VL (cell 32, min 65,536 / max 1,048,576 px), HuatuoGPT (`expand2square` → 336, cell 14) — compute the body
+   mask and per-token foreground fraction; store grid shape, fractions and background fraction per image.
+6. Overlays: 20 images per modality (fixed seed) with mask contour and background tokens shaded.
+7. Write `bundle_manifest.json`: counts per dataset × modality × answer type, sha256 of each manifest, build time,
+   git hash.
+8. Save the notebook version → Output → *New Dataset* → `medprune-data` (private). Copy `bundle_manifest.json` to
+   `configs/` and commit.
+
+**Outputs**
+- `$DATA/manifests/{slake_en,slake_zh,omni_anat,omni_panel,natural}.jsonl` — one `Sample` per line.
+- `$DATA/images/<dataset>/…` — only referenced images (~0.6 GB in total).
+- `$DATA/masks/<dataset>.npz` — per image × model: `grid_hw`, `fg_frac` [Ht, Wt], `bg_frac`.
+- `$DATA/masks/overlays/<modality>/*.png` — for eyeballing.
+- `$DATA/bundle_manifest.json` and its copy `configs/bundle_manifest.json`.
+
+**Checks**
+- [ ] Counts: `slake_en` 1,061 with 96 images (CT 40, MRI 26, X-ray 30), `slake_zh` 1,033, `omni_panel` 1,200
+      (8 × 150), `natural` 1,000; `omni_anat` recorded: ____ (MedSTP: 3,329).
+- [ ] Every image path opens; no duplicate `qid`.
+- [ ] Median background fraction per modality is plausible — expected roughly CT/MRI 0.3–0.6, X-ray 0.05–0.3,
+      fundus 0.2–0.35 (black border), dermoscopy/microscopy < 0.1. Write the measured values: ____.
+- [ ] Overlays: scanner table removed, lungs kept, burned-in letters removed, white-glass slides handled.
+- [ ] No image with background > 0.95 or foreground < 5% left unexplained (inspect each).
+
+**Exit gate:** counts verified and overlays look right. The bundle is now frozen: any change means a new bundle version
+and re-running affected runs.
+
+**If something goes wrong**
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| `omni_anat` ≠ 3,329 | MedSTP used another filter (e.g. also restricted-access JSONs, or a different question type) | keep our rule, record both counts, mention it in the paper |
+| Lungs marked background | hole filling skipped, or body touches the image border so lungs are not enclosed | close the mask with a 1-cell morphological closing before filling |
+| Ultrasound fan mostly background | low-contrast speckle below the Otsu threshold | expected; report ultrasound separately and check its overlay |
+
+---
+
+## Stage 3 — Validation and calibration (E0)
+
+| | |
+|---|---|
+| **Goal** | Prove that the GPU pipeline is numerically sound, reproduces published accuracy, and know its real speed |
+| **Why** | Three silent failures would invalidate every later number: fp16 overflow on T4 (checkpoints are bf16), the hook changing outputs when it should not, and prompts/scoring that do not reproduce the published Full accuracy. The whole schedule depends on seconds per question |
+| **Serves** | Validity; the time budget |
+| **Where / when** | Kaggle GPU T4×2 — account A (Lingshu) and a short check on B (Qwen3-VL) · Nov 2–3 · 3.0 GPU-h |
+| **Entry** | Stage 2 exit gate |
+
+**Inputs:** `medprune-data` (only `slake_en` is used); Lingshu-7B weights (16.58 GB); Qwen3-VL-8B weights (17.53 GB,
+account B); repo at a tagged commit.
+
+**Steps and runs**
+
+| # | Check | Run | Questions | Pass criterion | GPU-h |
+|---|---|---|---|---|---|
+| E0a | Environment | `nvidia-smi`, `df -h`, `setup_env.sh` | — | 2 × T4; temp disk ≥ 40 GB; profile `t4x2` | — |
+| E0b | fp16 stability | `full` in fp16 vs fp16 with vision tower in fp32 | 50 `slake_en` (fixed list) | ≥ 48/50 identical answers; all logits finite. Else keep vision in fp32 for every run | 0.05 |
+| E0c | Hook identity | hook installed, no pruning vs vanilla `sdpa` model | same 50 | ≥ 49/50 identical answers (tiny kernel differences allowed) | 0.03 |
+| E0d | FastV sanity | `fastv` at 50% and 10% | same 50 | 50%: drop ≤ 5 points; in-hook keep-sets equal the keep-sets recomputed offline from `full`'s logged `scores_l1` (50/50) | 0.03 |
+| E0e | Published accuracy | `base__lingshu7b__slake_en__full` | 1,061 | 81–85% (MedSTP reports 83.9 for Lingshu on SLAKE) | 0.30 |
+| E0f | Timing | from E0e's `elapsed_s` | — | record mean, p50, p95 s/question; factor = measured / 1.0 | 0 |
+| E0g | Qwen3-VL smoke (B) | load + E0b + `full` on 50 + timing | 50 | as E0b; rate recorded; factor vs 1.1 s | 0.5 |
+| | Loads, debugging | | | | ~2.1 |
+
+**Outputs**
+- `$RES/runs/base__lingshu7b__slake_en__full__r100__s0__t4x2.jsonl` (+ `meta.json`, diagnostics) — reused by E1, E3,
+  E5, E6.
+- `$RES/e0_report.json` — fp16 decision, identity rate, FastV sanity, Full accuracy, timing for both models.
+- Updated rates in `configs/runs.yaml`.
+
+**Checks**
+- [ ] fp16 decision recorded: vision fp32 = yes / no (applies to every run of that model).
+- [ ] Hook identity ≥ 49/50.
+- [ ] Offline keep-sets from logs equal in-hook keep-sets (this licenses every E2 analysis done from logs).
+- [ ] Full SLAKE-en accuracy: ____% (target 81–85).
+- [ ] Rates: Lingshu ____ s/q (plan 1.0), Qwen3-VL ____ s/q (plan 1.1); factor ____.
+
+**Exit gate:** all checks pass. If the timing factor is > 1.5: run Random with one seed outside S1, drop `uniform_l2`
+from E3, move E5's 50% points to Stage 7.
+
+**If something goes wrong**
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| Empty, repeated or "!!!!" answers | fp16 overflow | vision tower fp32; if still broken, 8-bit LLM (2–3× slower, P0 only) |
+| Full accuracy < 79% | wrong chat template, prompt text, or scorer parsing | print 20 raw responses next to answers; diff prompts against MedEvalKit; check `apply_chat_template` output |
+| Hook identity < 49/50 | hook active on the vision tower, or a mask passed when none is needed | assert vision attention is `sdpa`; pass through when no state is active |
+| Very slow decoding | `use_cache` false in the config | `generate(use_cache=True)` |
+
+---
+
+## Stage 4 — Kill test (E1) and first diagnostics (E2)
+
+| | |
+|---|---|
+| **Goal** | Decide in one day whether the phenomenon exists in our pipeline (K1) and whether background capture is real (K2), before spending ~30 GPU-hours |
+| **Why** | MedSTP's FastV numbers come from an under-specified, pre-LLM adaptation. If standard in-LLM FastV is not below random in our pipeline, the paper's premise changes |
+| **Serves** | C1, H1, H2, H3 · predictions P1–P5 |
+| **Where / when** | GPU account A (3.3 h) + laptop CPU for E2 · Nov 3 |
+| **Entry** | Stage 3 exit gate |
+
+**Inputs:** bundle (`slake_en` manifest and masks); RadImageNet benchmark parquet (361 MB, downloaded in-session with
+`HF_TOKEN`) → `rin_anat_mc` and `rin_abn_closed` manifests built in-session (record the exact `metadata.content_type`
+and `question_type` values used, and the image size); Lingshu weights; `full` on `slake_en` from Stage 3.
+
+**Runs** — Lingshu, group K (`slake_en` + `rin_anat_mc`), budget 10%, 13 new runs, 13,366 new question-evaluations:
+
+| Method | Mask from | What changes vs FastV | What it tells us | P# | GPU-h |
+|---|---|---|---|---|---|
+| `full` (`base`) on `rin_anat_mc` | — | no pruning | ceiling; logs scores so FastV's keep-set at any budget can be recomputed offline | — | 0.17 |
+| `text_only` (`base`) on both | — | no image | language prior; defines the image-dependent subset used to read every number | — | 0.29 |
+| `random_l2` s0 | 2 | random instead of attention, same insertion point | **K1 comparator**: chance at FastV's own insertion point | P1 | 0.46 |
+| `random_l0` s0 | 0 | random, tokens dropped before the LLM | chance at MedSTP's insertion point | P1 | 0.46 |
+| `fastv` | 2 | — (method under test) | is standard FastV below chance? | P1, P2 | 0.46 |
+| `fastv_prellm` | 0 | same scores; tokens dropped before the LLM (second pass) | does MedSTP's −18-point gap come from FastV or from its insertion point? | P1 | 0.60 |
+| `gate_fastv` | 2 | background removed before top-k | first test of the fix; large gain on CT/MRI supports H1 | P6 (early) | 0.46 |
+| loads + slack | | | | | 0.40 |
+
+**E2 analyses on these logs** (notebook `02_analyze_results`, section "Stage 4"; CPU, ~2–3 h):
+1. Accuracy with image-clustered 95% CIs per dataset; `slake_en` by modality (CT 472 q / 40 images, MRI 228 / 26,
+   X-ray 361 / 30); RadImageNet by CT vs MRI.
+2. Paired Δ = FastV − Random@L2 and Δ = FastV_prellm − Random@L0 with cluster-bootstrap CIs → **K1**.
+3. Image-dependent subset: size per dataset and accuracy of every method on it.
+4. BRR of FastV keep-sets on CT/MRI vs X-ray; Random's BRR must be ≈ 1.0 (sanity check of the metric) → **K2**, P3.
+5. Keep-maps (16×16) of FastV vs Random on CT/MRI: is the mass in the bottom-right? → P4.
+6. Query dependence: Jaccard of FastV keep-sets across different questions on the same image. High overlap means the
+   selection barely depends on the question — evidence for position/background-driven selection.
+7. High-norm token selection rate (ViT-output norms, z > 5) → P5.
+8. Gate effect Δ = Gate+FastV − FastV by modality.
+
+**Outputs:** 13 JSONL + diagnostics under `$RES/runs`, `$RES/diag`; `$RES/tables/stage4_*.csv`;
+`$RES/figures/stage4_keepmaps.pdf`; Outcome column of P1–P5 filled.
+
+**Checks**
+- [ ] Every pruned row has `len(keep_idx) == k == round(0.1 · n_vis)`.
+- [ ] `n_vis` distribution printed per dataset (SLAKE 512² → 324; RadImageNet image size → ____ tokens, k = ____).
+- [ ] Random@L2 BRR within 1.00 ± 0.05.
+- [ ] Truncated answers < 1%.
+- [ ] RadImageNet field values and image size recorded in `$RES/rin_manifest_notes.json`.
+
+**Exit gate — decisions (with the mentor)**
+- **K1:** GO if FastV < Random@L2 on `rin_anat_mc` with the paired 95% CI excluding 0. If only FastV_prellm <
+  Random@L0 → reframe to "pre-LLM attention selection fails". If neither → also try 5% on `rin_anat_mc` (0.17 h; with
+  64-token images, 10% may simply be too lenient) before stopping.
+- **K2:** if FastV's BRR CI includes 1 on CT/MRI, drop H1 as the lead; the story becomes positional (H2).
+
+**If something goes wrong**
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| FastV ≈ Random everywhere | 10% too lenient for tiny token grids, or positional bias pointing at content | 5% budget check; inspect keep-maps |
+| Full on RadImageNet ≪ MedSTP's 89.4 | MC prompt or answer letter mapping wrong | print 20 prompts/answers; check option order |
+| BRR undefined for many images | background fraction outside [0.05, 0.95] | report coverage; it is expected for X-ray |
+
+---
+
+## Stage 5 — Main grid (E3) and modality panel (E4)
+
+| | |
+|---|---|
+| **Goal** | Produce Table 1 (C1, C4, C5) and Fig. 2 (C2) — the paper's core evidence |
+| **Why** | Reviewers need two models (medical-tuned Lingshu, general Qwen3-VL) on the three benchmarks MedSTP used, with variance (3 Random seeds), the 2×2 factorial, and a dose-response across modalities |
+| **Serves** | C1, C2, C4, C5, H4, H5 · P6, P7, P9, P10 (P8 partly) |
+| **Where / when** | GPU A (Lingshu, 14.6 h) and B (Qwen3-VL, 18.5 h) in parallel · Nov 3–5 · 33.1 GPU-h |
+| **Entry** | K1 = GO (or agreed reframe) |
+
+**Inputs:** bundle; RadImageNet parquet (in-session); model weights; calibrated rates; E1 runs (reused).
+
+**E3 runs at 10%** — what each method isolates:
+
+| Method | What changes vs FastV | What it tells us | P# |
+|---|---|---|---|
+| `full`, `text_only` (`base`) | — | ceiling and language prior | — |
+| `random_l2` × seeds 0, 1, 2 | random selection | chance level with its seed variance (the FastV gap must exceed it) | P1 |
+| `uniform_l2` | evenly spaced tokens | spatial coverage without attention (FEATHER's baseline) | — |
+| `fastv` | — | method under test | P1, P2 |
+| `ropefree` | positional component removed from the score | H2: how much of the failure is rotary position | P8 |
+| `gate_fastv` | background removed before scoring | H1 and the fix | P6 |
+| `gate_ropefree` | both removed | 4th cell of the 2×2 factorial: are the two causes additive? | P8 |
+| `gate_uniform` | background removed, no attention at all | does attention add anything once background is gone? | P7 |
+
+| Group | Datasets | Methods | Lingshu (A) h | Qwen3-VL (B) h |
 |---|---|---|---|---|
-| S1 | `full`, `random_l2` ×3, `uniform_l2`, `fastv`, `ropefree`, `gate_fastv`, `gate_ropefree`, `gate_uniform` | 10 | 4.44 (reuses E1's 4 runs) | 6.92 |
-| S2 | `full`, `random_l2` s0, `fastv`, `gate_fastv` | 4 | 1.15 | 1.26 |
-| S3 | `full`, `random_l2` s0, `fastv`, `ropefree`, `gate_fastv`, `gate_uniform` | 6 | 6.10 | 6.71 |
-| all | `text_only` | — | 0.75 | 1.13 |
-| | loads | — | 0.20 | 0.30 |
+| S1 | `slake_en`, `rin_anat_mc`, `rin_abn_closed` | all 10 above (E1's 4 runs are extended to `rin_abn_closed` only) | 4.44 | 6.92 |
+| S2 | `slake_zh` | `full`, `random_l2` s0, `fastv`, `gate_fastv` — gives "SLAKE (all)" comparable to MedEvalKit; also a language test of FastV's query dependence | 1.15 | 1.26 |
+| S3 | `omni_anat` | `full`, `random_l2` s0, `fastv`, `ropefree`, `gate_fastv`, `gate_uniform` | 6.10 | 6.71 |
+| all | — | `text_only` | 0.75 | 1.13 |
+| | | loads | 0.20 | 0.30 |
 
-E4, group P: `full`, `random_l2` s0, `fastv`, `gate_fastv`, `gate_uniform` + `text_only` → Lingshu 2.0 h (A), Qwen3-VL 2.2 h (B).
+**E4 runs (group P, `omni_panel`, 8 modalities × 150):** `full`, `text_only`, `random_l2` s0, `fastv`, `gate_fastv`,
+`gate_uniform` → Lingshu 2.0 h (A), Qwen3-VL 2.2 h (B). Why: the dose-response needs modalities spanning background
+fractions from ~0 (dermoscopy, microscopy) to > 0.4 (CT, MRI, ultrasound, OCT); background-free modalities are the
+negative control (the gate must do nothing there).
 
-- [ ] E3 complete (Lingshu 51,834; Qwen3-VL 62,139 question-evaluations). P6, P7, P10 recorded.
-- [ ] E4 complete; dose-response computed. P9 recorded.
-- [ ] Draft Table 1 and Fig. 2; abstract draft to mentor by Nov 9.
-- [ ] **Paper enrollment on OpenReview by Nov 10 evening IST.**
+**Session plan** (each ≤ 6 h; `run_many` stops when the next run would exceed the session budget):
 
-**Exit gate:** Table 1 and Fig. 2 support C1–C2 (or the reframed claim from K1/K2).
+| Session | Account | Runs | ≈ h |
+|---|---|---|---|
+| A1 | A | S1: `random_l2` s1/s2, `uniform_l2`, `ropefree`, `gate_ropefree`, `gate_uniform` + E1 runs on `rin_abn_closed` + `base` on `rin_abn_closed` | 4.7 |
+| A2 | A | S3: `full`, `random_l2`, `fastv`, `ropefree`, `gate_fastv` | 5.2 |
+| A3 | A | S3: `gate_uniform`; S2; remaining `text_only`; E4 | 4.9 |
+| B1 | B | S1: 8 of 10 methods | 5.7 |
+| B2 | B | S1: last 2; S2; `text_only` | 3.9 |
+| B3 | B | S3: 5 methods | 5.7 |
+| B4 | B | S3: last method; E4 | 3.5 |
 
-## Stage 6 — Curves, ablations, natural control (Nov 6–8, GPU A and B, 16.8 h)
+**Outputs:** run files; `$RES/tables/table1_draft.csv` (+ `.tex`); `$RES/figures/fig2_dose_response.pdf`; Outcome of
+P6, P7, P9, P10 filled.
 
-| Exp | Model | Group | Methods / budgets | Hours |
-|---|---|---|---|---|
-| E5 | Lingshu (A) | K | {5, 25}% × {`random_l2`, `fastv`, `gate_fastv`, `gate_uniform`} + 50% × {`fastv`, `gate_fastv`} | 4.62 |
-| E5 | Qwen3-VL (B) | K | {5, 25}% × {`random_l2`, `fastv`, `gate_fastv`} | 3.05 |
-| E6-P1 | Lingshu (A) | S1 | `fastv_k8`, `fastv_k16`, `static_map`, `inverse_gate`, `divprune`, `gate_divprune` | 3.77 |
-| E6-P1 | Lingshu (A) | `slake_en` | `oracle_gate` | 0.30 |
-| E6-P1 | Qwen3-VL (B) | K | `fastv_k16`, `static_map`, `inverse_gate`, `divprune`, `gate_divprune` | 2.54 |
-| E7 | both (B) | N | `full`, `random_l2`, `uniform_l2`, `fastv`, `ropefree` (no gate) | 2.53 |
+**Checks**
+- [ ] Each run's question count equals its manifest.
+- [ ] Random seed spread (std over 3 seeds) ≤ ~1.5 points per dataset; otherwise investigate before comparing.
+- [ ] `full` accuracy identical wherever the same `base` run is reused (it is one file, never re-run).
+- [ ] Gate is a no-op on dermoscopy/microscopy: |Gate+FastV − FastV| ≤ 1 point there (P6 negative control).
+- [ ] Measured s/question still within 1.5× of the calibrated rate; if not, re-plan Stage 6 now.
 
-- [ ] Runs complete; P8, P11–P13 recorded. **Decisions K3, K4.**
-- [ ] Fig. 3, Fig. 4, Table 3 drafts.
+**Exit gate:** Table 1 shows FastV < Random on CT/MRI-heavy sets (CI excluding 0) and a gate gain; Fig. 2 shows a
+monotone trend (or the reframed claim from K1/K2). Abstract draft to the mentor by Nov 9. **Paper enrollment on
+OpenReview by Nov 10, evening IST** (title, abstract, all authors, subject areas).
 
-**Exit gate:** remedy and mechanism claims settled (or reframed per K3/K4).
+**If something goes wrong**
 
-## Stage 7 — Supplementary runs (Nov 7–12, GPU C, 10.0 h)
+| Symptom | Likely cause | Action |
+|---|---|---|
+| Qwen3-VL shows no failure anywhere | DeepStack/architecture makes its attention content-aware (H5) | report as a finding; the dose-response on Lingshu still carries C2 |
+| Large differences between `slake_en` and `slake_zh` keep-sets | FastV is query-dependent after all | weakens the pure-position story; report the Jaccard numbers |
+| A session dies | Kaggle limit or out-of-memory | resume: finished questions are skipped automatically |
 
-| Exp | Model | Group | Methods | Hours |
-|---|---|---|---|---|
-| E6-P2 | Lingshu | S1 | `artifact_excl`, `gate_quota3`, `gate_tau25`, `gate_tau75`, `pdrop`, `gate_pdrop` | 3.77 |
-| E8 | HuatuoGPT-Vision-7B | S1 | `full`, `random_l2`, `fastv`, `ropefree`, `gate_fastv`, `gate_ropefree` + `text_only` + 1.0 h port validation | 5.71 |
-| E9 | Lingshu | 200 × `slake_en` | `full` vs `gate_input_fastv`, CUDA-timed prefill; FLOPs for all methods | 0.50 |
+---
 
-- [ ] HuatuoGPT port validated (Full within 3 points of the authors' numbers) before E8 runs.
-- [ ] P14 recorded; Table 4 and supplementary tables drafted.
+## Stage 6 — Budget curves (E5), mechanism ablations (E6-P1), natural control (E7)
 
-## Stage 8 — Analysis and writing (Nov 9–23, laptop)
+| | |
+|---|---|
+| **Goal** | Show the effect is not a 10%-only artifact; establish the mechanism; test specificity to medical images |
+| **Why** | Pruning papers are judged on curves, not one budget; the mechanism claim needs controls that isolate position (static map, K-sweep), background (inverse gate) and the room left for a better mask (oracle gate); "medical-only" needs a natural-image contrast |
+| **Serves** | C1, C3, C4 · P8, P11–P13 · decisions K3, K4 |
+| **Where / when** | GPU A and B · Nov 6–8 · 16.8 GPU-h |
+| **Entry** | Stage 5 exit gate |
 
-- [ ] `02_analyze_results.ipynb` regenerates every table and figure from `results/` (no hand-edited numbers).
-- [ ] Paper: §A7 outline; limitations honest; MedSTP cited as contemporaneous.
-- [ ] **Submit by Nov 16 AoE** (aim for Nov 16 IST evening). Supplementary by Nov 23 AoE.
+**Runs** — what each run isolates:
+
+| Exp | Model | Group | Method(s) | Budgets | What it tells us | P# | h |
+|---|---|---|---|---|---|---|---|
+| E5 | Lingshu (A) | K | `random_l2`, `fastv`, `gate_fastv`, `gate_uniform` | 5%, 25% | curves (Fig. 4): does the FastV gap widen as the budget shrinks? does the gate hold everywhere? | — | 3.70 |
+| E5 | Lingshu (A) | K | `fastv`, `gate_fastv` | 50% | mild pruning (links to ViToS's 80% observation) | — | 0.92 |
+| E5 | Qwen3-VL (B) | K | `random_l2`, `fastv`, `gate_fastv` | 5%, 25% | same for the general model | — | 3.05 |
+| E6 | Lingshu (A) | S1 | `fastv_k8`, `fastv_k16` | 10% | positional decay should matter less deeper → gap shrinks with K | P11 | 1.26 |
+| E6 | Lingshu (A) | S1 | `static_map` | 10% | a fixed position-only ranking (from the *other* dataset's FastV scores): if it matches FastV, FastV is choosing by position | — | 0.63 |
+| E6 | Lingshu (A) | S1 | `inverse_gate` | 10% | keeping only background: if it matches FastV on CT/MRI, FastV behaves like a background selector | P12 | 0.63 |
+| E6 | Lingshu (A) | `slake_en` | `oracle_gate` | 10% | SLAKE organ masks as the gate: upper bound of any spatial gate; gap to our Otsu gate = room for a better mask | — | 0.30 |
+| E6 | Lingshu (A) | S1 | `divprune`, `gate_divprune` | 10% | a non-attention (diversity) pruner ± gate: composability, or does diversity already avoid background? | — | 1.26 |
+| E6 | Qwen3-VL (B) | K | `fastv_k16`, `static_map`, `inverse_gate`, `divprune`, `gate_divprune` | 10% | the key mechanism controls replicated on the second model | P11, P12 | 2.54 |
+| E7 | both (B) | N | `full`, `random_l2`, `uniform_l2`, `fastv`, `ropefree` | 10% | does FastV beat random on photographs for the same models? keep-maps show the same positional bias landing on content | P13 | 2.53 |
+
+**Outputs:** `fig3_keepmaps.pdf`, `fig4_budget_curves.pdf`, `table2_mechanism.csv`, `table3_ablations.csv` (+ `.tex`);
+Outcome of P8, P11–P13.
+
+**Checks**
+- [ ] Random accuracy increases with budget (5% < 10% < 25%) on every dataset — sanity of the budget code.
+- [ ] Static map built only from the other anchor dataset (assert source ≠ evaluation dataset).
+- [ ] Oracle gate covers all 96 SLAKE test images (each has `mask.png`).
+- [ ] Natural runs use no gate (there is no acquisition background to remove).
+
+**Exit gate — decisions**
+- **K3:** if Gate+FastV recovers < ⅓ of (Full − FastV) on CT/MRI, the paper becomes analysis-first.
+- **K4:** if RoPE-free alone recovers ≥ 90% of the gate's gain and the gate adds nothing on top, reframe as "positional
+  bias meets acquisition geometry".
+
+**If something goes wrong**
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| Static map ≫ FastV | position-only selection is better than FastV — the score's content part is harmful | strong evidence for H1/H2; feature it |
+| K-sweep non-monotone | sink effects grow in middle layers | report per-layer BRR alongside accuracy |
+| FastV < Random on natural images too | the effect is general, strongest where background is largest | claim becomes "background-driven"; C2 carries the argument |
+
+---
+
+## Stage 7 — Supplementary runs (E6-P2, E8, E9)
+
+| | |
+|---|---|
+| **Goal** | Strengthen the mechanism and remedy with a third model, gate robustness, artifact control and efficiency |
+| **Why** | HuatuoGPT (1D RoPE) tests the positional prediction across encodings; artifact exclusion is the causal test of H3; τ and quota show the gate is not tuned to the test set; latency backs the deployment claim |
+| **Serves** | C3 (H2, H3), C4 · P5, P14 |
+| **Where / when** | GPU account C · Nov 7–12 · 10.0 GPU-h |
+| **Entry** | Stage 5 exit gate (can overlap with Stage 6) |
+
+**Runs**
+
+| Exp | Model | Group | Method(s) | What it tells us | h |
+|---|---|---|---|---|---|
+| E6-P2 | Lingshu | S1 | `artifact_excl` | removing high-norm tokens from FastV's candidates: if accuracy recovers, H3 is causal | 0.63 |
+| E6-P2 | Lingshu | S1 | `gate_quota3` | do plane/modality questions need a few background tokens for context? | 0.63 |
+| E6-P2 | Lingshu | S1 | `gate_tau25`, `gate_tau75` | gate sensitivity to its single threshold | 1.26 |
+| E6-P2 | Lingshu | S1 | `pdrop`, `gate_pdrop` | composability with multi-stage attention pruning (token-matched to FastV) | 1.26 |
+| E8 | HuatuoGPT-Vision-7B | S1 | `full`, `text_only`, `random_l2`, `fastv`, `ropefree`, `gate_fastv`, `gate_ropefree` | 1D RoPE should skew keep-maps to the bottom rows (not the corner); the gate should help as on Qwen models | 4.71 |
+| E8 | HuatuoGPT | 50 `slake_en` | port validation | Full within 3 points of the authors' numbers before any E8 run | 1.00 |
+| E9 | Lingshu | 200 `slake_en` | `full` vs `gate_input_fastv` | measured prefill latency (CUDA events, 10 warm-up, median and IQR); theoretical FLOPs for every method | 0.50 |
+
+Note on E9: masking gives no speedup, so FastV's own speedup is reported from FLOPs; the measured speedup is the
+gate-input part (background removed before the LLM), which is real compute saved.
+
+**Outputs:** `table4_efficiency.csv`, supplementary tables, HuatuoGPT keep-maps for Fig. 3; Outcome of P5, P14.
+
+**Checks**
+- [ ] HuatuoGPT validation passed before E8 runs (template is the usual culprit).
+- [ ] `expand2square` padding counted as background in HuatuoGPT's gate and reported separately in its BRR.
+- [ ] Latency measured with `torch.cuda.synchronize()` around prefill only, same questions for both methods.
+
+**Exit gate:** results go to the paper if ready by Nov 14, otherwise to the supplementary (Nov 23).
+
+---
+
+## Stage 8 — Analysis and writing
+
+| | |
+|---|---|
+| **Goal** | Every number in the paper regenerated from run files; paper and supplementary submitted |
+| **Why** | Traceability: any table cell can be traced to a run ID; no hand-copied numbers |
+| **Where / when** | Laptop · Nov 9–23 |
+
+**Steps**
+1. `02_analyze_results.ipynb` writes `$RES/tables/*.csv` and `*.tex` (pandas `to_latex`) and `$RES/figures/*.pdf`;
+   the paper `\input`s the `.tex` tables directly. Each CSV keeps the run IDs of its cells.
+2. Write per §A7. Limitations: 2D only, heuristic mask, closed-form benchmarks, no clinical claim.
+3. Double-blind: no GitHub link with your name in the paper; if code is referenced, use an anonymized mirror.
+4. Cite MedSTP as contemporaneous (CVPR rule: online after Sept 15, 2026).
+
+**Checks**
+- [ ] Nov 9: abstract draft to mentor. [ ] Nov 10: enrolled on OpenReview (all authors, abstract, areas).
+- [ ] Nov 15: full draft to mentor. [ ] Nov 16 (IST evening): submitted. [ ] Nov 23: supplementary submitted.
+- [ ] Every figure and table regenerates from a clean `results/` with one notebook run.
 
 ---
 
@@ -303,7 +686,7 @@ E4, group P: `full`, `random_l2` s0, `fastv`, `gate_fastv`, `gate_uniform` + `te
 | transformers | 4.57.1 (Qwen3-VL needs ≥ 4.57 ✓; `AttentionInterface`, `sdpa_attention_forward` verified ✓) |
 | Resolution | Qwen: `min_pixels` default (Lingshu 3,136 ✓, Qwen3-VL 65,536 ✓); `max_pixels` = 1,024 tokens × cell² (802,816 / 1,048,576) — defaults are uncapped ✓. HuatuoGPT: `expand2square` (CLIP mean) → 336² → 576 tokens ✓ |
 | Prompts | MedEvalKit `question_formats.py` ✓ (§C1.1) |
-| Chat template | Model's own; HuatuoGPT `"<|user|>\n<image>\n{prompt}\n<|assistant|>\n"` ✓ |
+| Chat template | Model's own; HuatuoGPT `"<\|user\|>\n<image>\n{prompt}\n<\|assistant\|>\n"` ✓ |
 | Decoding | Greedy, `max_new_tokens=64`, `use_cache=True` (Lingshu and HuatuoGPT configs set `use_cache: false` ✓); rerun truncated items with 512 if > 1% |
 | Scoring | Port of MedEvalKit `utils.py` ✓ (§C1.2) |
 | Budget | k = max(1, round(ρN)), N = all visual tokens; main ρ = 10% |
@@ -400,6 +783,8 @@ not on its card: at 224² Lingshu sees 64 tokens and keeps **6** at 10% — stat
 
 - **Run ID:** `{exp}__{model}__{dataset}__{method}__r{budget%:03d}__s{seed}__{profile}`, e.g.
   `E3__lingshu7b__slake_en__gate_fastv__r010__s0__t4x2`. The profile suffix prevents mixing hardware in one table.
+  `full` and `text_only` use exp `base` (e.g. `base__lingshu7b__slake_en__full__r100__s0__t4x2`) and are shared by all
+  experiments — they are run once and never duplicated.
 - **`results/runs/<run_id>.jsonl`** (one line per question, flushed): `qid, image_id, dataset, modality, lang,
   answer_type, question, answer, response, correct, open_recall, n_vis, k_keep, grid_hw, keep_idx, bg_frac,
   elapsed_s, n_new_tokens, truncated`.
@@ -422,6 +807,7 @@ not on its card: at 224² Lingshu sees 64 tokens and keeps **6** at 10% — stat
 | Keep-maps | keep probability on 16×16 normalized grid; quadrant concentration = P(kept in quadrant)/area share | bootstrap |
 | Static map | rank-normalized `scores_l1` → 32×32 (bilinear) → mean over the other anchor dataset → resampled per image | — |
 | High-norm | per-image z = (norm − median)/MAD > 5; rate = P(kept \| outlier)/ρ | bootstrap |
+| Query dependence | mean Jaccard of FastV keep-sets across different questions on the same image (and `slake_en` vs `slake_zh`); high = selection ignores the question | bootstrap images |
 | Dose-response | per-image Δ = mean(correct_Random − correct_FastV); Spearman vs b; deciles; modality-level over ≥ 13 groups | cluster bootstrap |
 | Evidence size | SLAKE question → `mask.txt` labels (synonyms: lung → both lungs; tumor → brain tumor/edema; cancer → liver/kidney/lung cancer); area tertiles; report coverage | bootstrap within tertile |
 
@@ -451,7 +837,7 @@ cvpr/
 ├── scripts/
 │   └── setup_env.sh             same setup on Kaggle and SSH servers; prints the detected profile
 ├── configs/
-│   ├── runs.yaml                every run: exp, tier, account, model, dataset, method, budget, seed
+│   ├── runs.yaml                run matrix (exp → model → group → methods → budgets → seeds), expanded by run_eval
 │   └── bundle_manifest.json     data counts + hashes (committed provenance)
 ├── medprune/
 │   ├── env.py                   compute profile (t4x2 | a100) and paths
@@ -472,7 +858,8 @@ cvpr/
 │   ├── test_masks.py
 │   ├── test_selection.py
 │   ├── test_attention_hook.py
-│   └── test_scoring.py
+│   ├── test_scoring.py
+│   └── test_stats.py
 ├── results/                     runtime output, git-ignored
 └── third_party/                 FastV, MedEvalKit, HuatuoGPT-Vision — read-only, git-ignored
 ```
@@ -616,7 +1003,9 @@ class RunSpec:
     def run_id(self, profile: str) -> str
 def run_one(adapter, spec, bundle, out, profile, limit=None, max_new_tokens=64) -> dict
 def run_many(specs, bundle, out, max_hours=6.0) -> list[dict]   # one model load per model; resumes; time budget
+def load_runs(path="configs/runs.yaml", exp=None, model=None, account=None) -> list[RunSpec]  # expands the matrix form
 def main() -> None   # python -m medprune.run_eval --exp E3 --model qwen3vl8b [--account B] [--max-hours 5]
+                     #   [--list] print runs + hours · [--limit N] smoke test · [--dry-run] fake adapter, CPU
 ```
 
 ## D4. Notebooks and scripts
@@ -636,6 +1025,7 @@ def main() -> None   # python -m medprune.run_eval --exp E3 --model qwen3vl8b [-
 | `test_selection.py` | `keep_count`; deterministic Random across processes; exactly k sorted unique indices; gate respected with fill rule; DivPrune distinct clusters; PDrop a = 0.2019 at ρ = 0.10 |
 | `test_attention_hook.py` | tiny `Qwen2ForCausalLM` and `Qwen3ForCausalLM`, fp32: no state ≡ vanilla; keep-all ≡ vanilla; mask from 0 ≡ deleting tokens with original positions; mask from K ≡ FastV-style index-select reference; greedy decode identical (cache path); `last_token_attention` ≡ eager probabilities; RoPE-free ≡ q·kᵀ from captured projections |
 | `test_scoring.py` | fixed yes/no, closed, open, MC cases match MedEvalKit verdicts |
+| `test_stats.py` | cluster bootstrap reproducible by seed and wider than the naive interval when questions cluster; paired delta sign; BRR = 1 for uniform random keep-sets in expectation; keep-map and static-map shapes |
 
 ## D6. Pitfalls and guards
 

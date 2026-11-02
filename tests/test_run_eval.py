@@ -68,3 +68,52 @@ def test_dry_run_writes_one_line_per_question_and_resumes(tmp_path):
     run_many(specs, bundle, out, rates, limit=6, dry_run=True)  # resumes: only the 2 new questions are added
     rows = (out / "runs" / f"{specs[1].run_id('dryrun')}.jsonl").read_text().splitlines()
     assert len(rows) == 6
+
+
+def test_resume_rejects_duplicate_completed_ids(tmp_path):
+    from medprune.run_eval import _done_qids
+
+    path = tmp_path / "run.jsonl"
+    path.write_text('{"qid":"template"}\n{"qid":"template"}\n')
+    with pytest.raises(ValueError, match="[Dd]uplicate.*qid"):
+        _done_qids(path)
+
+
+def test_resume_rejects_results_from_a_different_manifest(tmp_path):
+    from medprune.run_eval import FakeAdapter, run_one
+
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    _tiny_bundle(bundle)
+    spec = RunSpec("lingshu7b", "slake_en", "full")
+    path = out / "runs" / f"{spec.run_id('dryrun')}.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text('{"qid":"obsolete-template","correct":true}\n')
+    with pytest.raises(ValueError, match="manifest"):
+        run_one(FakeAdapter("lingshu7b"), spec, bundle, out, "dryrun", strict_masks=False)
+
+
+def test_run_many_does_not_accept_obsolete_ids_as_a_complete_run(tmp_path):
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    _tiny_bundle(bundle)
+    spec = RunSpec("lingshu7b", "slake_en", "full")
+    path = out / "runs" / f"{spec.run_id('dryrun')}.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text("".join(json.dumps({"qid": f"obsolete/{i}", "correct": True}) + "\n" for i in range(6)))
+    with pytest.raises(ValueError, match="manifest"):
+        run_many([spec], bundle, out, {"lingshu7b": {"slake": 1.0}}, dry_run=True)
+
+
+def test_list_does_not_report_obsolete_ids_as_complete(tmp_path, monkeypatch):
+    import sys
+    from medprune.run_eval import main
+
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    _tiny_bundle(bundle)
+    spec = RunSpec("lingshu7b", "slake_en", "full")
+    path = out / "runs" / f"{spec.run_id('dryrun')}.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text("".join(json.dumps({"qid": f"obsolete/{i}", "correct": True}) + "\n" for i in range(6)))
+    monkeypatch.setattr(sys, "argv", ["run_eval", "--list", "--profile", "dryrun", "--exp", "E0", "--model",
+                                     "lingshu7b", "--bundle", str(bundle), "--out", str(out)])
+    with pytest.raises(ValueError, match="manifest"):
+        main()

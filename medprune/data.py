@@ -66,6 +66,7 @@ def make_prompt(sample: Sample) -> str:
 
 def write_manifest(samples: list[Sample], root: Path, dataset: str) -> Path:
     path = Path(root) / "manifests" / f"{dataset}.jsonl"
+    validate_question_ids(samples, str(path))
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         for s in samples:
@@ -80,7 +81,17 @@ def load_manifest(root: Path, dataset: str) -> list[Sample]:
             row = json.loads(line)
             row["choices"] = tuple(row["choices"]) if row["choices"] is not None else None
             samples.append(Sample(**row))
+    validate_question_ids(samples, f"{root}/manifests/{dataset}.jsonl")
     return samples
+
+
+def validate_question_ids(samples: list[Sample], source: str) -> None:
+    """Refuse template IDs reused across examples before resume or aggregation can lose records."""
+    seen = set()
+    for sample in samples:
+        if sample.qid in seen:
+            raise ValueError(f"Duplicate qid {sample.qid!r} in {source}; question IDs must identify individual examples")
+        seen.add(sample.qid)
 
 
 def _letter_choices(options: list[str], answer_text: str) -> tuple[tuple[str, ...], str | None]:
@@ -219,7 +230,8 @@ def _strip_option_tag(text: str) -> str:
     return re.sub(r"^\s*\(?[A-Da-d][\.\):]\s*", "", str(text)).strip()
 
 
-def build_radimagenet(parquet_path: Path, out_root: Path) -> dict[str, int]:
+def build_radimagenet(parquet_path: Path, out_root: Path,
+                     datasets: tuple[str, ...] | list[str] | None = None) -> dict[str, int]:
     """RadImageNet-VQA benchmark → rin_anat_mc and rin_abn_closed, one question per image each (plan.md §C2).
 
     Run inside a GPU session only (license forbids redistribution). Prints the field values it filtered on so the
@@ -236,6 +248,7 @@ def build_radimagenet(parquet_path: Path, out_root: Path) -> dict[str, int]:
     qtype = df["question_type"].astype(str).str.lower()
     print("question_type values:", dict(Counter(qtype)))
     print("metadata.content_type values:", dict(Counter(content)))
+    print("metadata.question_id values:", dict(Counter(meta.apply(lambda m: str(m.get("question_id", ""))))))
 
     def image_key(img) -> tuple[str, bytes]:
         data = img["bytes"] if isinstance(img, dict) else img
@@ -245,6 +258,11 @@ def build_radimagenet(parquet_path: Path, out_root: Path) -> dict[str, int]:
         "rin_anat_mc": (content.str.contains("anatom")) & qtype.str.contains("mc|multiple|choice"),
         "rin_abn_closed": (content.str.contains("abnormal")) & qtype.str.contains("closed|yes|binary"),
     }
+    if datasets is not None:
+        unknown = set(datasets) - set(subsets)
+        if unknown:
+            raise ValueError(f"Unknown RadImageNet datasets: {sorted(unknown)}")
+        subsets = {name: subsets[name] for name in datasets}
     counts = {}
     for name, selector in subsets.items():
         samples, seen = [], set()
@@ -257,7 +275,8 @@ def build_radimagenet(parquet_path: Path, out_root: Path) -> dict[str, int]:
             if not path.exists():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)
-            common = dict(qid=f"{name}/{m.get('question_id', idx)}", dataset=name, image_id=f"rin/{key}",
+            # question_id names a template (e.g. anatomy_mc), not an individual image/question.
+            common = dict(qid=f"{name}/{key}/{m.get('question_id', idx)}", dataset=name, image_id=f"rin/{key}",
                           image_path=f"images/radimagenet/{key}.png", question=str(row["question"]),
                           modality=str(m.get("modality", "")),
                           meta={k: str(v) for k, v in m.items()})
@@ -451,7 +470,8 @@ def main() -> None:
                 bundle))
         if "radimagenet" in sources:
             counts.update(build_radimagenet(
-                _download("raidium/RadImageNet-VQA", "benchmark/test-00000-of-00001.parquet", args.work), bundle))
+                _download("raidium/RadImageNet-VQA", "benchmark/test-00000-of-00001.parquet", args.work), bundle,
+                datasets=args.datasets.split(",") if args.datasets else None))
         print(json.dumps(counts, indent=2))
     elif args.command == "masks":
         datasets = [d for d in args.datasets.split(",") if d] or \

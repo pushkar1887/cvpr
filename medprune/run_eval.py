@@ -90,11 +90,22 @@ def estimate_hours(spec: RunSpec, n_questions: int, rates: dict) -> float:
 
 # ----------------------------------------------------------------------------------------------- outputs
 
-def _done_qids(path: Path) -> set[str]:
+def _done_qids(path: Path, expected_ids: set[str] | None = None) -> set[str]:
     if not path.exists():
         return set()
     with path.open(encoding="utf-8") as f:
-        return {json.loads(line)["qid"] for line in f if line.strip()}
+        done = set()
+        for line in f:
+            if not line.strip():
+                continue
+            qid = json.loads(line)["qid"]
+            if qid in done:
+                raise ValueError(f"Duplicate qid {qid!r} in completed run {path}; refusing unsafe resume")
+            done.add(qid)
+        if expected_ids is not None and not done <= expected_ids:
+            raise ValueError(f"Run {path} contains question IDs outside the current manifest; "
+                             "preserve or recover the old run before resuming")
+        return done
 
 
 class DiagWriter:
@@ -212,12 +223,13 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
     from .attention_hook import PruneState, pruning
 
     method = METHODS[spec.method]
-    samples = load_manifest(bundle, spec.dataset)[:limit] if limit else load_manifest(bundle, spec.dataset)
+    manifest = load_manifest(bundle, spec.dataset)
+    samples = manifest[:limit] if limit else manifest
     run_id = spec.run_id(profile)
     runs_dir = out / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
     jsonl = runs_dir / f"{run_id}.jsonl"
-    done = _done_qids(jsonl)
+    done = _done_qids(jsonl, {s.qid for s in manifest})
     todo = [s for s in samples if s.qid not in done]
 
     gates = oracle = None
@@ -405,7 +417,8 @@ def run_many(specs: list[RunSpec], bundle: Path | list[Path], out: Path, rates: 
             root = bundle_for(bundle, spec.dataset)
             samples = load_manifest(root, spec.dataset)
             n_total = min(len(samples), limit) if limit else len(samples)
-            remaining = n_total - len(_done_qids(out / "runs" / f"{spec.run_id(profile_name)}.jsonl"))
+            remaining = n_total - len(_done_qids(out / "runs" / f"{spec.run_id(profile_name)}.jsonl",
+                                                {s.qid for s in samples}))
             if remaining <= 0:
                 continue
             hours = estimate_hours(spec, remaining, rates)
@@ -453,12 +466,14 @@ def main() -> None:
         pending_hours, n_missing, n_complete = 0.0, 0, 0
         for spec in specs:
             try:
-                manifest = bundle_for(bundles, spec.dataset) / "manifests" / f"{spec.dataset}.jsonl"
-                n = sum(1 for _ in manifest.open(encoding="utf-8"))
+                manifest_samples = load_manifest(bundle_for(bundles, spec.dataset), spec.dataset)
+                n = len(manifest_samples)
+                expected_ids = {s.qid for s in manifest_samples}
             except FileNotFoundError:
                 n = 0
+                expected_ids = None
             n = min(n, args.limit) if args.limit else n
-            done = len(_done_qids(out / "runs" / f"{spec.run_id(profile)}.jsonl"))
+            done = len(_done_qids(out / "runs" / f"{spec.run_id(profile)}.jsonl", expected_ids))
             hours = estimate_hours(spec, max(n - done, 0), rates) if n else float("nan")
             n_missing += n == 0
             n_complete += bool(n) and done >= n

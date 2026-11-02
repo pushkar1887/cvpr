@@ -59,6 +59,41 @@ def test_load_diag_round_trip(tmp_path):
     np.testing.assert_allclose(diag["b"]["scores_l1"], np.arange(6.0))
 
 
+def test_load_runs_rejects_duplicate_question_ids_before_aggregation(tmp_path):
+    path = tmp_path / "runs" / "m__d__full__r100__s0__t4x2.jsonl"
+    path.parent.mkdir()
+    records = [dict(qid="same-template", image_id=f"image{i}", modality="CT", correct=bool(i),
+                    answer_type="closed", answer="yes", response="yes") for i in range(2)]
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+    with pytest.raises(ValueError, match="[Dd]uplicate.*qid"):
+        load_runs(tmp_path)
+
+
+def test_load_diag_rejects_duplicate_ids_instead_of_overwriting(tmp_path):
+    writer = DiagWriter(tmp_path / "diag" / "run", shard_size=1)
+    writer.add("same-template", {"scores_l1": np.array([1.0, 2.0])})
+    writer.add("same-template", {"scores_l1": np.array([3.0, 4.0])})
+    writer.flush()
+    with pytest.raises(ValueError, match="[Dd]uplicate.*qid"):
+        load_diag(tmp_path, "run")
+
+
+def test_retention_uses_the_registered_background_fraction_range(tmp_path):
+    from medprune.analysis import retention_table
+
+    low, valid = np.ones((10, 10)), np.ones((10, 10))
+    low.flat[0] = 0
+    valid.flat[:50] = 0
+    (tmp_path / "gates").mkdir()
+    MaskStore(["low", "valid"], [(10, 10), (10, 10)], [low, valid]).save(
+        tmp_path / "gates" / "d__m.npz")
+    df = _frame([dict(model="m", dataset="d", method="fastv", budget_pct=10, qid=i,
+                      image_id=i, modality="CT", keep_idx=[0]) for i in ("low", "valid")])
+    row = retention_table(df, tmp_path, "m", "fastv").iloc[0]
+    assert row["coverage"] == 0.5
+    assert row["brr"] == 2.0
+
+
 def test_stage4_report_end_to_end_on_dry_run(tmp_path):
     bundle, results = tmp_path / "bundle", tmp_path / "results"
     (bundle / "images").mkdir(parents=True)

@@ -50,8 +50,16 @@ def load_runs(results: Path, profile: str | None = None) -> pd.DataFrame:
         info = parse_run_id(path.stem)
         if profile and info["profile"] != profile:
             continue
+        seen = set()
         with path.open(encoding="utf-8") as f:
-            rows.extend({**json.loads(line), **info, "run_id": path.stem} for line in f if line.strip())
+            for line in f:
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                if row["qid"] in seen:
+                    raise ValueError(f"Duplicate qid {row['qid']!r} in {path}; repair legacy identities before analysis")
+                seen.add(row["qid"])
+                rows.append({**row, **info, "run_id": path.stem})
     df = pd.DataFrame(rows)
     if df.empty:
         return df
@@ -87,9 +95,14 @@ def add_image_dependent(df: pd.DataFrame) -> pd.DataFrame:
 def load_diag(results: Path, run_id: str) -> dict[str, dict[str, np.ndarray]]:
     """{qid: {key: array}} from a run's diagnostic shards."""
     out: dict[str, dict[str, np.ndarray]] = {}
+    seen = set()
     for part in sorted((Path(results) / "diag" / run_id).glob("part-*.npz")):
         z = np.load(part)
         qids = [str(q) for q in z["qid"]]
+        for qid in qids:
+            if qid in seen:
+                raise ValueError(f"Duplicate qid {qid!r} in diagnostic shards for {run_id}")
+            seen.add(qid)
         for key in z.files:
             if key == "qid" or key.endswith("__offsets"):
                 continue
@@ -166,7 +179,8 @@ def retention_table(df: pd.DataFrame, results: Path, model: str, method: str, bu
         values, images = [], []
         for keep, image_id in zip(g["keep_idx"], g["image_id"]):
             bg = _background(gates, image_id)
-            ratio = background_retention_ratio(np.asarray(keep), bg) if bg is not None else np.nan
+            eligible = bg is not None and 0.05 <= float(bg.mean()) <= 0.95
+            ratio = background_retention_ratio(np.asarray(keep), bg) if eligible else np.nan
             if np.isfinite(ratio):
                 values.append(ratio)
                 images.append(image_id)

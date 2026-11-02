@@ -873,6 +873,19 @@ Lingshu's "CT." as wrong), with strict EM and token recall
 
 ## C2. Data
 
+**RadImageNet identity correction (2026-11-03).** `metadata.question_id` identifies a question template, not an
+individual example. Each manifest `qid` is now `{dataset}/{image-content-sha1}/{template-id}`. The template by itself
+must never seed Random, identify a completed question, or key an analysis/diagnostic record. Duplicate IDs are a
+hard error at manifest writing/loading, result loading, diagnostic loading and resume/listing boundaries.
+
+The first E1 output used template-only IDs. Preserve its original files. Non-random answers and numerical diagnostic
+arrays can be recovered offline by joining each original row to its saved image ID and preserving verified shard
+order; the recovery writes a separate provenance audit. The two RadImageNet Random conditions require fresh
+inference because template-only seeding gave every image one fixed spatial keep-set. They are excluded from K1
+until rerun. The anatomy-only repair build explicitly selects `--datasets rin_anat_mc`; the abnormality filter is
+still unresolved because the observed source uses `content_type=pathology`, not `abnormality`. Do not guess a new
+clinical task mapping or start the Stage 5 abnormality grid before inspecting the actual question templates.
+
 | ID | Source | Size ✓ | Access | Subset rule | Questions | Images |
 |---|---|---|---|---|---|---|
 | `slake_en` | `BoKelvin/SLAKE` | `imgs.zip` 212 MB (masks + boxes per image), `test.json` 636 KB, `mask.txt` 39 labels | CC-BY-4.0 | test, `q_lang == "en"` | **1,061** ✓ (open 645, closed 416) | **96** ✓ (CT 40, MRI 26, X-ray 30) |
@@ -1325,6 +1338,7 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 | T5 | 7 | `medprune/huatuo_llava.py` + validation | open | Stage 5 done |
 | T6 | 7 | E9 latency measurement | open | T2 |
 | T7 | 8 | table and figure builders (Tables 1–4, Figs 1–5) | open | T3 |
+| T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | in progress (Codex, Nov 3) | original E1 outputs downloaded |
 
 **T1 — data bundle notebook (Kaggle CPU, internet on).** Cells, in order:
 1. `from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")`.
@@ -1543,3 +1557,26 @@ run IDs, counts, accuracies with CIs. Template:
   dermatoscope discs with a black surround — real background), microscopy 7%; omni_anat CT 15% (COVID-CT lung-window
   crops with a grey surround or no surround — known limitation).
 - Blocker for E1: RadImageNet-VQA needs the `cvpr` secret, which API-pushed notebooks do not receive.
+
+### 2026-11-03 — Codex — Stage 4 takeover — identity audit and targeted recovery
+- Recovered the state at `5324d86`; both long-lived notebooks were idle/complete. Independently downloaded the E1
+  output to `results/receipts/e1_lingshu_v2_20261103` (original receipt retained). E1 contains all 14 run files,
+  including the completed 1,061-question English SLAKE reference and 1,000 anatomy questions per RIN condition.
+- Found the blocking defect: all 1,000 RIN rows had `qid=rin_anat_mc/anatomy_mc`; analysis collapsed them, diagnostic
+  dictionaries overwrote them, and Random selected the same six positions for every image. Added unique per-image
+  IDs and rejection of duplicate/stale identities across data, analysis and run-resume/list entry paths.
+- Verified baseline: 72 tests passed before edits. Seven regression tests failed on the old implementation; four
+  further tests reproduced count-only completion shortcuts, anatomy-only building and the missing registered BRR
+  `[0.05,0.95]` filter. Corrected all those paths; 83 tests pass. A fresh read-only review identified the completion
+  shortcut and independently checked the non-random recovery against the logged attention vectors/top-k selections.
+- Recovery: `results/ops/recover_e1_identity.py` materialized `results/stage4_lingshu_20261103` without altering the
+  original receipt. It preserves every response, answer and numeric diagnostic array; all 1,000 RIN rows and
+  diagnostic records now have unique IDs. Legacy fixed-pattern Random runs are retained separately and excluded.
+- Ruling: continue the approved main-checkout handoff; preserve unrelated/untracked work. Treat this as an
+  implementation correction to the registered per-question identity contract, not a change to the predictions.
+- Ruling: do not infer GO from the legacy Random pattern. Run only corrected `random_l2` and `random_l0` on
+  `rin_anat_mc`, seed 0, 10% budget, role A (University), in a fresh output namespace; no Qwen main grid yet.
+- Additional source mismatch: the original notebook continued after `rin_abn_closed` failed to build. Anatomy output
+  exists and is usable, but the Stage 5 abnormality subset must be resolved from real template metadata first.
+- Next: targeted Random repair, independent paired/statistical verification, then the K1/K2 report. Raw data,
+  response files and diagnostic arrays remain in git-ignored `results/`.

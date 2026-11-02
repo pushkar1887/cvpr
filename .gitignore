@@ -1,6 +1,7 @@
 # Runtime outputs and data never go to git
 results/
 data/
+data_work/
 medprune-data/
 *.npz
 *.parquet
@@ -17,6 +18,7 @@ scripts/retina_microprobe.py
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+.pytest_cache/
 .venv/
 venv/
 .env

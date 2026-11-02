@@ -1,0 +1,12 @@
+[project]
+name = "medprune"
+version = "0.1.0"
+description = "Diagnosing attention-guided visual token pruning on medical images"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["medprune"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

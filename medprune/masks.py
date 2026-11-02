@@ -1,0 +1,195 @@
+"""What counts as background: body masks and per-token foreground fractions (plan.md §A5, §D3).
+
+The mask is computed on the exact image each model sees (after its own resize or padding), so token cells line up
+with the model's visual-token grid. Pure NumPy/scikit-image: no torch, no transformers.
+"""
+
+from __future__ import annotations
+
+import math
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+from scipy import ndimage
+from skimage.filters import threshold_otsu
+from skimage.measure import label
+
+# Image views of each model (checked against the checkpoints' preprocessor configs, plan.md §C1).
+MODEL_VIEWS: dict[str, dict] = {
+    "lingshu7b": {"kind": "qwen", "cell": 28, "min_pixels": 3136, "max_pixels": 802_816},
+    "qwen3vl8b": {"kind": "qwen", "cell": 32, "min_pixels": 65_536, "max_pixels": 1_048_576},
+    "huatuo7b": {"kind": "llava_pad", "cell": 14, "size": 336, "pad_rgb": (122, 116, 104)},  # CLIP mean x 255
+}
+
+BORDER_FRACTION = 0.05  # width of the border ring used to decide polarity
+MIN_COMPONENT_FRACTION = 0.10  # keep components at least this large relative to the largest
+MIN_CONTRAST = 0.15  # border-vs-centre contrast below this means "no background to remove"
+MIN_BORDER_BACKGROUND = 0.6  # at least this share of the border must fall on the background side
+MAX_BACKGROUND_FLATNESS = 0.5  # acquisition background is flat: std(background) <= this x std(foreground)
+MAX_BACKGROUND_OFFSET = 0.2  # ...and extreme: its median within this share of the range from the dark/bright end
+
+
+def smart_resize(height: int, width: int, factor: int, min_pixels: int, max_pixels: int) -> tuple[int, int]:
+    """Qwen2-VL/Qwen3-VL resize rule (transformers.models.qwen2_vl.image_processing_qwen2_vl.smart_resize)."""
+    if max(height, width) / min(height, width) > 200:
+        raise ValueError(f"aspect ratio too large: {height}x{width}")
+    h_bar = round(height / factor) * factor
+    w_bar = round(width / factor) * factor
+    if h_bar * w_bar > max_pixels:
+        beta = math.sqrt((height * width) / max_pixels)
+        h_bar = max(factor, math.floor(height / beta / factor) * factor)
+        w_bar = max(factor, math.floor(width / beta / factor) * factor)
+    elif h_bar * w_bar < min_pixels:
+        beta = math.sqrt(min_pixels / (height * width))
+        h_bar = math.ceil(height * beta / factor) * factor
+        w_bar = math.ceil(width * beta / factor) * factor
+    return h_bar, w_bar
+
+
+def model_view(image: Image.Image, model: str) -> tuple[Image.Image, tuple[int, int, int, int] | None]:
+    """The image the model actually encodes, plus the content box (x0, y0, x1, y1) if the model pads."""
+    view = MODEL_VIEWS[model]
+    image = image.convert("RGB")
+    if view["kind"] == "qwen":
+        h, w = smart_resize(image.height, image.width, view["cell"], view["min_pixels"], view["max_pixels"])
+        return image.resize((w, h), Image.BICUBIC), None
+    # LLaVA "pad": expand to a square with the CLIP mean colour, then resize to the CLIP input size.
+    side = max(image.width, image.height)
+    canvas = Image.new("RGB", (side, side), view["pad_rgb"])
+    x0, y0 = (side - image.width) // 2, (side - image.height) // 2
+    canvas.paste(image, (x0, y0))
+    scale = view["size"] / side
+    box = (round(x0 * scale), round(y0 * scale), round((x0 + image.width) * scale), round((y0 + image.height) * scale))
+    return canvas.resize((view["size"], view["size"]), Image.BICUBIC), box
+
+
+def _luminance(img: np.ndarray) -> np.ndarray:
+    img = img.astype(np.float32)
+    if img.ndim == 2:
+        return img
+    return 0.299 * img[..., 0] + 0.587 * img[..., 1] + 0.114 * img[..., 2]
+
+
+def body_mask(img: np.ndarray, cell: int, pad_box: tuple[int, int, int, int] | None = None) -> np.ndarray:
+    """Foreground (body/tissue) mask, [H, W] bool. Steps of plan.md §A5.
+
+    Returns all-True when the image has no acquisition background: low border/centre contrast, a border that is not
+    mostly background, or a "background" that is textured or mid-intensity (skin around a lesion, tissue in a crop).
+    This keeps the gate a no-op on dermoscopy, pathology crops and similar images.
+    """
+    y_full = _luminance(img)
+    h, w = y_full.shape
+    x0, y0, x1, y1 = pad_box if pad_box is not None else (0, 0, w, h)
+    y = y_full[y0:y1, x0:x1]
+    full = np.zeros((h, w), dtype=bool)
+    full[y0:y1, x0:x1] = True
+
+    ch, cw = y.shape
+    ring = max(1, round(BORDER_FRACTION * min(ch, cw)))
+    border = np.concatenate([y[:ring].ravel(), y[-ring:].ravel(), y[:, :ring].ravel(), y[:, -ring:].ravel()])
+    centre = y[ch // 4: ch - ch // 4, cw // 4: cw - cw // 4]
+    lo, hi = np.percentile(y, [1, 99])
+    if hi - lo < 1e-6:
+        return full
+    contrast = abs(float(np.median(centre)) - float(np.median(border))) / float(hi - lo)
+    if contrast < MIN_CONTRAST:
+        return full
+
+    bright_foreground = np.median(centre) >= np.median(border)
+    t = threshold_otsu(y)
+    fg = y > t if bright_foreground else y < t
+    border_background = 1.0 - np.concatenate([fg[:ring].ravel(), fg[-ring:].ravel(),
+                                              fg[:, :ring].ravel(), fg[:, -ring:].ravel()]).mean()
+    if border_background < MIN_BORDER_BACKGROUND:
+        return full
+    bg_values, fg_values = y[~fg], y[fg]
+    if bg_values.size == 0 or fg_values.size == 0:
+        return full
+    flat = bg_values.std() <= MAX_BACKGROUND_FLATNESS * fg_values.std()
+    offset = (np.median(bg_values) - lo) if bright_foreground else (hi - np.median(bg_values))
+    if not flat or offset > MAX_BACKGROUND_OFFSET * (hi - lo):
+        return full
+
+    labels = label(fg, connectivity=2)
+    if labels.max() > 0:
+        sizes = np.bincount(labels.ravel())
+        sizes[0] = 0
+        keep = np.flatnonzero(sizes >= MIN_COMPONENT_FRACTION * sizes.max())
+        fg = np.isin(labels, keep)
+    fg = ndimage.binary_fill_holes(fg)
+    fg = ndimage.binary_dilation(fg, structure=np.ones((cell, cell), dtype=bool))
+
+    out = np.zeros((h, w), dtype=bool)
+    out[y0:y1, x0:x1] = fg
+    return out
+
+
+def token_foreground_fraction(mask: np.ndarray, cell: int) -> np.ndarray:
+    """Fraction of each cell x cell token patch inside the mask, [H/cell, W/cell] float32."""
+    h, w = mask.shape
+    if h % cell or w % cell:
+        raise ValueError(f"mask {h}x{w} is not a multiple of the token cell {cell}")
+    return mask.reshape(h // cell, cell, w // cell, cell).mean(axis=(1, 3)).astype(np.float32)
+
+
+def background_fraction(fg_frac: np.ndarray, tau: float = 0.5) -> float:
+    return float(np.mean(np.asarray(fg_frac) < tau))
+
+
+def slake_oracle_mask(mask_png: np.ndarray) -> np.ndarray:
+    """Union of every annotated SLAKE structure (non-zero labels in mask.png), [H, W] bool."""
+    arr = np.asarray(mask_png)
+    if arr.ndim == 3:
+        arr = arr[..., 0]
+    return arr > 0
+
+
+def image_gate(image: Image.Image, model: str) -> tuple[tuple[int, int], np.ndarray]:
+    """Grid shape and per-token foreground fraction of one image for one model."""
+    view, box = model_view(image, model)
+    cell = MODEL_VIEWS[model]["cell"]
+    fg = token_foreground_fraction(body_mask(np.asarray(view), cell, box), cell)
+    return fg.shape, fg
+
+
+def oracle_gate(image: Image.Image, mask_png: Image.Image, model: str) -> np.ndarray:
+    """Per-token foreground fraction using SLAKE's annotation mask instead of the heuristic body mask."""
+    view, _ = model_view(image, model)
+    cell = MODEL_VIEWS[model]["cell"]
+    mask = mask_png.convert("L").resize(view.size, Image.NEAREST)
+    m = ndimage.binary_dilation(slake_oracle_mask(np.asarray(mask)), structure=np.ones((cell, cell), dtype=bool))
+    return token_foreground_fraction(m, cell)
+
+
+class MaskStore:
+    """Per-image gates for one dataset and model, saved as one .npz (plan.md §B Stage 2 outputs)."""
+
+    def __init__(self, image_ids: list[str], grids: list[tuple[int, int]], fracs: list[np.ndarray]):
+        self._index = {iid: i for i, iid in enumerate(image_ids)}
+        self._grids = grids
+        self._fracs = fracs
+
+    def get(self, image_id: str) -> tuple[tuple[int, int], np.ndarray]:
+        i = self._index[image_id]
+        return self._grids[i], self._fracs[i]
+
+    def __contains__(self, image_id: str) -> bool:
+        return image_id in self._index
+
+    def save(self, path: Path) -> None:
+        offsets = np.cumsum([0] + [f.size for f in self._fracs])
+        np.savez_compressed(
+            path,
+            image_ids=np.array(list(self._index), dtype=str),
+            grids=np.array(self._grids, dtype=np.int32).reshape(-1, 2),
+            offsets=offsets.astype(np.int64),
+            flat=np.concatenate([f.ravel() for f in self._fracs]).astype(np.float16) if self._fracs else np.zeros(0),
+        )
+
+    @classmethod
+    def load(cls, path: Path) -> "MaskStore":
+        z = np.load(path)
+        grids = [tuple(int(v) for v in g) for g in z["grids"]]
+        fracs = [z["flat"][a:b].astype(np.float32).reshape(g) for a, b, g in zip(z["offsets"][:-1], z["offsets"][1:], grids)]
+        return cls([str(i) for i in z["image_ids"]], grids, fracs)

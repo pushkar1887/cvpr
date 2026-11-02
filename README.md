@@ -77,8 +77,11 @@ Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and unif
 ## Plan and status
 
 **[plan.md](plan.md)** is the single plan: stage tracker (Stages 0–8 with checkboxes and exit gates), research,
-protocol, code design and compute backends. Current stage: **0–1** (accounts, code). Nothing has run yet; predictions
-are pre-registered in plan.md §A6 (2026-11-02).
+protocol, code design and compute backends. Predictions are pre-registered in plan.md §A6 (2026-11-02).
+
+Status (Nov 2): **Stage 1 done** — the `medprune` package and 61 CPU tests pass, including the proof that masking
+dropped keys equals deleting the tokens. Stage 0 waits on teammates' accounts (OpenReview, RadImageNet access, Kaggle).
+Next: Stage 2 (data bundle). No GPU run yet.
 
 Compute: 66.2 Kaggle T4-hours (39.4 h must-have) across three accounts, or ≈ 14–17 h on an A100. Storage: ≤ 2 GB
 persistent; one model (~17 GB) temporarily per GPU session.
@@ -91,12 +94,13 @@ cvpr/
 ├── plan.md                 the plan (stages, research, protocol, code design, backends)
 ├── mentor_brief.tex        two-page mentor brief (Overleaf)
 ├── requirements.txt        pinned (transformers==4.57.1); torch comes from the platform
+├── pyproject.toml          package metadata + pytest config
 ├── scripts/setup_env.sh    identical setup on Kaggle and SSH; prints the compute profile
-├── configs/                runs.yaml (every run), bundle_manifest.json (data provenance)   [Stage 1–2]
-├── medprune/               the package: env, data, masks, selection, attention_hook, models,
-│                           huatuo_llava, scoring, stats, run_eval                            [Stage 1]
-├── notebooks/              00 data bundle (Kaggle CPU), 01 GPU runs (Kaggle), 02 analysis (laptop)
-├── tests/                  CPU-only; masking ≡ token removal proof                          [Stage 1]
+├── configs/runs.yaml       the run matrix (every experiment's runs); bundle_manifest.json added at Stage 2
+├── medprune/               the package: env, data, masks, selection, attention_hook, models, scoring, stats,
+│                           run_eval (huatuo_llava follows at Stage 7)
+├── notebooks/              00 data bundle, 01 GPU runs, 02 analysis                         [Stages 2, 3, 8]
+├── tests/                  61 CPU tests incl. the masking ≡ token-removal proof (`pytest -q`)
 ├── results/                runtime output (git-ignored)
 └── third_party/            FastV, MedEvalKit, HuatuoGPT-Vision references (git-ignored)
 ```

@@ -1,0 +1,71 @@
+# Run matrix (plan.md Part B). `python -m medprune.run_eval` expands each block into runs
+# (model x dataset x method x budget x seed). Run IDs do not include the experiment, so a run listed by several
+# experiments (e.g. E1's runs reused by E3) is computed once. E9 (latency) is not a run_eval run.
+
+rates_s_per_q:  # planning rates, plan.md §C4 — replace with the Stage 3 measurements
+  lingshu7b: {slake: 1.0, omni: 1.1, rin: 0.6, natural: 0.8, text_only: 0.5}
+  qwen3vl8b: {slake: 1.1, omni: 1.2, rin: 0.66, natural: 0.88, text_only: 0.55}
+  huatuo7b: {slake: 1.1, omni: 1.2, rin: 0.7, natural: 0.9, text_only: 0.5}
+
+groups:
+  K: [slake_en, rin_anat_mc]
+  S1: [slake_en, rin_anat_mc, rin_abn_closed]
+  S2: [slake_zh]
+  S3: [omni_anat]
+  P: [omni_panel]
+  N: [natural]
+
+blocks:
+  # Stage 3 — E0: validation (Qwen3-VL: run with --limit 50; the run continues in E3)
+  - {exp: E0, tier: P0, account: A, model: lingshu7b, groups: [slake_en], methods: [full]}
+  - {exp: E0, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en], methods: [full]}
+
+  # Stage 4 — E1: kill test
+  - {exp: E1, tier: P0, account: A, model: lingshu7b, groups: [K],
+     methods: [full, text_only, random_l2, random_l0, fastv, fastv_prellm, gate_fastv]}
+
+  # Stage 5 — E3: main grid at 10%
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1],
+     methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S3],
+     methods: [full, text_only, random_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1],
+     methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S3],
+     methods: [full, text_only, random_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+
+  # Stage 5 — E4: modality panel
+  - {exp: E4, tier: P0, account: A, model: lingshu7b, groups: [P],
+     methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform]}
+  - {exp: E4, tier: P0, account: B, model: qwen3vl8b, groups: [P],
+     methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform]}
+
+  # Stage 6 — E5: budget curves
+  - {exp: E5, tier: P1, account: A, model: lingshu7b, groups: [K],
+     methods: [random_l2, fastv, gate_fastv, gate_uniform], budgets: [0.05, 0.25]}
+  - {exp: E5, tier: P1, account: A, model: lingshu7b, groups: [K], methods: [fastv, gate_fastv], budgets: [0.50]}
+  - {exp: E5, tier: P1, account: B, model: qwen3vl8b, groups: [K], methods: [random_l2, fastv, gate_fastv],
+     budgets: [0.05, 0.25]}
+
+  # Stage 6 — E6 (P1): mechanism controls
+  - {exp: E6, tier: P1, account: A, model: lingshu7b, groups: [S1],
+     methods: [fastv_k8, fastv_k16, static_map, inverse_gate, divprune, gate_divprune]}
+  - {exp: E6, tier: P1, account: A, model: lingshu7b, groups: [slake_en], methods: [oracle_gate]}
+  - {exp: E6, tier: P1, account: B, model: qwen3vl8b, groups: [K],
+     methods: [fastv_k16, static_map, inverse_gate, divprune, gate_divprune]}
+
+  # Stage 6 — E7: natural-image control (no gate)
+  - {exp: E7, tier: P1, account: B, model: lingshu7b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
+  - {exp: E7, tier: P1, account: B, model: qwen3vl8b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
+
+  # Stage 7 — E6 (P2): gate robustness, artifacts, PDrop
+  - {exp: E6, tier: P2, account: C, model: lingshu7b, groups: [S1],
+     methods: [artifact_excl, gate_quota3, gate_tau25, gate_tau75, pdrop, gate_pdrop]}
+
+  # Stage 7 — E8: HuatuoGPT-Vision-7B (1D RoPE); needs medprune/huatuo_llava.py
+  - {exp: E8, tier: P2, account: C, model: huatuo7b, groups: [S1],
+     methods: [full, text_only, random_l2, fastv, ropefree, gate_fastv, gate_ropefree]}

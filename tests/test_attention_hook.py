@@ -1,0 +1,196 @@
+"""The proof that the hook implements token pruning exactly (plan.md §D5).
+
+Tiny random Qwen2 (1D RoPE, like HuatuoGPT's LLM) and Qwen3 (q/k norms before RoPE, like Qwen3-VL's LLM) models in
+fp32 on CPU. Positions 4..19 play the role of visual tokens.
+"""
+
+import numpy as np
+import pytest
+import torch
+from transformers import DynamicCache, Qwen2Config, Qwen2ForCausalLM, Qwen3Config, Qwen3ForCausalLM
+from transformers.integrations.sdpa_attention import sdpa_attention_forward
+
+from medprune import attention_hook as hook
+from medprune.attention_hook import PruneState, Stage, StopForward, install_pre_rope_capture, pruning
+
+T = 24
+VIS = torch.arange(4, 20)
+IDS = torch.randint(0, 97, (T,), generator=torch.Generator().manual_seed(1))
+KEEP = np.array([0, 3, 5, 6, 10, 15])  # indices into the 16 visual tokens
+
+
+def build(kind: str, attn: str):
+    torch.manual_seed(0)
+    common = dict(vocab_size=97, hidden_size=64, intermediate_size=128, num_hidden_layers=4, num_attention_heads=4,
+                  num_key_value_heads=2, max_position_embeddings=128, attn_implementation=attn)
+    model = Qwen2ForCausalLM(Qwen2Config(**common)) if kind == "qwen2" else Qwen3ForCausalLM(Qwen3Config(head_dim=16, **common))
+    return model.eval()
+
+
+@pytest.fixture(params=["qwen2", "qwen3"], scope="module")
+def models(request):
+    hooked = build(request.param, hook.ATTN_NAME)
+    plain, eager = build(request.param, "sdpa"), build(request.param, "eager")
+    plain.load_state_dict(hooked.state_dict())
+    eager.load_state_dict(hooked.state_dict())
+    return request.param, hooked, plain, eager
+
+
+@torch.no_grad()
+def last_logits(model, ids, pos=None, state=None):
+    with pruning(state):
+        out = model(input_ids=ids[None], position_ids=None if pos is None else pos[None])
+    return out.logits[0, -1]
+
+
+def kept_positions() -> torch.Tensor:
+    others = torch.cat([torch.arange(0, 4), torch.arange(20, T)])
+    return torch.sort(torch.cat([others, VIS[torch.from_numpy(KEEP)]])).values
+
+
+def preset(keep: np.ndarray, mask_from: int, **kw) -> PruneState:
+    state = PruneState(vis_pos=VIS, **kw)
+    state.apply_keep(keep, mask_from)
+    return state
+
+
+@torch.no_grad()
+def fastv_reference(model, ids, keep_pos, k):
+    """FastV's own implementation: physically drop the pruned tokens' hidden states before layer k."""
+    m = model.model
+    h = m.embed_tokens(ids[None])
+    pos = torch.arange(ids.numel())[None]
+    emb = m.rotary_emb(h, pos)
+    for i, layer in enumerate(m.layers):
+        if i == k:
+            h, pos = h[:, keep_pos], pos[:, keep_pos]
+            emb = m.rotary_emb(h, pos)
+        out = layer(h, attention_mask=None, position_ids=pos, position_embeddings=emb)
+        h = out[0] if isinstance(out, tuple) else out
+    return model.lm_head(m.norm(h))[0, -1]
+
+
+def test_no_state_is_plain_sdpa(models):
+    _, hooked, plain, _ = models
+    torch.testing.assert_close(last_logits(hooked, IDS), last_logits(plain, IDS), atol=1e-6, rtol=0)
+
+
+def test_keep_all_is_plain_sdpa(models):
+    _, hooked, plain, _ = models
+    torch.testing.assert_close(last_logits(hooked, IDS, state=preset(np.arange(16), 0)), last_logits(plain, IDS),
+                               atol=1e-6, rtol=0)
+
+
+def test_masking_from_layer_0_equals_deleting_tokens(models):
+    _, hooked, plain, _ = models
+    pos = kept_positions()
+    torch.testing.assert_close(last_logits(hooked, IDS, state=preset(KEEP, 0)), last_logits(plain, IDS[pos], pos=pos),
+                               atol=1e-5, rtol=0)
+
+
+@pytest.mark.parametrize("k", [1, 2])
+def test_masking_from_layer_k_equals_fastv_removal(models, k):
+    _, hooked, plain, _ = models
+    torch.testing.assert_close(last_logits(hooked, IDS, state=preset(KEEP, k)),
+                               fastv_reference(plain, IDS, kept_positions(), k), atol=1e-5, rtol=0)
+
+
+@torch.no_grad()
+def greedy(model, ids, pos, steps, state=None):
+    tokens, cache = [], DynamicCache()
+    with pruning(state):
+        out = model(input_ids=ids[None], position_ids=pos[None], past_key_values=cache, use_cache=True)
+        for step in range(steps):
+            token = out.logits[0, -1].argmax()
+            tokens.append(int(token))
+            out = model(input_ids=token.view(1, 1), position_ids=torch.tensor([[T + step]]),
+                        past_key_values=out.past_key_values, use_cache=True)
+    return tokens, out.logits[0, -1]
+
+
+def test_cached_decoding_equals_deleting_tokens(models):
+    _, hooked, plain, _ = models
+    pos = kept_positions()
+    masked_tokens, masked_logits = greedy(hooked, IDS, torch.arange(T), 5, state=preset(KEEP, 0))
+    ref_tokens, ref_logits = greedy(plain, IDS[pos], pos, 5)
+    assert masked_tokens == ref_tokens
+    torch.testing.assert_close(masked_logits, ref_logits, atol=1e-5, rtol=0)
+
+
+def test_logged_scores_equal_eager_attention(models):
+    _, hooked, _, eager = models
+    state = PruneState(vis_pos=VIS, log_layers=(1,))
+    last_logits(hooked, IDS, state=state)
+    with torch.no_grad():
+        attention = eager(input_ids=IDS[None], output_attentions=True).attentions[1]
+    expected = attention[0, :, -1, :].mean(0)[VIS].numpy()
+    np.testing.assert_allclose(state.logs["scores_l1"], expected, atol=1e-6)
+
+
+def test_fastv_stage_keeps_the_top_scored_tokens(models):
+    _, hooked, _, eager = models
+    k = 5
+    state = PruneState(vis_pos=VIS, stages=[Stage(1, 2, lambda s, _surv: np.sort(np.argsort(-s)[:k]))])
+    last_logits(hooked, IDS, state=state)
+    with torch.no_grad():
+        attention = eager(input_ids=IDS[None], output_attentions=True).attentions[1]
+    expected = np.sort(np.argsort(-attention[0, :, -1, :].mean(0)[VIS].numpy())[:k])
+    np.testing.assert_array_equal(state.keep, expected)
+
+
+def test_ropefree_scores_come_from_pre_rope_projections(models):
+    kind, hooked, _, _ = models
+    attn = hooked.model.layers[1].self_attn
+    q_mod, k_mod = (attn.q_norm, attn.k_norm) if kind == "qwen3" else (attn.q_proj, attn.k_proj)
+    handles = install_pre_rope_capture(q_mod, k_mod, layer=1)
+    try:
+        state = PruneState(vis_pos=VIS, log_ropefree=True)
+        last_logits(hooked, IDS, state=state)
+        q = state.pre_rope["q"].reshape(1, T, -1, attn.head_dim)[0]
+        k = state.pre_rope["k"].reshape(1, T, -1, attn.head_dim)[0]
+        rep = q.shape[1] // k.shape[1]
+        heads = [((k[:, h // rep] @ q[-1, h]) * attn.scaling).softmax(0) for h in range(q.shape[1])]
+        expected = torch.stack(heads).mean(0)[VIS].numpy()
+        np.testing.assert_allclose(state.logs["scores_ropefree_l1"], expected, atol=1e-6)
+    finally:
+        for handle in handles:
+            handle.remove()
+
+
+def test_multistage_pruning_masks_progressively(models):
+    _, hooked, _, _ = models
+
+    def top(n):
+        return lambda s, surv: np.sort(np.argsort(-np.where(surv, s, -np.inf))[:n])
+
+    state = PruneState(vis_pos=VIS, stages=[Stage(1, 2, top(8)), Stage(2, 3, top(4))])
+    last_logits(hooked, IDS, state=state)
+    assert len(state.keep) == 4
+    assert state.dropped_at(1) is None and len(state.dropped_at(2)) == 8 and len(state.dropped_at(3)) == 12
+
+
+def test_stop_after_scoring(models):
+    _, hooked, _, _ = models
+    state = PruneState(vis_pos=VIS, stages=[Stage(1, 0, lambda s, surv: np.arange(3))], stop_after_scoring=True)
+    with pytest.raises(StopForward):
+        last_logits(hooked, IDS, state=state)
+    np.testing.assert_array_equal(state.keep, np.arange(3))
+
+
+def test_allow_mask_is_causal_with_cache_offset():
+    q, k = torch.zeros(1, 2, 3, 4), torch.zeros(1, 2, 5, 4)
+    mask = hook.allow_mask(None, q, k, torch.tensor([1]))[0, 0]
+    expected = torch.tensor([[1, 0, 1, 0, 0], [1, 0, 1, 1, 0], [1, 0, 1, 1, 1]], dtype=torch.bool)
+    assert torch.equal(mask, expected)
+
+
+def test_modules_without_layer_idx_pass_through():
+    class Vision(torch.nn.Module):
+        is_causal = False
+        num_key_value_groups = 1
+
+    q, k, v = (torch.randn(1, 2, 6, 8) for _ in range(3))
+    with pruning(preset(np.array([0]), 0)):
+        out, _ = hook.medprune_sdpa(Vision(), q, k, v, None)
+    ref, _ = sdpa_attention_forward(Vision(), q, k, v, None)
+    torch.testing.assert_close(out, ref)

@@ -1,0 +1,58 @@
+import json
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+from medprune.data import Sample, write_manifest
+from medprune.run_eval import RunSpec, estimate_hours, load_runs, run_many
+
+RUNS = Path(__file__).resolve().parent.parent / "configs" / "runs.yaml"
+
+
+def test_runs_yaml_expands_like_the_plan():
+    e1, rates = load_runs(RUNS, exp="E1")
+    assert len(e1) == 14  # 7 methods x 2 datasets; full on slake_en is shared with E0
+    e3_lingshu, _ = load_runs(RUNS, exp="E3", model="lingshu7b")
+    assert sum(r.method == "random_l2" and r.dataset == "rin_abn_closed" for r in e3_lingshu) == 3  # seeds 0-2
+    everything, _ = load_runs(RUNS)
+    shared = [r for r in everything if r.model == "lingshu7b" and r.dataset == "slake_en" and r.method == "fastv"
+              and r.budget == 0.10]
+    assert len(shared) == 1 and set(shared[0].exps) >= {"E1", "E3"}
+    assert all(r.budget == 1.0 for r in everything if r.method in ("full", "text_only"))
+    assert estimate_hours(RunSpec("lingshu7b", "slake_en", "fastv", 0.10), 1061, rates) == 1061 * 1.0 / 3600
+
+
+def test_run_id_has_no_experiment_and_encodes_budget():
+    assert RunSpec("lingshu7b", "slake_en", "gate_fastv", 0.10, 0).run_id("t4x2") == \
+        "lingshu7b__slake_en__gate_fastv__r010__s0__t4x2"
+
+
+def _tiny_bundle(root: Path) -> None:
+    img_dir = root / "images"
+    img_dir.mkdir(parents=True)
+    samples = []
+    for i in range(6):
+        Image.fromarray(np.full((32, 32, 3), 40 * i, np.uint8)).save(img_dir / f"{i}.png")
+        samples.append(Sample(qid=f"toy/{i}", dataset="slake_en", image_id=f"toy/{i // 2}",
+                              image_path=f"images/{i}.png", question="Is it?", answer="yes" if i % 2 else "no",
+                              answer_type="yesno", prompt_style="close"))
+    write_manifest(samples, root, "slake_en")
+
+
+def test_dry_run_writes_one_line_per_question_and_resumes(tmp_path):
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    _tiny_bundle(bundle)
+    rates = {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.25 if m != "full" else 1.0) for m in
+             ("full", "random_l2", "fastv", "gate_uniform", "fastv_prellm", "divprune", "pdrop")]
+    run_many(specs, bundle, out, rates, limit=4, dry_run=True)
+    for spec in specs:
+        path = out / "runs" / f"{spec.run_id('dryrun')}.jsonl"
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        assert [r["qid"] for r in rows] == [f"toy/{i}" for i in range(4)]
+        if spec.method not in ("full", "pdrop"):
+            assert all(r["k_keep"] == 4 for r in rows)  # 25% of 16 tokens
+    run_many(specs, bundle, out, rates, limit=6, dry_run=True)  # resumes: only the 2 new questions are added
+    rows = (out / "runs" / f"{specs[1].run_id('dryrun')}.jsonl").read_text().splitlines()
+    assert len(rows) == 6

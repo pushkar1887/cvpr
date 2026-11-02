@@ -396,7 +396,9 @@ def main() -> None:
     p.add_argument("--bundle", type=Path, action="append", default=None,
                    help="bundle root; repeat to add a session-only root (e.g. RadImageNet)")
     p.add_argument("--out", type=Path, default=None)
-    p.add_argument("--list", action="store_true", help="print runs and estimated hours, run nothing")
+    p.add_argument("--list", action="store_true", help="print runs, progress and pending hours; run nothing")
+    p.add_argument("--profile", default=None,
+                   help="--list only: profile whose results to count (default: this machine's; use t4x2 on a laptop)")
     p.add_argument("--limit", type=int, default=None, help="questions per run (smoke tests)")
     p.add_argument("--dry-run", action="store_true", help="fake CPU model; tests selection, logging and resume")
     p.add_argument("--max-hours", type=float, default=6.0)
@@ -408,7 +410,10 @@ def main() -> None:
     out = args.out or results_root()
     specs, rates = load_runs(args.runs, args.exp, args.model, args.account, args.dataset, args.method)
     if args.list:
-        total = 0.0
+        from .env import detect_profile
+
+        profile = args.profile or ("dryrun" if args.dry_run else detect_profile().name)
+        pending_hours, n_missing, n_complete = 0.0, 0, 0
         for spec in specs:
             try:
                 manifest = bundle_for(bundles, spec.dataset) / "manifests" / f"{spec.dataset}.jsonl"
@@ -416,10 +421,14 @@ def main() -> None:
             except FileNotFoundError:
                 n = 0
             n = min(n, args.limit) if args.limit else n
-            hours = estimate_hours(spec, n, rates) if n else float("nan")
-            total += 0 if n == 0 else hours
-            print(f"{spec.run_id('<profile>'):<75} {','.join(spec.exps):<10} n={n:<5} {hours:5.2f} h")
-        print(f"{len(specs)} runs, {total:.2f} h (runs whose manifest is missing are not counted)")
+            done = len(_done_qids(out / "runs" / f"{spec.run_id(profile)}.jsonl"))
+            hours = estimate_hours(spec, max(n - done, 0), rates) if n else float("nan")
+            n_missing += n == 0
+            n_complete += bool(n) and done >= n
+            pending_hours += 0 if n == 0 else hours
+            status = "no manifest" if n == 0 else ("complete" if done >= n else f"{done}/{n}")
+            print(f"{spec.run_id(profile):<70} {','.join(spec.exps):<9} {status:>11} {hours:6.2f} h pending")
+        print(f"{len(specs)} runs: {n_complete} complete, {n_missing} without manifest, {pending_hours:.2f} h pending")
         return
     run_many(specs, bundles, out, rates, max_hours=args.max_hours, limit=args.limit, dry_run=args.dry_run,
              vision_fp32=args.vision_fp32, max_new_tokens=args.max_new_tokens)

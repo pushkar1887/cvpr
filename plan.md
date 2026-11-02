@@ -18,7 +18,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 | 1 | Code and tests | Laptop CPU | 0 | Nov 2–3 | **84 tests passed Nov 3**, incl. identity/resume and actual RIN template regressions |
 | 2 | Data bundle | Kaggle CPU (or SSH) | 0 | Nov 2 | **Built and rebuilt with revised masks**; counts in committed manifest and Work log |
 | 3 | Validation and calibration (E0) | Kaggle GPU, A (+0.5 h on B) | 3.0 | Nov 2–3 | 50-item component checks passed on both models; **full SLAKE baseline target unresolved** (77.19%, different published judge) |
-| 4 | Kill test (E1) + diagnostics (E2) | GPU A + CPU | 3.3 + repairs | Nov 3 | **K1 GO; K2 H1 alive**, independently checked; 43-item text-only truncation retry running |
+| 4 | Kill test (E1) + diagnostics (E2) | GPU A + CPU | 3.3 + repairs | Nov 3 | **Primary decisions complete: K1 GO; K2 H1 alive**; registered truncation retry verified; causal controls remain |
 | 5 | Main grid (E3) + modality panel (E4) | GPU A, B | 33.1 | Nov 3–5 | Table 1, Fig. 2 drafts → **enrollment Nov 10 AoE** |
 | 6 | Curves, ablations, natural control (E5, E6-P1, E7) | GPU A, B | 16.8 | Nov 6–8 | Decisions K3, K4 |
 | 7 | Supplementary runs (E6-P2, E8, E9) | GPU C | 10.0 | Nov 7–12 | — |
@@ -377,12 +377,14 @@ Run the tests on the laptop: `D:\cvpr\.venv\Scripts\python -m pytest -q` → **6
 
 ## Stage 2 — Data bundle
 
-**In one sentence:** download the public datasets once, freeze them as question lists plus images plus background
-masks, and publish them as a private Kaggle dataset every account can attach. **Status: NEXT.**
+**In one sentence:** freeze the public datasets as question lists, images and background masks in private notebook
+outputs built on each role account. **Status: DONE (Nov 2, revised masks).** The original shared-dataset procedure
+was superseded by same-owner `kernel_sources` inputs (Work log, Nov 2); use those outputs with notebook 01's bundle
+auto-discovery. The committed `configs/bundle_manifest.json` records the actual counts.
 
 **Before you start**
 - [x] Notebook `00_build_data_bundle.ipynb` exists (task T1, Part F).
-- [ ] Kaggle notebook settings: Accelerator *None* (CPU — costs no GPU quota), Internet *on*.
+- [x] Kaggle notebook settings: Accelerator *None* (CPU — costs no GPU quota), Internet *on*.
 
 **Steps**
 
@@ -396,7 +398,7 @@ masks, and publish them as a private Kaggle dataset every account can attach. **
 | 6 | Summarize | `!python -m medprune.data summary --bundle /kaggle/working/medprune-data` | `bundle_manifest.json` with counts and median background fraction per modality |
 | 7 | Look at masks | display 3 images per modality from `masks/overlays/` | background shaded red outside the body only |
 | 8 | Clean up | `!rm -rf /tmp/medprune-work` | — |
-| 9 | Publish | *Save Version* → Output → *New Dataset* `medprune-data` (private); then *Settings → Sharing*: add the other two Kaggle accounts | dataset visible from all three accounts |
+| 9 | Save and attach | Save Version on each role; attach that role's completed builder notebook via `kernel_sources` | bundle discoverable inside notebook 01 |
 | 10 | Record | copy `bundle_manifest.json` to `configs/` in the repo; commit; Work log entry | — |
 
 Time: about 30–45 minutes of CPU, no GPU quota. Size: about 0.7 GB.
@@ -409,13 +411,13 @@ Time: about 30–45 minutes of CPU, no GPU quota. Size: about 0.7 GB.
 - `masks/overlays/<modality>/*.png`, `bundle_manifest.json`.
 
 **Checks**
-- [ ] Counts: `slake_en` 1,061 with 96 images (CT 40, MRI 26, X-ray 30); `slake_zh` 1,033; `omni_panel` 1,200;
-      `natural` 1,000; `omni_anat` = ____ (MedSTP reports 3,329).
-- [ ] Median background fraction per modality looks plausible (expected roughly CT/MRI 0.3–0.6, X-ray 0.05–0.3,
-      fundus 0.2–0.35, dermoscopy and microscopy < 0.1): ____.
-- [ ] Overlays: scanner table removed, lungs kept, letters and markers removed, white-glass slides handled,
-      dermoscopy left fully foreground.
-- [ ] Dataset shared with the other two accounts.
+- [x] Counts: `slake_en` 1,061 with 96 images (CT 40, MRI 26, X-ray 30); `slake_zh` 1,033; `omni_panel` 1,200;
+      `natural` 1,000; `omni_anat` 3,329 sampled from 16,448 qualifying open-access questions.
+- [x] Median background fractions recorded in `configs/bundle_manifest.json`; actual zero-background X-rays and
+      black-surround dermoscopy differ from early guesses. Do not replace observed values with expected ranges.
+- [x] Qualitative overlay review and gate revision reported by Claude on Nov 2; known grey-surround misses retained.
+      These heuristic masks are not validated clinical segmentations.
+- [x] Role-specific bundles built and attached as same-owner notebook outputs; no shared dataset required.
 
 **Done when** all checks are ticked. The bundle is then frozen: any change means a new version and re-running the runs
 that used it.
@@ -502,8 +504,8 @@ python -m medprune.run_eval --exp E0 --model lingshu7b --bundle $DATA --out $RES
 ## Stage 4 — Kill test (E1) and first diagnostics (E2)
 
 **In one sentence:** in one day, find out whether standard FastV really is worse than random in our pipeline (K1) and
-whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **Status: PRIMARY DECISIONS VERIFIED
-(Nov 3); registered text-only truncation retry running.** K1 is GO and K2 leaves H1 alive in this Lingshu setup.
+whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **Status: PRIMARY DECISIONS COMPLETE
+(Nov 3); registered text-only truncation retry verified.** K1 is GO and K2 leaves H1 alive in this Lingshu setup.
 This does not prove the cause, validate the gate as a competitive fix, or close the Stage 3 scoring issue.
 
 **Before you start**
@@ -561,9 +563,10 @@ does → reframe to "pre-LLM attention selection fails" and discuss with the men
 **Checks**
 - [x] Every pruned answer has `k_keep == round(0.1 × n_vis)`.
 - [x] `n_vis` recorded: SLAKE 324 tokens, k = 32; RadImageNet 64 tokens (8×8), k = 6.
-- [ ] Truncated answers < 1%: only SLAKE text-only exceeded it (43/1,061); registered 512-token retry running.
-- [ ] RadImageNet fields/counts recorded in Work log and source-schema receipt; raw image dimensions were not logged
-  (processed Lingshu grid is 8×8). Log raw dimensions in the next real build.
+- [x] Truncated answers < 1% after the registered retry: 43 original SLAKE text-only items retried at 512, all prefixes
+  verified; two remain truncated (0.19%). Text-only accuracy and K1/K2 unchanged; retain the two-item limitation.
+- [x] RadImageNet fields/counts and raw dimensions verified in the CPU rebuild: 1,000 images, all 224×224,
+  426 CT + 574 MRI; processed Lingshu grid 8×8. Anatomy and abnormality use identical image-ID sets.
 
 ### E2 — Why does it fail? (analysis only, laptop)
 
@@ -897,17 +900,19 @@ have 1,000 distinct IDs and keep-sets each, and K1 was independently verified af
 generic abnormality task as `metadata.question_id == "abnormal_closed"`, `content_type == "pathology"`,
 `question_type == "closed"` (1,000 rows; example: "Does the ankle foot look abnormal?"). The disease-specific
 `pathology_closed_pos/neg` templates are different tasks and must be excluded. The builder and regression fixtures
-now use these observed values. Before the Stage 5 abnormality grid, verify a real build gives 1,000 unique IDs and
-the same image-ID set as anatomy; the schema summary alone does not verify this paired-image contract.
+now use these observed values. A real CPU rebuild at `7dec114` verified 1,000 unique IDs/images per subset,
+identical image-ID sets, unchanged anatomy inputs, and 224×224 raw images. Abnormality labels are 719 yes / 281 no:
+an always-yes baseline scores **71.9%** without an image. Record that analytical class-prior baseline and per-class
+outcomes alongside abnormality accuracy before interpreting the Stage 5 results.
 
 | ID | Source | Size ✓ | Access | Subset rule | Questions | Images |
 |---|---|---|---|---|---|---|
 | `slake_en` | `BoKelvin/SLAKE` | `imgs.zip` 212 MB (masks + boxes per image), `test.json` 636 KB, `mask.txt` 39 labels | CC-BY-4.0 | test, `q_lang == "en"` | **1,061** ✓ (open 645, closed 416) | **96** ✓ (CT 40, MRI 26, X-ray 30) |
 | `slake_zh` | same | same | same | test, `q_lang == "zh"` | **1,033** ✓ | 96 |
-| `omni_anat` | `foreverbeliever/OmniMedVQA` | zip 10.70 GB | public, per-source licenses (bundle private) | open-access, `question_type == "Anatomy Identification"`; expect MedSTP's 3,329 — verify | ~3,329 MC | verify |
-| `omni_panel` | same | same | same | open-access; 8 modalities (CT, MRI, X-Ray, Ultrasound, OCT, Fundus, Dermoscopy, Microscopy) × 150, seed 0, ≤ 3/image, disjoint from `omni_anat` | 1,200 | ≥ 400 |
-| `rin_anat_mc` | `raidium/RadImageNet-VQA` | benchmark parquet 361 MB (9,000 QA / 1,000 images, CT/MRI) | gated, research-use, **no redistribution** | anatomy × multiple choice, one per image (verify field values) | ~1,000 | 1,000 |
-| `rin_abn_closed` | same | same | same | template `abnormal_closed`, content `pathology`, type `closed`; yes/no, one per image | 1,000 source rows; build pending | verify same 1,000 |
+| `omni_anat` | `foreverbeliever/OmniMedVQA` | zip 10.70 GB | public, per-source licenses (bundle private) | open-access Anatomy Identification: seed-0 sample of 16,448 candidates; not established to be MedSTP's exact subset | 3,329 MC (2,040 ultrasound) | 3,326 |
+| `omni_panel` | same | same | same | open-access; 8 modalities (CT, MRI, X-Ray, Ultrasound, OCT, Fundus, Dermoscopy, Microscopy) × 150, seed 0, ≤ 3/image, disjoint from `omni_anat` | 1,200 | 1,198 |
+| `rin_anat_mc` | `raidium/RadImageNet-VQA` | benchmark parquet 361 MB (9,000 QA / 1,000 images, CT/MRI) | gated, research-use, **no redistribution** | anatomy × multiple choice, one per image; actual template `anatomy_mc` | 1,000 | 1,000 (426 CT, 574 MRI; 224×224) |
+| `rin_abn_closed` | same | same | same | template `abnormal_closed`, content `pathology`, type `closed`; yes/no, one per image | 1,000 (719 yes, 281 no) | same 1,000 verified |
 | `natural` | `lmms-lab/GQA`, `lmms-lab/POPE` | 2.1 + 65.6 MB; 85 MB | public | 500 GQA testdev-balanced + 500 POPE adversarial, seed 0 | 1,000 | ~900 |
 
 SLAKE-en mix ✓: Organ 253, Position 186, Abnormality 150, KG 148, Modality 108, Size 65, Plane 58, Quantity 52, Color
@@ -1308,7 +1313,7 @@ Any agent picking up this project works from this Part. It says where things are
 2. **Current stage** = the first row of the Stage tracker whose exit gate is not passed. **Current task** = the first
    task in §F4 whose status is `open`, belongs to the current or an earlier stage, and whose prerequisites are done.
 3. Before changing code: `.venv\Scripts\python -m pytest -q` on the laptop (Linux: `python -m pytest -q`) must pass.
-   It currently runs 69 tests in about 10 s.
+   It currently runs 84 tests in about 10 s (verified Nov 3).
 4. When you finish (or stop), add a Work log entry (template in Part G) and set the task's status in §F4.
 
 ## F2. Rules
@@ -1316,7 +1321,8 @@ Any agent picking up this project works from this Part. It says where things are
 - **Frozen science.** Never edit the predictions in §A6 (fill only Outcome). Never change method definitions (§C3 =
   `selection.METHODS`), prompts (§C1.1 = `data.make_prompt`), scoring (`scoring.py`), fixed settings (§C1) or the run-ID
   format without (a) updating this plan, (b) updating tests, (c) a log entry saying why. After Stage 4 starts, any such
-  change invalidates finished runs — the affected runs must be deleted and rerun.
+  change invalidates affected finished runs: exclude them from active analysis and rerun as needed, while retaining
+  immutable originals and provenance. Do not delete historical evidence as a routine protocol change.
 - **Where logic lives.** Notebooks only orchestrate; every function goes in `medprune/` with a CPU test in `tests/`.
 - **Never commit** data, model weights, `results/`, `third_party/`, `research/` or `scripts/retina_microprobe.py`
   (the last two are a separate project of the user's).
@@ -1324,9 +1330,11 @@ Any agent picking up this project works from this Part. It says where things are
   git, never in a public notebook output. Build it per session under `/tmp/medprune-rin`.
 - **Hardware.** Never put runs from different profiles (`t4x2`, `a100`) in one table.
 - **Results are data.** Do not change code to move a result; report it in the log with its run IDs and CIs.
-- **Who runs what.** The user (Pushkar) runs all Kaggle sessions. Agents write code, notebooks and exact commands, and
-  may commit and push to `main` after the tests pass. Keep commits small; imperative subject ≤ 72 characters; body says
-  what and why; end with your agent's attribution trailer.
+- **Who runs what.** The user's Nov 3 handoff and Kaggle operations instructions authorize agents to submit and
+  monitor scoped project runs on configured accounts. Use per-child credentials, preflight account-specific metadata,
+  report role/slug/version/cost, preserve receipts and never print credentials. Deleting/cancelling running work or
+  unrelated operations still needs an exact explicit instruction. Agents may commit and push to `main` after tests
+  pass. Keep commits small; imperative subject ≤ 72 characters; body says what and why; end with agent attribution.
 
 ## F3. Environment facts
 
@@ -1335,7 +1343,7 @@ Any agent picking up this project works from this Part. It says where things are
 | Laptop | Windows 11; repo `D:\cvpr`; venv `D:\cvpr\.venv` (torch 2.14.1 CPU, transformers 4.57.1); Git Bash and PowerShell |
 | GitHub | `https://github.com/pushkar1887/cvpr`, public, branch `main` |
 | Kaggle | Roles A/B/C → Kaggle-2/3/1 (Stage 0 table); GPU T4×2; HF token in secret `cvpr`; clone over HTTPS |
-| Data paths | Shared bundle `/kaggle/input/medprune-data` (after Stage 2); RadImageNet `/tmp/medprune-rin` (per session); results `/kaggle/working/results` |
+| Data paths | Per-role notebook-output bundle, auto-discovered under `/kaggle/input`; RadImageNet `/tmp/medprune-rin` (per session); results `/kaggle/working/results` |
 | Commands | `python -m medprune.data build`, `… masks`, `… summary`; `python -m medprune.run_eval` (`--list`, `--limit`, `--dry-run`, repeatable `--bundle`) |
 | A100 | Not available yet; Part E describes the switch |
 
@@ -1345,15 +1353,15 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 
 | ID | Stage | Task | Status | Prerequisites |
 |---|---|---|---|---|
-| T1 | 2 | `notebooks/00_build_data_bundle.ipynb` | done (Nov 2) — not yet run on Kaggle | — |
-| T2 | 3 | `medprune/checks.py` (E0 checks) + `notebooks/01_run_gpu.ipynb` | done (Nov 2) — checks tested on CPU; notebook not yet run on Kaggle | — |
-| T3 | 4 | `medprune/analysis.py` + `notebooks/02_analyze_results.ipynb`, Stage 4 section | done (Nov 2) — notebook executed on dry-run results | — |
+| T1 | 2 | `notebooks/00_build_data_bundle.ipynb` | done — executed/rebuilt on Kaggle; manifest committed Nov 2 | — |
+| T2 | 3 | `medprune/checks.py` (E0 checks) + `notebooks/01_run_gpu.ipynb` | done — real E0 component checks on both models; full-set scoring issue recorded | — |
+| T3 | 4 | `medprune/analysis.py` + `notebooks/02_analyze_results.ipynb`, Stage 4 section | done — notebook dry-run Nov 2; module executed on recovered real E1 Nov 3 | — |
 | T4 | 6 | static-map builder | open | T3 |
 | T5 | 7 | `medprune/huatuo_llava.py` + validation | open | Stage 5 done |
 | T6 | 7 | E9 latency measurement | open | T2 |
 | T7 | 8 | table and figure builders (Tables 1–4, Figs 1–5) | open | T3 |
-| T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | K1/K2 verified; 43-item registered text-only retry in progress (Codex, Nov 3) | original and corrected receipts preserved |
-| T9 | 5 preflight | Verify real abnormality build/image pairing; resolve full SLAKE scoring comparability before broad grid | next | T8 primary decisions verified; large Qwen grid remains idle |
+| T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | done (Codex, Nov 3) — independent CIs and registered 43-item retry verified | original and corrected receipts preserved |
+| T9 | 5 preflight | Resolve full SLAKE scoring comparability before broad grid; report abnormality class-prior baseline | next — real abnormality build/image pairing passed on CPU | T8 done; large Qwen grid remains idle |
 
 **T1 — data bundle notebook (Kaggle CPU, internet on).** Cells, in order:
 1. `from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")`.
@@ -1366,9 +1374,9 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 7. Print the counts against §C2 and display 3 overlays per modality.
 8. `!rm -rf /tmp/medprune-work`.
 
-Done when: the notebook is committed; the user has run it; counts match §C2 (or differences are logged); the private
-Kaggle dataset `medprune-data` exists; `configs/bundle_manifest.json` is committed; a log entry records the counts and
-the median background fraction per modality.
+Done when: the notebook is committed and executed; counts match §C2 (or differences are logged); the per-role
+private builder outputs are available to their GPU notebooks; `configs/bundle_manifest.json` is committed; a log
+entry records counts and median background fraction per modality.
 
 **T2 — GPU notebook and E0 checks.** `medprune/checks.py` provides functions, each returning a dict for
 `$RES/e0_report.json`:
@@ -1630,3 +1638,26 @@ run IDs, counts, accuracies with CIs. Template:
   installation restores the existing approved Transformers pin to match E1, rather than adding a dependency.
 - Qwen main grid remains idle pending the full-baseline scoring and real abnormality-build preflight. No `rin_open`
   condition was added. Raw responses, numerical diagnostics, operational notebooks and receipts stay ignored.
+
+### 2026-11-03 — Codex — Stage 4 handoff complete; preflight evidence reconciled
+- Role A v5 completed the registered 512-token retry for all and only the 43 originally truncated SLAKE text-only
+  answers. All 43 greedy prefixes match the original 64-token outputs. Two remain truncated (2/1,061 = 0.19%, below
+  the registered 1% threshold). Accuracy remains 24.51%; every primary paired contrast and K1/K2 is unchanged.
+  Retained originals and merged only those 43 rows in the derived tree; receipt `results/receipts/text_retry_v5_20261103`.
+- Role A v6 ran the corrected real RIN builder on **CPU, no GPU**. Both subsets have 1,000 unique questions/images
+  and identical image-ID sets; rebuilt anatomy inputs match E1. All raw images are 224×224; modalities 426 CT and
+  574 MRI. Abnormality uses `abnormal_closed`, labels 719 yes / 281 no; always-yes accuracy is analytically 71.9%.
+  Receipt `results/receipts/rin_cpu_preflight_v6_20261103`; summary copied to the derived analysis root. No RIN images
+  or source parquet were put in saved outputs.
+- Reconciled stale tracker, Stage 2 source-sharing instructions, C2 counts and F4 task statuses with the actual
+  completed runs. User-authorized agent Kaggle operations supersede the early manual-only run rule. Scientific
+  amendments preserve original evidence and exclude invalid runs rather than deleting their history.
+- Reproduced the first-50 Lingshu score: 82% on only six images. Full English SLAKE: 77.19% on 96 images; open
+  71.94% (645 questions), closed 85.34% (416). The full-set scoring-comparability gate is unresolved; no scorer was
+  changed to raise these results. Image-dependent-subset results are secondary and selected by construction.
+- Wrote `results/stage4_lingshu_20261103/STAGE4_REPORT.md`, `stage4_verification.json`, updated tables/figures and
+  retained `identity_recovery_audit.json`. Primary K1/K2 and P1–P5 outcomes are reported; E2 keep regression and later
+  positional/norm causal controls remain pending. T8 is complete. T9 is the next preflight task before the large grid.
+- Last status checks: role A's v6 CPU job COMPLETE; role B's long-lived Qwen notebook COMPLETE/idle. No new Qwen
+  main-grid run was submitted, and no `rin_open` condition was added. The original takeover request to recover E1,
+  independently analyze it and report GO/REFRAME/STOP is complete; this is not a claim of a validated remedy or paper.

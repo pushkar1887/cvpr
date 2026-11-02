@@ -147,7 +147,7 @@ def normalize_modality(raw: str) -> str:
 
 
 def build_omnimedvqa(zip_path: Path, out_root: Path, panel_per_modality: int = 150, max_per_image: int = 3,
-                     seed: int = 0) -> dict[str, int]:
+                     seed: int = 0, anat_size: int = 3329) -> dict[str, int]:
     """OmniMedVQA open-access → omni_anat (Anatomy Identification) and omni_panel (8 modalities x 150)."""
     with zipfile.ZipFile(zip_path) as zf:
         qa_files = [n for n in zf.namelist() if "QA_information/Open-access/" in n and n.endswith(".json")]
@@ -175,7 +175,10 @@ def build_omnimedvqa(zip_path: Path, out_root: Path, panel_per_modality: int = 1
 
         anat = [s for it in items if it["question_type"] == "Anatomy Identification"
                 if (s := to_sample(it, "omni_anat")) is not None]
-        anat_ids = {s.qid for s in anat}
+        anat_ids = {s.qid for s in anat}  # the panel stays disjoint from every anatomy question, sampled or not
+        print("Anatomy Identification questions:", len(anat), "-> sampling", min(anat_size, len(anat)))
+        if len(anat) > anat_size:  # open-access has ~16k; MedSTP reports 3,329 (plan.md §C2)
+            anat = sorted(random.Random(seed).sample(anat, anat_size), key=lambda s: s.qid)
 
         rng = random.Random(seed)
         panel: list[Sample] = []

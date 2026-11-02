@@ -1,0 +1,226 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\setlist{nosep,leftmargin=*}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+\title{\vspace{-1.5em}\textbf{Pruning the Air}\\[2pt]
+\large Why Attention-Guided Visual Token Pruning Fails on Medical Images}
+\author{Pushkar et al.}
+\date{Research brief for CVPR 2027 \,$\cdot$\, 31 October 2026}
+
+\begin{document}
+\maketitle
+\vspace{-1.5em}
+
+% ------------------------------------------------------------------
+\section*{0\quad Thesis}
+\noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{%
+On medical images, the attention signal that FastV-style pruners use to rank visual tokens
+selects \emph{acquisition background} (air, empty field of view) rather than anatomy. At
+aggressive budgets this makes the selection \textbf{worse than random}. Removing background
+before scoring should recover most of the loss, training-free and at negligible cost.}}
+
+{\small\emph{Status: hypothesis grounded in published results; our experiments start 2 Nov.}}
+
+% ------------------------------------------------------------------
+\section*{1\quad Problem}
+\begin{itemize}
+  \item Medical MLLMs (Lingshu-7B, HuatuoGPT-Vision-7B~\cite{huatuo}) pass hundreds to thousands
+        of visual tokens to the LLM; prefill dominates inference cost on clinical hardware.
+  \item The standard remedy is training-free visual token pruning. The dominant family ranks
+        tokens by the LLM's own text-to-visual attention: FastV~\cite{fastv} (prunes at layer
+        $K{=}2$), PDrop~\cite{pdrop}.
+  \item FastV assumes \emph{high attention $\Rightarrow$ important token}, validated only on
+        natural images at ${\sim}50\%$ retention. On medical images this assumption fails
+        badly enough to fall below chance, and no work explains why.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section*{2\quad Evidence (published results)}
+\begin{center}\small
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Backbone & Benchmark (modality) & Full & Random & FastV & $\Delta$ \\
+\midrule
+Lingshu-7B  & OmniMedVQA (multi-modality)       & 80.62 & 38.69 & 32.26 & $\mathbf{-6.43}$  \\
+            & SLAKE (CT/MRI/X-ray)              & 83.92 & 56.93 & 55.01 & $-1.92$           \\
+            & RadImageNet-VQA, closed (CT/MRI)  & 89.40 & 55.59 & 37.50 & $\mathbf{-18.09}$ \\
+            & RadImageNet-VQA, open (CT/MRI)    & 70.25 & 43.05 & 28.70 & $\mathbf{-14.35}$ \\
+\midrule
+Qwen3-VL-8B & OmniMedVQA (multi-modality)       & 68.16 & 49.92 & 51.49 & $+1.57$           \\
+            & SLAKE (CT/MRI/X-ray)              & 80.08 & 49.25 & 66.92 & $+17.67$          \\
+            & RadImageNet-VQA, closed (CT/MRI)  & 89.70 & 64.32 & 52.10 & $\mathbf{-12.22}$ \\
+            & RadImageNet-VQA, open (CT/MRI)    & 73.65 & 47.05 & 37.70 & $\mathbf{-9.35}$  \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+{\footnotesize From MedSTP~\cite{medstp}, 10\% of visual tokens kept. $\Delta=$ FastV $-$ Random.
+Bold: FastV significantly below Random ($|\Delta|>2\,\mathrm{SE}$, from the reported bootstrap SEs).}
+\end{center}
+
+\begin{itemize}
+  \item \textbf{Mild pruning too.} ViToS~\cite{vitos} (ICML'26), 80\% kept: FastV is the lowest
+        of four training-free pruners on Lingshu-7B (avg.\ 60.3 vs.\ 62.9--63.3; full 63.7) and
+        HuatuoGPT-Vision-7B (55.3 vs.\ 55.5--56.8; full 56.8). On OmniMedVQA it alone loses
+        3.8 points; VisionZip, VScan and PDrop lose $\le 0.3$.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section*{3\quad What prior work shows (natural images only)}
+\begin{itemize}
+  \item \textbf{Positional bias}~\cite{feather} (ICCV'25): early-layer attention keeps the bottom
+        of the image (mean kept position 80.7\% down); on localization FastV scores 5.9 vs.\ 28.0
+        for uniform sampling (unpruned 53.2). Attributed to 1D-RoPE decay.
+  \item \textbf{Padding/sink inflation}~\cite{pore}: attention favors late and semantically
+        empty (padding) tokens.
+  \item \textbf{Random parity at depth}~\cite{randtok}: in deep layers pruning $\approx$ random,
+        attributed to vanishing visual information.
+  \item \textbf{Artifact tokens}~\cite{registers,ttreg}: ViTs create high-norm tokens on uniform
+        background patches that absorb attention; removable at test time.
+  \item \textbf{Benchmarks too easy}~\cite{vtcbench}: plain downsampling beats many compression
+        methods.
+\end{itemize}
+\textbf{Not covered:} medical images; failure on ordinary VQA (not localization); M-RoPE
+backbones (Qwen2.5/3-VL, the base of Lingshu); acquisition background as the trigger. Medical
+methods propose new scorers or trained policies without diagnosing the failure
+(MedSTP~\cite{medstp}, ViToS~\cite{vitos}).
+
+% ------------------------------------------------------------------
+\section*{4\quad What the published numbers already tell us}
+\emph{Re-analysis of \S2; no experiments of ours yet.}
+\begin{enumerate}[label=\textbf{D\arabic*}]
+  \item \textbf{Worse than chance.} FastV is significantly below Random in 5/8 cells (by
+        6.4--18.1 points); 2 ties, 1 above.
+  \item \textbf{Modality-dependent.} Only RadImageNet-VQA (CT/MRI only) is below Random on
+        \emph{both} backbones, with the largest gaps; multi-modality sets are inconsistent.
+  \item \textbf{Not an extreme-budget artifact.} The FastV-specific loss is already visible at
+        80\% kept.
+  \item \textbf{Unexplained by prior accounts.} \cite{feather} covers 1D RoPE and localization;
+        here the backbones use M-RoPE and the task is ordinary VQA. \cite{randtok} covers deep
+        layers; FastV prunes at layer 2. PDrop (attention-based, multi-stage, later layers)
+        loses 0.4 on Lingshu-7B vs.\ 3.4 for FastV, suggesting the weak point is \emph{early
+        single-shot} attention.
+\end{enumerate}
+
+% ------------------------------------------------------------------
+\section*{5\quad Hypotheses (each falsifiable)}
+\begin{center}\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright}X>{\raggedright}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+   & Mechanism & Prediction & Rejected if \\
+\midrule
+H1 & \textbf{Background capture.} Air in CT/MRI behaves like padding; layer-2 attention
+     over-selects it.
+   & Background share of FastV-kept tokens $>$ image background share ($=$ Random's). The
+     Random$-$FastV gap grows with background fraction: CT/MRI $>$ X-ray $>$ fundus $>$
+     derm./path.\ $\approx 0$.
+   & FastV background retention $\le$ Random's. \\
+\addlinespace
+H2 & \textbf{Positional bias under M-RoPE.} Kept positions skew to non-anatomical regions.
+   & Pattern differs between 1D-RoPE (HuatuoGPT-Vision) and M-RoPE (Lingshu); gap shrinks
+     as $K{:}\ 2\!\to\!8\!\to\!16$.
+   & Kept positions uniform ($\chi^2$ n.s.). \\
+\addlinespace
+H3 & \textbf{Artifact sinks.} High-norm visual tokens on uniform background attract the
+     scoring attention.
+   & Such tokens are selected far above their base rate.
+   & Selected at base rate. \\
+\addlinespace
+H4 & \textbf{Small evidence} (residual).
+   & After removing H1--H3, loss grows as evidence area shrinks (SLAKE organ masks).
+   & Flat across evidence-size strata. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ------------------------------------------------------------------
+\section*{6\quad Proposed fix: Foreground Gate (training-free, zero parameters)}
+Body mask $M=\mathrm{Dilate}\big(\mathrm{FillHoles}(\mathrm{LCC}(\mathrm{Otsu}(x)))\big)$: the
+largest connected component drops the scanner table; hole filling keeps the lungs, which are
+as dark as outside air. Let $m_i\in[0,1]$ be the fraction of token $i$'s patch inside $M$, and
+$s_i$ any base score (e.g.\ FastV attention at layer $K$). With budget $k=\lfloor\rho N\rfloor$:
+\[
+\tilde s_i=\begin{cases} s_i, & m_i\ge\tau\\ -\infty, & \text{otherwise}\end{cases}
+\qquad
+\mathcal{K}=\operatorname{TopK}_k(\tilde s)
+\]
+(if fewer than $k$ tokens pass the gate, the remainder is filled uniformly).
+\begin{itemize}
+  \item \textbf{Gate-score} (diagnostic): mask scores at layer $K$; only the selection changes
+        $\Rightarrow$ causal test of H1.
+  \item \textbf{Gate-input} (deployment): drop background before the LLM; air removal is free
+        compression.
+  \item Composes with any scorer (FastV, PDrop, DivPrune, Uniform). \textbf{Gate+Uniform} is the
+        simplest possible method; matching MedSTP with it would be the headline.
+  \item No-op on modalities without background (pathology, dermoscopy) $\Rightarrow$ built-in
+        negative control.
+  \item \textbf{The ablation identifies the cause:} Gate vs.\ RoPE-free scoring~\cite{feather}
+        vs.\ artifact exclusion~\cite{ttreg} vs.\ all combined.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section*{7\quad Plan (inference only, $\approx$40 T4-hours on Kaggle)}
+\begin{itemize}
+  \item \textbf{Models:} Lingshu-7B (M-RoPE) and HuatuoGPT-Vision-7B (1D RoPE), a free
+        positional-encoding contrast for H2. Qwen2.5-VL-7B on GQA/POPE as the natural-image
+        control.
+  \item \textbf{Data:} SLAKE (CT/MRI/X-ray, organ masks), VQA-RAD, OmniMedVQA low-background
+        subset (negative control).
+  \item \textbf{Baselines:} Full, text-only, Random (3 seeds), Uniform, FastV,
+        RoPE-free~\cite{feather}, VisionZip~\cite{visionzip}, DivPrune~\cite{divprune},
+        PDrop~\cite{pdrop}; MedSTP quoted from its paper.
+  \item \textbf{Metrics:} accuracy on all questions and on the image-dependent subset (full model
+        correct, text-only wrong); background and evidence retention; kept-position
+        distribution; paired bootstrap CIs and McNemar tests. Kept-token indices are logged, so
+        all diagnostics run offline.
+  \item \textbf{Timeline:} 2 Nov kill test (SLAKE, 10\%) $\cdot$ 3--9 Nov full grid, diagnostics,
+        ablations $\cdot$ 10 Nov abstract registration (deadline 11 Nov).
+  \item \textbf{Kill criteria:} (K1) FastV $\ge$ Random on SLAKE CT/MRI in our pipeline
+        $\Rightarrow$ stop. (K2) FastV background retention $\le$ Random's $\Rightarrow$ H1
+        rejected; test H2/H3. (K3) RoPE-free scoring alone $\ge$ Gate $\Rightarrow$ reframe
+        around position.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\begingroup\small
+\begin{thebibliography}{99}
+\setlength{\itemsep}{0pt}
+\bibitem{fastv} L.~Chen et al. An image is worth 1/2 tokens after layer 2: Plug-and-play
+  inference acceleration for large vision-language models. ECCV 2024. arXiv:2403.06764.
+\bibitem{medstp} M.~Fan et al. MedSTP: Preserving subspace and transition evidence for medical
+  VQA token pruning. arXiv:2610.22751, 2026.
+\bibitem{vitos} K.~Chen et al. Token-sparse medical multimodal reasoning via dual-stream
+  reinforcement learning. ICML 2026. arXiv:2606.31599.
+\bibitem{feather} M.~Endo et al. Feather the throttle: Revisiting visual token pruning for
+  vision-language model acceleration. ICCV 2025.
+\bibitem{pore} Attention debiasing for token pruning in vision language models.
+  arXiv:2508.17807, 2025.
+\bibitem{randtok} Y.~Wang et al. When token pruning is worse than random: Understanding visual token
+  information in VLLMs. arXiv:2512.07580, 2025.
+\bibitem{registers} T.~Darcet, M.~Oquab, J.~Mairal, P.~Bojanowski. Vision transformers need
+  registers. ICLR 2024.
+\bibitem{ttreg} N.~Jiang et al. Vision transformers don't need trained registers.
+  arXiv:2506.08010, 2025.
+\bibitem{vtcbench} Are we using the right benchmark: An evaluation framework for visual token
+  compression methods. ACL 2026. arXiv:2510.07143.
+\bibitem{pdrop} L.~Xing et al. PyramidDrop: Accelerating your large vision-language models via
+  pyramid visual redundancy reduction. CVPR 2025.
+\bibitem{visionzip} S.~Yang et al. VisionZip: Longer is better but not necessary in vision
+  language models. CVPR 2025.
+\bibitem{divprune} S.~R.~Alvar et al. DivPrune: Diversity-based visual token pruning for large
+  multimodal models. CVPR 2025.
+\bibitem{huatuo} J.~Chen et al. HuatuoGPT-Vision: Towards injecting medical visual knowledge
+  into multimodal LLMs at scale. arXiv:2406.19280, 2024.
+\end{thebibliography}
+\endgroup
+
+\end{document}

@@ -1,0 +1,36 @@
+# Runtime outputs and data never go to git
+results/
+data/
+medprune-data/
+*.npz
+*.parquet
+*.zip
+
+# Read-only reference repositories (clone commands in plan.md, Appendix)
+third_party/
+
+# Separate retina/compression experiments (contain datasets and checkpoints; not part of this repo)
+research/
+scripts/retina_microprobe.py
+
+# Python and notebooks
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# LaTeX build artefacts
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

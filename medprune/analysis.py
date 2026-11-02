@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 from .masks import MaskStore
+from .scoring import judge_open
 from .stats import (background_retention_ratio, cluster_bootstrap_ci, jaccard, keep_map, mcnemar_exact,
                     paired_delta_ci, quadrant_concentration)
 
@@ -55,7 +56,20 @@ def load_runs(results: Path, profile: str | None = None) -> pd.DataFrame:
     if df.empty:
         return df
     df["modality_group"] = df["modality"].map(modality_group)
-    return add_image_dependent(df)
+    return add_image_dependent(rescore_open(df))
+
+
+def rescore_open(df: pd.DataFrame) -> pd.DataFrame:
+    """Re-judge open questions from the saved responses, so a scoring change never needs a GPU rerun."""
+    if "response" not in df or "answer_type" not in df:
+        return df
+    is_open = df["answer_type"] == "open"
+    if is_open.any():
+        judged = [judge_open(a, r) for a, r in zip(df.loc[is_open, "answer"], df.loc[is_open, "response"].fillna(""))]
+        df.loc[is_open, "correct"] = [j[0] for j in judged]
+        df.loc[is_open, "open_recall"] = [j[1] for j in judged]
+        df["correct"] = df["correct"].astype(bool)
+    return df
 
 
 def add_image_dependent(df: pd.DataFrame) -> pd.DataFrame:

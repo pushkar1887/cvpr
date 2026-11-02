@@ -1,5 +1,5 @@
 from medprune.data import Sample, make_prompt
-from medprune.scoring import extract_boxed_content, is_correct, judge_closed, judge_mc, judge_open, judge_yesno
+from medprune.scoring import extract_boxed_content, is_correct, judge_closed, judge_mc, judge_open, judge_open_strict, judge_yesno
 
 
 def sample(**kw) -> Sample:
@@ -38,7 +38,11 @@ def test_closed_judge_is_exact_after_stripping_periods():
 def test_open_judge_is_exact_match_with_recall():
     assert judge_open("left lung", "Left lung") == (True, 1.0)
     assert judge_open("left lung", "lung") == (False, 0.5)
-    assert judge_open("liver", "liver.")[0] is False  # MedEvalKit does not strip punctuation for open questions
+    assert judge_open("liver", "Liver.")[0] is True  # normalized: Lingshu ends answers with a period
+    assert judge_open("lung cancer", "The lung cancer")[0] is True
+    assert judge_open("肝脏", "肝脏。")[0] is True
+    assert judge_open("left lung, right", "Left Lung, Right.")[0] is True
+    assert judge_open_strict("liver", "liver.") is False  # MedEvalKit's fallback exact match
 
 
 def test_multiple_choice_judge():

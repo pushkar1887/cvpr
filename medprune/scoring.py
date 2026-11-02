@@ -1,13 +1,18 @@
-"""Answer correctness, identical to MedEvalKit (third_party/MedEvalKit/utils/utils.py L95-226).
+"""Answer correctness, ported from MedEvalKit (third_party/MedEvalKit/utils/utils.py L95-226), except open questions.
 
-Ported line by line on purpose, including MedEvalKit's quirks (e.g. the yes/no check is a substring test, open
-questions use exact match without stripping punctuation), so our Full accuracy is comparable to published Lingshu
-and MedSTP numbers. Token recall for open questions is computed cleanly as a secondary metric.
+Yes/no, closed and multiple-choice judges are ported line by line, quirks included (the yes/no check is a substring
+test). Open questions differ on purpose: MedEvalKit's published numbers (Lingshu, MedSTP) score them with a GPT-4.1
+judge (eval.sh: USE_LLM_JUDGE="True"); its fallback is strict exact match, under which Lingshu's habitual trailing
+period ("CT." vs "CT") counts as wrong (E0: 38% Full on slake_en). We use normalized exact match (case, punctuation,
+articles, whitespace) as the primary open metric and keep strict exact match and token recall as secondary ones.
+All claims are paired comparisons inside this pipeline, so absolute agreement with published numbers is not needed.
 """
 
 from __future__ import annotations
 
 import difflib
+import re
+import string
 from typing import Sequence
 
 from .data import Sample
@@ -75,14 +80,26 @@ def judge_closed(answer: str, response: str) -> bool:
     return response == answer
 
 
+_PUNCT = re.compile("[" + re.escape(string.punctuation) + "　-〿！-／：-＠]")
+_ARTICLES = re.compile(r"\b(a|an|the)\b")
+
+
+def normalize_answer(text: str) -> str:
+    """Lowercase, drop ASCII and CJK punctuation and English articles, collapse whitespace."""
+    text = _PUNCT.sub(" ", text.lower())
+    return " ".join(_ARTICLES.sub(" ", text).split())
+
+
 def judge_open(answer: str, response: str) -> tuple[bool, float]:
-    """(exact match, token recall). Exact match is MedEvalKit's correctness for open questions."""
-    answer = answer.lower()
-    response = parse_response(response)
-    exact = response == answer
-    gt_tokens, pred_tokens = set(answer.split()), set(response.split())
+    """(normalized exact match, token recall). Strict MedEvalKit exact match: `judge_open_strict`."""
+    gold, pred = normalize_answer(answer), normalize_answer(parse_response(response))
+    gt_tokens, pred_tokens = set(gold.split()), set(pred.split())
     recall = len(gt_tokens & pred_tokens) / len(gt_tokens) if gt_tokens else 0.0
-    return exact, recall
+    return pred == gold, recall
+
+
+def judge_open_strict(answer: str, response: str) -> bool:
+    return parse_response(response) == answer.lower()
 
 
 def _most_similar_index(options: Sequence[str], target: str) -> int:

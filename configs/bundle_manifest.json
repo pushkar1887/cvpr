@@ -1,0 +1,183 @@
+{
+  "built": "2026-11-02T11:44:24+00:00",
+  "datasets": {
+    "natural": {
+      "questions": 1000,
+      "images": 603,
+      "by_modality": {
+        "natural": 1000
+      },
+      "by_answer_type": {
+        "closed": 500,
+        "yesno": 500
+      },
+      "sha256": "032b55660ad4001a0abb748e06f60172b17a43849d1e0b4b732be1eae70cae97",
+      "median_background_fraction": {
+        "huatuo7b": {
+          "natural": 0.333
+        },
+        "lingshu7b": {
+          "natural": 0.0
+        },
+        "qwen3vl8b": {
+          "natural": 0.0
+        }
+      }
+    },
+    "omni_anat": {
+      "questions": 3329,
+      "images": 3326,
+      "by_modality": {
+        "Microscopy": 422,
+        "X-Ray": 665,
+        "CT": 68,
+        "Dermoscopy": 47,
+        "Fundus": 87,
+        "Ultrasound": 2040
+      },
+      "by_answer_type": {
+        "mc": 3329
+      },
+      "sha256": "08a99799e0fd695d9cc64c9ee28d9757df1cc76f6a2c67b0326dc6e7b80f76d1",
+      "median_background_fraction": {
+        "huatuo7b": {
+          "Microscopy": 0.25,
+          "X-Ray": 0.25,
+          "CT": 0.25,
+          "Dermoscopy": 0.25,
+          "Fundus": 0.0,
+          "Ultrasound": 0.474
+        },
+        "lingshu7b": {
+          "Microscopy": 0.0,
+          "X-Ray": 0.0,
+          "CT": 0.0,
+          "Dermoscopy": 0.0,
+          "Fundus": 0.0,
+          "Ultrasound": 0.328
+        },
+        "qwen3vl8b": {
+          "Microscopy": 0.0,
+          "X-Ray": 0.0,
+          "CT": 0.0,
+          "Dermoscopy": 0.0,
+          "Fundus": 0.0,
+          "Ultrasound": 0.328
+        }
+      }
+    },
+    "omni_panel": {
+      "questions": 1200,
+      "images": 1198,
+      "by_modality": {
+        "CT": 150,
+        "MRI": 150,
+        "X-Ray": 150,
+        "Ultrasound": 150,
+        "OCT": 150,
+        "Fundus": 150,
+        "Dermoscopy": 150,
+        "Microscopy": 150
+      },
+      "by_answer_type": {
+        "mc": 1200
+      },
+      "sha256": "d1c027d1c9a33c80d2b1826cbc5b6d0af687e802c67228d66b7d253ead3caa44",
+      "median_background_fraction": {
+        "huatuo7b": {
+          "CT": 0.446,
+          "MRI": 0.407,
+          "X-Ray": 0.167,
+          "Ultrasound": 0.459,
+          "OCT": 0.635,
+          "Fundus": 0.266,
+          "Dermoscopy": 0.25,
+          "Microscopy": 0.0
+        },
+        "lingshu7b": {
+          "CT": 0.305,
+          "MRI": 0.266,
+          "X-Ray": 0.0,
+          "Ultrasound": 0.328,
+          "OCT": 0.535,
+          "Fundus": 0.172,
+          "Dermoscopy": 0.0,
+          "Microscopy": 0.0
+        },
+        "qwen3vl8b": {
+          "CT": 0.297,
+          "MRI": 0.266,
+          "X-Ray": 0.0,
+          "Ultrasound": 0.328,
+          "OCT": 0.523,
+          "Fundus": 0.165,
+          "Dermoscopy": 0.0,
+          "Microscopy": 0.0
+        }
+      }
+    },
+    "slake_en": {
+      "questions": 1061,
+      "images": 96,
+      "by_modality": {
+        "CT": 472,
+        "X-Ray": 361,
+        "MRI": 228
+      },
+      "by_answer_type": {
+        "open": 645,
+        "closed": 416
+      },
+      "sha256": "379f075d7317eb344364e1799b29c528ed63dc6e0a40634e675b8e1bc800c809",
+      "median_background_fraction": {
+        "huatuo7b": {
+          "CT": 0.682,
+          "X-Ray": 0.0,
+          "MRI": 0.652
+        },
+        "lingshu7b": {
+          "CT": 0.664,
+          "X-Ray": 0.0,
+          "MRI": 0.568
+        },
+        "qwen3vl8b": {
+          "CT": 0.674,
+          "X-Ray": 0.0,
+          "MRI": 0.531
+        }
+      }
+    },
+    "slake_zh": {
+      "questions": 1033,
+      "images": 96,
+      "by_modality": {
+        "MRI": 261,
+        "CT": 393,
+        "X-Ray": 379
+      },
+      "by_answer_type": {
+        "open": 613,
+        "closed": 420
+      },
+      "sha256": "3f861990a09503fbbfba9199fa1d3096a07be26de71a38e0fab00ee0d8ba0423",
+      "median_background_fraction": {
+        "huatuo7b": {
+          "MRI": 0.677,
+          "CT": 0.616,
+          "X-Ray": 0.0
+        },
+        "lingshu7b": {
+          "MRI": 0.593,
+          "CT": 0.582,
+          "X-Ray": 0.0
+        },
+        "qwen3vl8b": {
+          "MRI": 0.578,
+          "CT": 0.572,
+          "X-Ray": 0.0
+        }
+      }
+    }
+  },
+  "git": "3188c2fa0b5b2215ed3bfbb83063e7dfa981776c"
+}

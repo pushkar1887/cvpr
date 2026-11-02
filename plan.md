@@ -866,7 +866,9 @@ option's letter from the given choices directly.` · Yes/no (RadImageNet abnorma
 or 'no'(no extra output).` · GQA: close-ended prompt. Chinese variants from the same file for SLAKE-zh.
 
 **C1.2 Correctness.** Yes/no: exactly one of yes/no present and equal to the answer. Other closed: exact match after
-lowercasing and stripping newlines/periods. Open: exact match (primary, MedEvalKit's "right"), token recall
+lowercasing and stripping newlines/periods. Open: **normalized** exact match (case, ASCII/CJK punctuation, articles,
+whitespace; revised 2026-11-02 — MedEvalKit's published numbers use a GPT-4.1 judge, and its strict-EM fallback scores
+Lingshu's "CT." as wrong), with strict EM and token recall
 (secondary). Multiple choice: letter, choice text, or difflib nearest choice. All after `parse_response`.
 
 ## C2. Data
@@ -1525,3 +1527,19 @@ run IDs, counts, accuracies with CIs. Template:
   the v1 bundles. E0 does not read the gate, so the revision does not invalidate it; bundles are being rebuilt with the
   new masks before E1.
 - Next: collect E0 reports; commit `configs/bundle_manifest.json` from the rebuilt bundle; Stage 4 (E1) on A.
+
+### 2026-11-02 — Claude — Stage 3 — E0 results, open-question scoring fix
+- E0 (`LIMIT = 50`, `slake_en`, T4×2 fp16, git `834bda2`) passed on both models: E0b fp16 50/50 identical with finite
+  logits; E0c logging inert 50/50; E0d offline keep-sets 50/50. Full-model time 1.00 s/q (Lingshu, 18×18 = 324 visual
+  tokens) and 0.85 s/q (Qwen3-VL, 16×16 = 256). E0f timing reported "not available" (to fix with T4).
+- [FLAG fixed] Lingshu Full scored 38% under the ported strict exact match: it ends answers with a period ("CT."). The
+  published Lingshu/MedSTP numbers come from MedEvalKit's GPT-4.1 judge (`eval.sh` sets `USE_LLM_JUDGE="True"`).
+  Open questions now use normalized exact match; `analysis.load_runs` re-judges open answers from the saved responses
+  (`rescore_open`), so scoring changes never need a GPU rerun. Rescored E0: Lingshu 82% (open 76%, closed 90%; paper
+  ≈ 83%), Qwen3-VL 84%. 72 CPU tests pass.
+- Rebuilt bundles (git `3188c2f`, new gate) on A and B; `configs/bundle_manifest.json` committed. Full gate rates
+  (Lingshu view, share of images gated / median background): SLAKE CT 100%/0.66, MRI 100%/0.57, X-ray 0%;
+  omni_panel CT 93%, MRI 85%, ultrasound 95%, OCT 63%, fundus 56%, X-ray 16%, dermoscopy 13% (all checked:
+  dermatoscope discs with a black surround — real background), microscopy 7%; omni_anat CT 15% (COVID-CT lung-window
+  crops with a grey surround or no surround — known limitation).
+- Blocker for E1: RadImageNet-VQA needs the `cvpr` secret, which API-pushed notebooks do not receive.

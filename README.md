@@ -79,9 +79,9 @@ Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and unif
 **[plan.md](plan.md)** is the single plan: stage tracker (Stages 0–8 with checkboxes and exit gates), research,
 protocol, code design and compute backends. Predictions are pre-registered in plan.md §A6 (2026-11-02).
 
-Status (Nov 2): **Stages 0 and 1 done** — Kaggle accounts and secrets set; the `medprune` package and 62 CPU tests
-pass, including the proof that masking dropped keys equals deleting the tokens. Next: Stage 2 (data bundle). No GPU run
-yet.
+Status (Nov 2): **Stages 0 and 1 done; tasks T1–T3 done** — the `medprune` package, the Stage 3 checks, the Stage 4
+analysis and all three notebooks exist; 69 CPU tests pass, including the proof that masking dropped keys equals
+deleting the tokens. Next: run `notebooks/00_build_data_bundle.ipynb` on Kaggle (Stage 2). No GPU run yet.
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
 then read the Work log at the end of plan.md and add an entry when you finish.
@@ -101,9 +101,9 @@ cvpr/
 ├── scripts/setup_env.sh    identical setup on Kaggle and SSH; prints the compute profile
 ├── configs/runs.yaml       the run matrix (every experiment's runs); bundle_manifest.json added at Stage 2
 ├── medprune/               the package: env, data, masks, selection, attention_hook, models, scoring, stats,
-│                           run_eval (huatuo_llava follows at Stage 7)
-├── notebooks/              00 data bundle, 01 GPU runs, 02 analysis                         [Stages 2, 3, 8]
-├── tests/                  61 CPU tests incl. the masking ≡ token-removal proof (`pytest -q`)
+│                           run_eval, checks, analysis (huatuo_llava follows at Stage 7)
+├── notebooks/              00 data bundle (Kaggle CPU), 01 GPU runs (Kaggle), 02 analysis (laptop)
+├── tests/                  69 CPU tests incl. the masking ≡ token-removal proof (`pytest -q`)
 ├── results/                runtime output (git-ignored)
 └── third_party/            FastV, MedEvalKit, HuatuoGPT-Vision references (git-ignored)
 ```

@@ -51,7 +51,8 @@ class QwenVLAdapter:
         self.merge = image_processor.merge_size
 
         cls = Qwen2_5_VLForConditionalGeneration if model == "lingshu7b" else Qwen3VLForConditionalGeneration
-        self.model = cls.from_pretrained(self.repo, revision=revision, dtype=torch_dtype(profile),
+        self.dtype = torch_dtype(profile)
+        self.model = cls.from_pretrained(self.repo, revision=revision, dtype=self.dtype,
                                          device_map=profile.device_map, max_memory=profile.max_memory,
                                          attn_implementation="sdpa").eval()
         self.base = self.model.model
@@ -117,6 +118,15 @@ class QwenVLAdapter:
                                   use_cache=True, temperature=None, top_p=None, top_k=None)
         new = out[0, inputs.input_len:]
         return self.processor.decode(new, skip_special_tokens=True), int(new.numel())
+
+    def set_vision_fp32(self, enabled: bool) -> None:
+        """Run the vision tower in fp32 (Stage 3 fp16 check); embeddings are cast back to the LLM dtype."""
+        self.base.visual.to(torch.float32 if enabled else self.dtype)
+
+    @torch.inference_mode()
+    def last_logits(self, inputs: PreparedInputs) -> np.ndarray:
+        """Next-token logits after the prompt (Stage 3: are they finite in fp16?)."""
+        return self.model(**inputs.model_kwargs, use_cache=False).logits[0, -1].float().cpu().numpy()
 
     @torch.inference_mode()
     def score_pass(self, inputs: PreparedInputs) -> None:

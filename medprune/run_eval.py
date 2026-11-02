@@ -12,8 +12,10 @@ reused by E3). Each run appends one JSON line per question and resumes where it 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import platform
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -204,7 +206,9 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
 
 def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit: int | None = None,
             max_new_tokens: int = 64, strict_masks: bool = True) -> dict:
-    """Run (or resume) one run. `strict_masks=False` only for --dry-run: missing gates become all-foreground."""
+    """Run (or resume) one run. `strict_masks=False` only for --dry-run: missing gates become all-foreground,
+    and the check that the pruning hook actually fires is skipped (the fake adapter has no attention)."""
+    from . import attention_hook as hook
     from .attention_hook import PruneState, pruning
 
     method = METHODS[spec.method]
@@ -222,6 +226,10 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
         if strict_masks and not gate_path.exists():
             raise FileNotFoundError(f"{gate_path} missing: run `python -m medprune.data masks --bundle {bundle}`")
         gates = MaskStore.load(gate_path) if gate_path.exists() else None
+        gates_copy = out / "gates" / gate_path.name  # analysis reads gates from results (RadImageNet's bundle is session-only)
+        if gate_path.exists() and not gates_copy.exists():
+            gates_copy.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(gate_path, gates_copy)
         oracle_path = bundle / "masks" / f"{spec.dataset}__{spec.model}__oracle.npz"
         oracle = MaskStore.load(oracle_path) if oracle_path.exists() else None
     static_path = out / "static_maps" / f"{spec.model}__for_{spec.dataset}.npy"
@@ -271,8 +279,11 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
                 state = PruneState(vis_pos=inputs.vis_pos)
                 state.apply_keep(scored.keep, method.mask_from)
                 state.logs = scored.logs
+            calls_before = hook.CALLS["decoder"]
             with pruning(state):
                 response, n_new = adapter.generate(inputs, max_new_tokens)
+            if strict_masks and state is not None and not elapsed and hook.CALLS["decoder"] == calls_before:
+                raise RuntimeError("the pruning attention was never called: it is not installed on the text decoder")
             correct, recall = is_correct(s, response)
             dt = time.perf_counter() - t0
             elapsed.append(dt)
@@ -302,7 +313,8 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
 
 
 class FakeAdapter:
-    """CPU stand-in for --dry-run: 4x4 visual tokens, emulates scoring stages with random scores."""
+    """CPU stand-in for --dry-run and tests: 4x4 visual tokens; emulates logging and scoring stages with scores that
+    depend only on (question, layer), as the real model's would."""
 
     repo = "fake"
     num_layers = 28
@@ -315,28 +327,53 @@ class FakeAdapter:
         from .models import PreparedInputs
 
         if image is None:
-            return PreparedInputs({}, torch.empty(0, dtype=torch.long), (0, 0), np.zeros((0, 2), int), 8)
+            return PreparedInputs({"qid": sample.qid}, torch.empty(0, dtype=torch.long), (0, 0), np.zeros((0, 2), int), 8)
         rc = np.array([(r, c) for r in range(4) for c in range(4)])
         return PreparedInputs({"qid": sample.qid}, torch.arange(10, 26), (4, 4), rc, 40)
 
-    def _run_stages(self, inputs) -> None:
-        from .attention_hook import ACTIVE
+    @staticmethod
+    def _scores(qid: str, layer, n: int) -> np.ndarray:
+        seed = int.from_bytes(hashlib.sha256(f"{qid}:{layer}".encode()).digest()[:8], "little")
+        return np.random.default_rng(seed).random(n)
 
-        if ACTIVE is None:
+    def _emulate(self, inputs) -> None:
+        from .attention_hook import ACTIVE, StopForward
+
+        state, qid = ACTIVE, inputs.model_kwargs.get("qid", "")
+        if state is None:
             return
-        rng = np.random.default_rng(len(inputs.model_kwargs.get("qid", "")))
-        for stage in ACTIVE.stages:
+        for layer in state.log_layers:
+            state.logs[f"scores_l{layer}"] = self._scores(qid, layer, state.n)
+        if state.log_layers:
+            state.logs["vit_norm"] = 1 + self._scores(qid, "vit", state.n)
+            state.logs["llm_norm_l1"] = 1 + self._scores(qid, "llm", state.n)
+        for stage in state.stages:
             if not stage.done:
-                ACTIVE.apply_keep(stage.select(rng.random(ACTIVE.n), ACTIVE.survivors()), stage.mask_from)
+                scores = self._scores(qid, stage.score_layer, state.n)
+                state.logs.setdefault(f"scores_{stage.score_kind}_l{stage.score_layer}", scores)
+                state.apply_keep(stage.select(scores, state.survivors()), stage.mask_from)
                 stage.done = True
+        if state.stop_after_scoring and state.stages and all(s.done for s in state.stages):
+            raise StopForward
 
     def score_pass(self, inputs) -> None:
-        self._run_stages(inputs)
+        from .attention_hook import StopForward
+
+        try:
+            self._emulate(inputs)
+        except StopForward:
+            pass
 
     def generate(self, inputs, max_new_tokens: int) -> tuple[str, int]:
-        self._run_stages(inputs)
+        self._emulate(inputs)
         qid = inputs.model_kwargs.get("qid", "")
         return ("yes" if len(qid) % 2 else "no"), 2
+
+    def set_vision_fp32(self, enabled: bool) -> None:
+        pass
+
+    def last_logits(self, inputs) -> np.ndarray:
+        return np.zeros(8, dtype=np.float32)
 
     def visual_embeddings(self, inputs) -> np.ndarray:
         return np.random.default_rng(0).normal(size=(len(inputs.vis_pos), 8))

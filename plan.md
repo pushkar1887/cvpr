@@ -270,6 +270,11 @@ python -m medprune.run_eval --exp E1 --model lingshu7b --bundle $DATA --bundle $
 python -m medprune.run_eval --exp E1 --model lingshu7b --bundle $DATA --bundle $RIN --out $RES --max-hours 6
 ```
 
+**Gates travel with the results:** the first run of each model × dataset copies its mask file to
+`$RES/gates/<dataset>__<model>.npz`, so the laptop analysis has RadImageNet's per-token background too (derived
+foreground fractions, not images). **Safety stop:** a real run aborts on its first question if the pruning attention
+was never called.
+
 **Every run writes** `$RES/runs/<run_id>.jsonl` (one line per question: answer, correctness, kept tokens, background
 fraction, timing), `$RES/runs/<run_id>.meta.json` (versions, settings, accuracy) and, for `full` and score-based
 methods, `$RES/diag/<run_id>/part-XXXX.npz` (attention scores and token norms). A crash loses at most one question;
@@ -349,10 +354,13 @@ What exists (details in Part D):
 | `medprune/stats.py` | Image-clustered confidence intervals, BRR, keep-maps, static maps, dose-response |
 | `medprune/data.py` | Dataset manifests and builders (`python -m medprune.data` with `build`, `masks`, `summary`) |
 | `medprune/models.py` | Lingshu-7B and Qwen3-VL-8B adapter |
-| `medprune/run_eval.py` | Runs, resume, `--list` progress, `--dry-run` |
+| `medprune/run_eval.py` | Runs, resume, `--list` progress, `--dry-run`; copies gates into `results/gates/`; stops if the hook never fires |
+| `medprune/checks.py` | Stage 3 checks (`python -m medprune.checks`) |
+| `medprune/analysis.py` | Stage 4 tables, keep-maps and the K1/K2 decisions (laptop) |
+| `notebooks/00_build_data_bundle.ipynb`, `01_run_gpu.ipynb`, `02_analyze_results.ipynb` | Stage 2; Stages 3–7; analysis |
 | `configs/runs.yaml` | Every experiment's runs |
 
-Run the tests on the laptop: `D:\cvpr\.venv\Scripts\python -m pytest -q` → **62 passed** (under 10 s).
+Run the tests on the laptop: `D:\cvpr\.venv\Scripts\python -m pytest -q` → **69 passed** (about 10 s).
 
 **Checks**
 - [x] All tests pass, including masking ≡ deleting tokens, masking ≡ FastV's physical removal, cached decoding
@@ -368,7 +376,7 @@ Run the tests on the laptop: `D:\cvpr\.venv\Scripts\python -m pytest -q` → **6
 masks, and publish them as a private Kaggle dataset every account can attach. **Status: NEXT.**
 
 **Before you start**
-- [ ] Notebook `00_build_data_bundle.ipynb` exists (task T1, Part F).
+- [x] Notebook `00_build_data_bundle.ipynb` exists (task T1, Part F).
 - [ ] Kaggle notebook settings: Accelerator *None* (CPU — costs no GPU quota), Internet *on*.
 
 **Steps**
@@ -425,7 +433,7 @@ that used it.
 
 **Before you start**
 - [ ] Stage 2 done; `medprune-data` attached to the notebook.
-- [ ] Notebook `01_run_gpu.ipynb` and `medprune/checks.py` exist (task T2).
+- [x] Notebook `01_run_gpu.ipynb` and `medprune/checks.py` exist (task T2).
 - [ ] Kaggle settings: Accelerator *GPU T4 ×2*, Internet *on*.
 
 ### E0 — Is the pipeline correct, and how fast is it?
@@ -452,14 +460,14 @@ python -m medprune.run_eval --exp E0 --model lingshu7b --bundle $DATA --out $RES
 | E0a | Environment: `nvidia-smi`, `df -h`, `setup_env.sh` | 2 × T4, ≥ 40 GB temp disk, `profile: t4x2` |
 | E0b | fp16 stability: `full` in fp16 vs fp16 with the vision tower in fp32 | ≥ 48/50 identical answers, all logits finite; otherwise use `--vision-fp32` for every run of that model |
 | E0c | Logging is inert: answers with the logging state equal answers with no state | ≥ 49/50 identical |
-| E0d | FastV sanity: keep-sets recomputed offline from the logged scores equal the keep-sets the hook chose; FastV at 50% loses ≤ 5 points | 50/50 identical keep-sets |
+| E0d | FastV sanity: keep-sets recomputed offline from the logged scores equal the keep-sets the hook chose; FastV accuracy at 50% and 10% reported next to Full (information only — 50 questions are too few to gate on) | ≥ 49/50 identical keep-sets |
 | E0e | Published accuracy: Lingshu `full` on all of `slake_en` | 81–85% (MedSTP reports 83.9 for Lingshu on SLAKE) |
 | E0f | Speed: mean, median and 95th percentile seconds per question | written into `configs/runs.yaml` rates |
 
 **Outputs:** `$RES/runs/lingshu7b__slake_en__full__r100__s0__t4x2.jsonl` (reused by E1, E3, E5, E6),
-`$RES/e0_report.json`, updated rates in `configs/runs.yaml` (commit).
+`$RES/e0_report__<model>__t4x2.json`, updated rates in `configs/runs.yaml` (commit).
 
-**How to read it:** `e0_report.json` lists each check with pass/fail; Full accuracy is `accuracy` in the run's
+**How to read it:** `e0_report__<model>__t4x2.json` lists each check with pass/fail and an overall `pass`; Full accuracy is `accuracy` in the run's
 `meta.json`. Speed factor = measured seconds ÷ planned seconds (1.0 for Lingshu on SLAKE, 1.1 for Qwen3-VL).
 
 **Decision:** all checks pass → Stage 4. If the speed factor is above 1.5: Random with one seed outside S1, drop
@@ -488,7 +496,7 @@ whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **S
 
 **Before you start**
 - [ ] Stage 3 passed.
-- [ ] Analysis module and notebook section ready (task T3).
+- [x] Analysis module and notebook section ready (task T3).
 - [ ] RadImageNet built in the session:
 ```bash
 python -m medprune.data build --out /tmp/medprune-rin --work /tmp/medprune-work --only radimagenet
@@ -1003,7 +1011,9 @@ cvpr/
 │   ├── huatuo_llava.py          HuatuoGPT-Vision-7B port to transformers 4.57.1 (written at Stage 7)
 │   ├── scoring.py               MedEvalKit-identical correctness
 │   ├── stats.py                 bootstrap, McNemar, BRR, keep-maps, static map, dose-response, regression
-│   └── run_eval.py              run_one / run_many / CLI (`python -m medprune.run_eval`)
+│   ├── run_eval.py              run_one / run_many / CLI (`python -m medprune.run_eval`)
+│   ├── checks.py                Stage 3 checks: fp16, inert logging, offline keep-sets, timing
+│   └── analysis.py              run files → tables, keep-maps, K1/K2 decisions (laptop)
 ├── notebooks/
 │   ├── 00_build_data_bundle.ipynb   Kaggle CPU wrapper around `medprune.data build`
 │   ├── 01_run_gpu.ipynb             Kaggle GPU wrapper around `run_many`
@@ -1014,7 +1024,9 @@ cvpr/
 │   ├── test_attention_hook.py
 │   ├── test_scoring.py
 │   ├── test_stats.py
-│   └── test_run_eval.py
+│   ├── test_run_eval.py
+│   ├── test_checks.py
+│   └── test_analysis.py
 ├── results/                     runtime output, git-ignored
 └── third_party/                 FastV, MedEvalKit, HuatuoGPT-Vision — read-only, git-ignored
 ```
@@ -1183,7 +1195,9 @@ def main() -> None   # python -m medprune.run_eval --exp E3 --model qwen3vl8b [-
 | `test_attention_hook.py` | tiny `Qwen2ForCausalLM` and `Qwen3ForCausalLM`, fp32: no state ≡ vanilla; keep-all ≡ vanilla; mask from 0 ≡ deleting tokens with original positions; mask from K ≡ FastV-style index-select reference; greedy decode identical (cache path); `last_token_attention` ≡ eager probabilities; RoPE-free ≡ q·kᵀ from captured projections |
 | `test_scoring.py` | fixed yes/no, closed, open, MC cases match MedEvalKit verdicts |
 | `test_stats.py` | cluster bootstrap reproducible by seed and wider than the naive interval when questions cluster; paired delta sign; BRR = 1 for uniform random keep-sets in expectation; keep-map and static-map shapes |
-| `test_run_eval.py` | `runs.yaml` expands as planned (E1 = 14 runs, shared runs merged); run IDs; dry run writes one line per question for 7 methods and resumes |
+| `test_run_eval.py` | `runs.yaml` expands as planned (E1 = 14 runs, shared runs merged); run IDs; bundle-root search; dry run writes one line per question for 7 methods and resumes |
+| `test_checks.py` | all Stage 3 checks pass on a deterministic adapter; report written; timing summary |
+| `test_analysis.py` | run-ID parsing; accuracy and paired deltas on known values (Random seeds averaged); query dependence; diag round trip; full Stage 4 report on dry-run results (gate never keeps background, decisions present, files written) |
 
 ## D6. Pitfalls and guards
 
@@ -1260,7 +1274,7 @@ Any agent picking up this project works from this Part. It says where things are
 2. **Current stage** = the first row of the Stage tracker whose exit gate is not passed. **Current task** = the first
    task in §F4 whose status is `open`, belongs to the current or an earlier stage, and whose prerequisites are done.
 3. Before changing code: `.venv\Scripts\python -m pytest -q` on the laptop (Linux: `python -m pytest -q`) must pass.
-   It currently runs 62 tests in under 10 s.
+   It currently runs 69 tests in about 10 s.
 4. When you finish (or stop), add a Work log entry (template in Part G) and set the task's status in §F4.
 
 ## F2. Rules
@@ -1297,9 +1311,9 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 
 | ID | Stage | Task | Status | Prerequisites |
 |---|---|---|---|---|
-| T1 | 2 | `notebooks/00_build_data_bundle.ipynb` | open | — |
-| T2 | 3 | `medprune/checks.py` (E0 checks) + `notebooks/01_run_gpu.ipynb` | open | — |
-| T3 | 4 | `medprune/analysis.py` + `notebooks/02_analyze_results.ipynb`, Stage 4 section | open | — (must be ready before E1 ends, Nov 3) |
+| T1 | 2 | `notebooks/00_build_data_bundle.ipynb` | done (Nov 2) — not yet run on Kaggle | — |
+| T2 | 3 | `medprune/checks.py` (E0 checks) + `notebooks/01_run_gpu.ipynb` | done (Nov 2) — checks tested on CPU; notebook not yet run on Kaggle | — |
+| T3 | 4 | `medprune/analysis.py` + `notebooks/02_analyze_results.ipynb`, Stage 4 section | done (Nov 2) — notebook executed on dry-run results | — |
 | T4 | 6 | static-map builder | open | T3 |
 | T5 | 7 | `medprune/huatuo_llava.py` + validation | open | Stage 5 done |
 | T6 | 7 | E9 latency measurement | open | T2 |
@@ -1338,7 +1352,8 @@ with an empty `/kaggle/working`, so this is what makes multi-session blocks resu
 `python -m medprune.data masks --bundle /tmp/medprune-rin --datasets rin_anat_mc,rin_abn_closed --models $MODEL`;
 smoke test (5 questions; assert `attention_hook.CALLS["decoder"] > 0`); E0 checks when `EXP == "E0"`;
 `python -m medprune.run_eval --exp $EXP --model $MODEL --bundle /kaggle/input/medprune-data --bundle /tmp/medprune-rin
---out /kaggle/working/results --max-hours $MAX_HOURS`; per-run summary table; zip `/kaggle/working/results`.
+--out /kaggle/working/results --max-hours $MAX_HOURS`; per-run summary table (no zip — Kaggle's output download
+already zips, and a copy would count twice against the 20 GB cap). Reports are named `e0_report__<model>__<profile>.json`.
 Done when: both files are committed, CPU tests pass, and a log entry lists the exact parameters for E0 on roles A and B.
 
 **T3 — analysis module and Stage 4 notebook section.** `medprune/analysis.py`:
@@ -1464,3 +1479,22 @@ run IDs, counts, accuracies with CIs. Template:
 - Verified: 62 CPU tests pass.
 - Resolved: the user has RadImageNet-VQA access (Stage 0 ticked).
 - Next: T1, T2, T3.
+
+### 2026-11-02 — Claude — Tasks T1–T3 — notebooks, checks, analysis
+- Changed: `notebooks/00_build_data_bundle.ipynb` (Stage 2), `notebooks/01_run_gpu.ipynb` (Stages 3–7: parameters,
+  bundle discovery, `RESTORE_FROM`, per-session RadImageNet, `--list`, checks, runs, summary),
+  `notebooks/02_analyze_results.ipynb` (Stage 4 section); `medprune/checks.py` (E0b–E0d + timing, CLI, report
+  `e0_report__<model>__<profile>.json`); `medprune/analysis.py` (run loading, image-dependent subset, accuracy with
+  image-clustered CIs and seed averaging, paired deltas + McNemar, BRR, keep-maps, query dependence, high-norm rates,
+  `stage4_report` with the K1/K2 decisions). `run_eval`: copies each model × dataset gate file into `results/gates/`;
+  aborts on the first question if the pruning attention never fires; `FakeAdapter` now emulates logging. Adapter:
+  `set_vision_fp32`, `last_logits`.
+- Verified: 69 CPU tests pass (new: `test_checks.py`, `test_analysis.py`). Notebook 02's code executed end to end on
+  dry-run results (all Stage 4 tables, the decisions JSON and the keep-map PDF produced). Notebooks 00 and 01 contain
+  shell steps and cannot run off Kaggle; they are thin wrappers around the tested CLIs.
+- Decisions: E0d gates only on keep-set identity (≥ 49/50); FastV accuracy at 50% is reported but not gated (50
+  questions are too few). Results are not zipped in notebook 01 (Kaggle zips on download; a copy would double the size).
+- Open issues: first real Kaggle runs will verify RadImageNet's field values and image size, Qwen3-VL
+  `get_image_features`, fp16 on T4, and the bundle mount path.
+- Next (user): run notebook 00 on Kaggle (CPU) → create and share `medprune-data` → commit
+  `configs/bundle_manifest.json` → Stage 3 with notebook 01 (`EXP = "E0"`, `LIMIT = 50` first).

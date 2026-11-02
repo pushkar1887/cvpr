@@ -155,6 +155,8 @@ def build_omnimedvqa(zip_path: Path, out_root: Path, panel_per_modality: int = 1
             raise FileNotFoundError("no QA_information/Open-access/*.json inside the zip")
         prefix = qa_files[0].split("QA_information/")[0]
         items = [item for n in qa_files for item in json.loads(zf.read(n))]
+        for it in items:  # one source file names the field "modality" on some rows
+            it.setdefault("modality_type", it.get("modality", "unknown"))
         raw_modalities = Counter(it["modality_type"] for it in items)
         print("OmniMedVQA open-access items:", len(items))
         print("modality_type values:", dict(raw_modalities))

@@ -12,7 +12,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from scipy import ndimage
-from skimage.filters import threshold_otsu
 from skimage.measure import label
 
 # Image views of each model (checked against the checkpoints' preprocessor configs, plan.md §C1).
@@ -22,12 +21,12 @@ MODEL_VIEWS: dict[str, dict] = {
     "huatuo7b": {"kind": "llava_pad", "cell": 14, "size": 336, "pad_rgb": (122, 116, 104)},  # CLIP mean x 255
 }
 
-BORDER_FRACTION = 0.05  # width of the border ring used to decide polarity
+BORDER_FRACTION = 0.05  # width of the border ring used to decide polarity and coverage
 MIN_COMPONENT_FRACTION = 0.10  # keep components at least this large relative to the largest
-MIN_CONTRAST = 0.15  # border-vs-centre contrast below this means "no background to remove"
-MIN_BORDER_BACKGROUND = 0.6  # at least this share of the border must fall on the background side
-MAX_BACKGROUND_FLATNESS = 0.5  # acquisition background is flat: std(background) <= this x std(foreground)
-MAX_BACKGROUND_OFFSET = 0.2  # ...and extreme: its median within this share of the range from the dark/bright end
+MIN_BORDER_BACKGROUND = 0.6  # at least this share of the border ring must be background, else the gate is a no-op
+MAX_BACKGROUND_OFFSET = 0.2  # background pixels lie within this share of the range from the dark/bright end
+DARK_BACKGROUND_MAX = 80  # ...and are absolutely dark (air, empty field) or bright (glass), in 0-255 luminance:
+BRIGHT_BACKGROUND_MIN = 225  # light skin in a low-contrast dermoscopy image is "the bright end" but sits at ~185-210
 
 
 def smart_resize(height: int, width: int, factor: int, min_pixels: int, max_pixels: int) -> tuple[int, int]:
@@ -74,9 +73,11 @@ def _luminance(img: np.ndarray) -> np.ndarray:
 def body_mask(img: np.ndarray, cell: int, pad_box: tuple[int, int, int, int] | None = None) -> np.ndarray:
     """Foreground (body/tissue) mask, [H, W] bool. Steps of plan.md §A5.
 
-    Returns all-True when the image has no acquisition background: low border/centre contrast, a border that is not
-    mostly background, or a "background" that is textured or mid-intensity (skin around a lesion, tissue in a crop).
-    This keeps the gate a no-op on dermoscopy, pathology crops and similar images.
+    Acquisition background is defined spatially: near-extreme pixels (black air, or a white slide)
+    connected to the image border. Dark structures enclosed by the body (lungs, bowel gas, fat) never touch the border and stay
+    foreground, however large the empty field around a small head or how much gas an abdomen holds.
+    Returns all-True when background does not cover most of the border ring (dermoscopy, pathology crops, a body
+    that fills the frame), so the gate is a no-op there.
     """
     y_full = _luminance(img)
     h, w = y_full.shape
@@ -87,30 +88,25 @@ def body_mask(img: np.ndarray, cell: int, pad_box: tuple[int, int, int, int] | N
 
     ch, cw = y.shape
     ring = max(1, round(BORDER_FRACTION * min(ch, cw)))
-    border = np.concatenate([y[:ring].ravel(), y[-ring:].ravel(), y[:, :ring].ravel(), y[:, -ring:].ravel()])
-    centre = y[ch // 4: ch - ch // 4, cw // 4: cw - cw // 4]
+    on_ring = np.zeros((ch, cw), dtype=bool)
+    on_ring[:ring], on_ring[-ring:], on_ring[:, :ring], on_ring[:, -ring:] = True, True, True, True
     lo, hi = np.percentile(y, [1, 99])
     if hi - lo < 1e-6:
         return full
-    contrast = abs(float(np.median(centre)) - float(np.median(border))) / float(hi - lo)
-    if contrast < MIN_CONTRAST:
+
+    dark_background = np.median(y[on_ring]) <= (lo + hi) / 2
+    margin = MAX_BACKGROUND_OFFSET * (hi - lo)
+    if dark_background:
+        extreme = y <= min(lo + margin, DARK_BACKGROUND_MAX)
+    else:
+        extreme = y >= max(hi - margin, BRIGHT_BACKGROUND_MIN)
+    labels = label(extreme, connectivity=1)
+    edge = np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]])
+    background = np.isin(labels, np.unique(edge[edge > 0]))
+    if background[on_ring].mean() < MIN_BORDER_BACKGROUND:
         return full
 
-    bright_foreground = np.median(centre) >= np.median(border)
-    t = threshold_otsu(y)
-    fg = y > t if bright_foreground else y < t
-    border_background = 1.0 - np.concatenate([fg[:ring].ravel(), fg[-ring:].ravel(),
-                                              fg[:, :ring].ravel(), fg[:, -ring:].ravel()]).mean()
-    if border_background < MIN_BORDER_BACKGROUND:
-        return full
-    bg_values, fg_values = y[~fg], y[fg]
-    if bg_values.size == 0 or fg_values.size == 0:
-        return full
-    flat = bg_values.std() <= MAX_BACKGROUND_FLATNESS * fg_values.std()
-    offset = (np.median(bg_values) - lo) if bright_foreground else (hi - np.median(bg_values))
-    if not flat or offset > MAX_BACKGROUND_OFFSET * (hi - lo):
-        return full
-
+    fg = ~background
     labels = label(fg, connectivity=2)
     if labels.max() > 0:
         sizes = np.bincount(labels.ravel())

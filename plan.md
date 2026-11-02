@@ -102,18 +102,23 @@ The 2×2 factorial {attention, RoPE-free} × {no gate, gate} separates H1 from H
 
 Mask on the exact image the model sees (after its resize; HuatuoGPT after `expand2square`):
 1. Luminance Y = 0.299R + 0.587G + 0.114B.
-2. Polarity: border-ring median vs central-crop median; foreground is the side unlike the border.
-3. Otsu threshold → F.
+2. Polarity: the border ring's median is on the dark or the bright half of the [1st, 99th]-percentile range.
+3. Background B = pixels within 20% of the range from that end **and** absolutely dark (Y ≤ 80) or bright (Y ≥ 225),
+   restricted to the 4-connected components that touch the image edge. Foreground F = not B.
 4. Keep components (8-connectivity) ≥ 10% of the largest → removes table, text, markers.
-5. Fill holes → keeps lungs, airway, bowel gas.
+5. Fill holes → keeps lungs, airway, bowel gas (they never touch the edge anyway).
 6. Dilate by one cell.
 7. Force known padding (HuatuoGPT) to background.
 8. m_i = mean of F over cell i; gate g_i = [m_i ≥ τ], τ = 0.5.
 
-Guard (no-op where there is no acquisition background): the mask is all-foreground when border/centre contrast is low,
-when less than 60% of the border falls on the background side, or when the "background" is not flat (std > 0.5 × the
-foreground's) or not extreme (median more than 20% of the intensity range from the dark/bright end). This keeps skin
-around a dermoscopy lesion or tissue in a pathology crop from being gated (unit-tested on synthetic images).
+Guard (no-op where there is no acquisition background): the mask is all-foreground when B covers less than 60% of the
+5% border ring — dermoscopy, pathology crops, X-rays whose body fills the frame.
+
+*Revision 2026-11-02 (before any GPU run).* The first version (Otsu + centre-vs-border contrast + background-flatness
+guard) left 48% of SLAKE CT and 65% of OmniMedVQA CT ungated: a small head in a large field has an all-air centre crop
+(contrast 0), and Otsu puts bowel gas and lung on the background side (not flat). The border-connected definition gates
+100% of SLAKE CT/MRI and 92% of OmniMedVQA CT. The absolute limits stop light skin in low-contrast dermoscopy (Y ≈
+185–210) from counting as bright background (dermoscopy 9% → 0% gated). Regression tests: `tests/test_masks.py`.
 
 Selection: score-based → top-k among g_i = 1, fill from best background if short; score-free → k evenly spaced (Gate+
 Uniform) or max–min diversity (Gate+DivPrune) among g_i = 1. **Budget fairness:** k = round(ρN), N counts all visual
@@ -1071,7 +1076,7 @@ def token_foreground_fraction(mask, cell) -> np.ndarray            # [Ht, Wt] in
 def background_fraction(fg_frac, tau=0.5) -> float
 def slake_oracle_mask(mask_png, label_values) -> np.ndarray
 ```
-Otsu `skimage.filters.threshold_otsu`; components `skimage.measure.label(connectivity=2)`; holes
+Edge-connected background `skimage.measure.label(connectivity=1)`; components `label(connectivity=2)`; holes
 `scipy.ndimage.binary_fill_holes`; dilation `binary_dilation` with a cell-sized square.
 
 **`selection.py`**
@@ -1498,3 +1503,25 @@ run IDs, counts, accuracies with CIs. Template:
   `get_image_features`, fp16 on T4, and the bundle mount path.
 - Next (user): run notebook 00 on Kaggle (CPU) → create and share `medprune-data` → commit
   `configs/bundle_manifest.json` → Stage 3 with notebook 01 (`EXP = "E0"`, `LIMIT = 50` first).
+
+### 2026-11-02 — Claude — Stage 2 — data bundle on Kaggle, gate revision, Stage 3 launched
+- Ran notebook 00 on `pushkarsiuuarora` (v1 crashed: one OmniMedVQA source names the field `modality`; v2 fixed in
+  `f8e78d9`), then on the role accounts. Counts: `slake_en` 1,061 (96 images), `slake_zh` 1,033 (96 images; only 12
+  shared with `slake_en`), `omni_panel` 1,200 (8 × 150), `natural` 1,000. `omni_anat`: open-access has **16,448**
+  Anatomy Identification questions (10,018 ultrasound), not 3,329 → seed-0 sample of 3,329 to match MedSTP's count and
+  the S3 budget (`834bda2`); report both numbers in the paper.
+- Accounts: A = `pushkararora88` (Lingshu), B = `pushkararora` (Qwen3-VL), C = `pushkarsiuuarora`. Keys live in
+  `~/.kaggle-accounts/account-{3,4}` and `~/.kaggle`; `riddhitaneja`'s key is revoked (401).
+- Decision: no shared dataset. Each role account builds its own bundle with notebook 00 (CPU, free) and notebook 01
+  takes that kernel's output as a same-owner `kernel_sources` input. Reason: `kaggle kernels output` lists only the
+  first 500 files, and private datasets cannot be shared across accounts through the API. Notebook 00 now asserts every
+  dataset was built and writes `meta.tar.gz` (manifests + masks + manifest JSON) for the laptop.
+- Gate revised before any GPU run (plan.md §A5, revision note): the Otsu/contrast/flatness version gated only 52% of
+  SLAKE CT and 35% of OmniMedVQA CT, and failed exactly on the most background-heavy slices. Border-connected
+  background with absolute limits: SLAKE CT/MRI 100%/100%, X-ray 2%; OmniMedVQA sample (12/modality) CT 92%, MRI 83%,
+  ultrasound 92%, OCT 83%, fundus 50%, X-ray 25%, microscopy 8%, dermoscopy 0%. Known misses: grey (not black)
+  surrounds — lung-window CTs and blue-tinted fundus. 72 CPU tests pass (3 new regression tests).
+- Stage 3: E0 (`LIMIT = 50`) pushed to A (`medprune-e0-lingshu7b`) and B (`medprune-e0-qwen3vl8b`) at 16:39/16:43 on
+  the v1 bundles. E0 does not read the gate, so the revision does not invalidate it; bundles are being rebuilt with the
+  new masks before E1.
+- Next: collect E0 reports; commit `configs/bundle_manifest.json` from the rebuilt bundle; Stage 4 (E1) on A.

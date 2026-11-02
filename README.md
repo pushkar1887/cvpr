@@ -68,7 +68,7 @@ full 63.7) and HuatuoGPT-Vision-7B (55.3 vs 55.5–56.8); on OmniMedVQA FastV al
 
 ## 6. Fix — Foreground Gate
 
-A zero-parameter body mask on the image the model sees (Otsu → keep large components → fill holes → dilate) gives
+A zero-parameter body mask on the image the model sees (near-black/white pixels connected to the image edge = background → keep large components → fill holes → dilate) gives
 each visual token a foreground fraction; any pruner then selects only among foreground tokens, within the same budget.
 Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and uniform sampling.
 

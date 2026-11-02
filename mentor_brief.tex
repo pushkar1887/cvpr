@@ -144,7 +144,7 @@ H4 & \textbf{Small evidence} (residual).
 
 % ------------------------------------------------------------------
 \section*{6\quad Proposed fix: Foreground Gate (training-free, zero parameters)}
-Body mask $M=\mathrm{Dilate}\big(\mathrm{FillHoles}(\mathrm{LCC}(\mathrm{Otsu}(x)))\big)$: the
+Body mask $M=\mathrm{Dilate}\big(\mathrm{FillHoles}(\mathrm{LCC}(\neg B(x)))\big)$, with $B$ the near-black (or near-white) pixels connected to the image edge: the
 largest connected component drops the scanner table; hole filling keeps the lungs, which are
 as dark as outside air. Let $m_i\in[0,1]$ be the fraction of token $i$'s patch inside $M$, and
 $s_i$ any base score (e.g.\ FastV attention at layer $K$). With budget $k=\lfloor\rho N\rfloor$:

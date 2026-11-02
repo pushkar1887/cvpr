@@ -60,6 +60,34 @@ def test_textured_image_without_background_is_left_alone():
     assert body_mask(rgb(img), cell=1).all()
 
 
+def test_small_head_in_a_large_field_is_gated():
+    rng = np.random.default_rng(0)  # head CT: the centre crop is mostly air, so a centre-vs-border test sees no contrast
+    head = ellipse(cy=60, cx=128, ry=35, rx=30)
+    img = 5.0 + rng.normal(0, 2, head.shape)
+    img[head] = 120 + rng.normal(0, 25, head.sum())
+    mask = body_mask(rgb(img), cell=1)
+    assert abs(mask.sum() - head.sum()) / head.sum() < 0.05
+
+
+def test_gas_inside_the_body_does_not_disable_the_gate():
+    rng = np.random.default_rng(0)  # abdomen filling the frame with large dark gas pockets
+    img, body = ct_like(rng)
+    body_big = ellipse(ry=120, rx=126)
+    img[body_big] = 120 + rng.normal(0, 25, body_big.sum())
+    gas = ellipse(cy=100, cx=150, ry=30, rx=45) | ellipse(cy=170, cx=90, ry=25, rx=30)
+    img[gas] = 5 + rng.normal(0, 2, gas.sum())
+    mask = body_mask(rgb(img), cell=1)
+    assert not mask.all() and mask[gas].mean() > 0.99
+
+
+def test_light_skin_is_not_bright_background():
+    rng = np.random.default_rng(0)  # low-contrast dermoscopy: skin is the bright end of the range but far from glass-white
+    img = 205 + rng.normal(0, 3, (256, 256))
+    lesion = ellipse(ry=60, rx=70)
+    img[lesion] = 140 + rng.normal(0, 15, lesion.sum())
+    assert body_mask(rgb(img), cell=1).all()
+
+
 def test_padding_is_background():
     rng = np.random.default_rng(0)
     content = 5.0 + rng.normal(0, 2, (100, 300))

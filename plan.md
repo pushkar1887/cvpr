@@ -19,7 +19,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 | 2 | Data bundle | Kaggle CPU (or SSH) | 0 | Nov 2 | **Built and rebuilt with revised masks**; counts in committed manifest and Work log |
 | 3 | Validation and calibration (E0) | Kaggle GPU, A (+0.5 h on B) | 3.0 | Nov 2–3 | 50-item component checks passed on both models; **full SLAKE baseline target unresolved** (77.19%, different published judge) |
 | 4 | Kill test (E1) + diagnostics (E2) | GPU A + CPU | 3.3 + repairs | Nov 3 | **Primary decisions complete: K1 GO; K2 H1 alive**; registered truncation retry verified; causal controls remain |
-| 5 | Main grid (E3) + modality panel (E4) | GPU A, B | 33.1 | Nov 3–5 | Table 1, Fig. 2 drafts → **enrollment Nov 10 AoE** |
+| 5 | Main grid (E3) + modality panel (E4) | GPU A, B | 33.1 | Nov 3–5 | **First bounded Qwen E3 block RUNNING (B v2, Nov 3)**; broader grid and scoring-comparability gate remain open |
 | 6 | Curves, ablations, natural control (E5, E6-P1, E7) | GPU A, B | 16.8 | Nov 6–8 | Decisions K3, K4 |
 | 7 | Supplementary runs (E6-P2, E8, E9) | GPU C | 10.0 | Nov 7–12 | — |
 | 8 | Analysis and writing | Laptop | 0 | Nov 9–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
@@ -603,10 +603,15 @@ the story becomes positional (H2).
 ## Stage 5 — Main grid (E3) and modality panel (E4)
 
 **In one sentence:** produce the paper's two core results — Table 1 (both models, three benchmarks, all main methods)
-and Fig. 2 (failure grows with background) — in time for the Nov 10 enrollment. **Status: LATER (after K1 = GO).**
+and Fig. 2 (failure grows with background) — in time for the Nov 10 enrollment. **Status: FIRST BOUNDED QWEN BLOCK
+RUNNING (B v2, Nov 3, user requested).** This uses ten existing E3 conditions on English SLAKE and RIN anatomy: Full,
+text-only, Random@L2 seed 0, FastV, Gate+FastV. Retention 10%; RIN first; five-question smoke for every condition
+before bulk inference. Approximately 2.35 planned inference hours, 3.5-hour scheduling budget, role B/Father T4×2.
+The full Lingshu scoring-comparability issue remains open; this within-Qwen comparison does not require claiming
+equivalence to published LLM-judged scores. The full 45-condition grid, other datasets/seeds and E4 remain pending.
 
 **Before you start**
-- [ ] K1 = GO (or an agreed reframe).
+- [x] K1 = GO (corrected Lingshu E1, Nov 3).
 - [ ] RadImageNet built in each session (Stage 4 commands; use `--models qwen3vl8b` on role B).
 
 ### E3 — Main grid
@@ -1361,7 +1366,8 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 | T6 | 7 | E9 latency measurement | open | T2 |
 | T7 | 8 | table and figure builders (Tables 1–4, Figs 1–5) | open | T3 |
 | T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | done (Codex, Nov 3) — independent CIs and registered 43-item retry verified | original and corrected receipts preserved |
-| T9 | 5 preflight | Resolve full SLAKE scoring comparability before broad grid; report abnormality class-prior baseline | next — real abnormality build/image pairing passed on CPU | T8 done; large Qwen grid remains idle |
+| T9 | 5 preflight | Resolve full SLAKE scoring comparability before broad grid; report abnormality class-prior baseline | next — real abnormality build/image pairing passed on CPU | T8 done; first Qwen block running; remaining grid held |
+| T10 | 5 | First ten registered Qwen E3 conditions on K; retrieve/verify outputs and report cross-model results | in progress (Codex, Nov 3) — B v2 submitted, API RUNNING | K1 GO; data-builder access and 84 CPU tests verified |
 
 **T1 — data bundle notebook (Kaggle CPU, internet on).** Cells, in order:
 1. `from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")`.
@@ -1661,3 +1667,40 @@ run IDs, counts, accuracies with CIs. Template:
 - Last status checks: role A's v6 CPU job COMPLETE; role B's long-lived Qwen notebook COMPLETE/idle. No new Qwen
   main-grid run was submitted, and no `rin_open` condition was added. The original takeover request to recover E1,
   independently analyze it and report GO/REFRAME/STOP is complete; this is not a claim of a validated remedy or paper.
+
+### 2026-11-03 — Codex — user-requested first Qwen E3 block
+- User request: "now we run the qwen nb?" Ruling: execute a bounded within-Qwen replication using ten existing E3
+  conditions, rather than treating the request as permission to spend all 16.3 planned Qwen grid hours. Lingshu's
+  published-baseline scoring comparison remains unresolved. No scorer, prompt, method, budget or prediction changes.
+  Cost if the effect does not generalize: approximately 2–3.5 session hours, not the entire Qwen campaign.
+- Selected role B/Father, existing private `medprune-gpu-qwen3vl8b`. Verified idle state and its same-owner
+  `medprune-00-build-data-bundle` input COMPLETE/accessibility. Downloaded previous output to
+  `results/receipts/qwen_before_stage5_20261103` and pulled the source/metadata before replacing the version.
+- Prepared and reviewed `results/ops/qwen_stage5_block_submission_v2_reviewed`: `rin_anat_mc` and `slake_en`, each with Full, text-only,
+  Random@L2 seed 0, FastV, Gate+FastV. 10,305 primary question evaluations plus 50 smoke questions. Rebuild RIN anatomy
+  only under `/tmp`; require exact matching input-field signatures against recovered Lingshu and exact SLAKE manifest
+  SHA. No `rin_open`, abnormality grid, extra seeds, OmniMedVQA, or E4 in this first block.
+- Pinned code `f53a663`, Qwen model revision `0c351dd01ed87e9c1b53cbc748cba10e6187ff3b` (live official model API),
+  existing Transformers 4.57.1 requirement, Torch 2.11.0+cu128, fp16 T4×2; seed 42 for Torch, seed 0 per-question Random.
+  Five-question smoke runs for all ten conditions precede the bulk loop. Registered truncation retries at 512 are
+  saved separately for verified merge; original responses remain preserved. No E0 inference is silently restored.
+- Verification before submission: all code cells compile, selected run IDs match the registered E3 matrix, planned
+  inference 2.345 h, metadata GPU/internet/private settings checked; **84 CPU tests freshly passed in 7.63 s**.
+  The dependency-check endpoint again returned HTTP 401; no component-security assessment is claimed. Installation
+  restores the existing approved experimental pin; no new dependency or version recommendation was introduced.
+- Focused review found two important gaps before submission: historical RIN signatures omitted MC choices, and long
+  retries lacked a separate budget check. Resolved both. Pin current RIN source revision
+  `9add2548cca069f088b9d0e44bfac849a53a5c31`, record full prompts/ordered options, manifest and parquet digests, and
+  explicitly mark historical Lingshu full-MC-prompt equivalence unverified because that digest was never saved.
+  The recorded historical fields match; current within-Qwen inputs are frozen across every condition. Rebuild SLAKE
+  masks from pinned code as well, using immutable input images/manifests via a temporary symlinked bundle.
+- Retries are queued after bulk inference, estimated conservatively from measured truncated-item time, and only
+  scheduled if they fit. Pending IDs are saved. The budget is checked even before the first bulk run. Completion
+  markers distinguish bulk completion from verification readiness and final analysis; 3.5 h is a scheduling
+  allowance, not a hard kill timer. Four synthetic control-flow checks passed (normal, defer retry, stop before
+  first bulk run, no truncation); these are orchestration evidence, not model results. Focused re-review found no
+  important remaining defect.
+- Submitted **role B/Father, `medprune-gpu-qwen3vl8b`, version 2**, private, GPU requested (T4×2), internet enabled,
+  same-owner builder input attached. API accepted the submission and returned **RUNNING**. Receipt:
+  `results/ops/qwen_stage5_block_submission_v2_reviewed/account_operation_receipt.json`. This confirms the notebook
+  run started; runtime/input assertions, smoke checks, inference and final accuracy still require its outputs.

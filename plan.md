@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-03 12:40 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-03 13:45 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -22,13 +22,13 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 2 | Data bundle | ✅ DONE | 0 (CPU) | 0 | Nov 2 | Rebuilt on A and B with the revised gate (git `3188c2f`); manifest committed |
 | 3 | Validation (E0) | ✅ DONE | 0.39 | 0 | Nov 2 | E0b–E0d 50/50 on both models; SLAKE scoring contract moved to the Stage 5 preflight |
 | 4 | Kill test (E1) + diagnostics (E2) | ✅ DONE | 3.35 | 0 | Nov 2–3 | **K1 GO** (FastV − Random −41.2 [−44.9, −37.6], RIN, Lingshu); **K2: H1 alive** (BRR 2.32) |
-| 4b | Gate + coverage selectors (E1g) | 🔄 RUNNING | — | 2.5 (running) | Nov 3 | The gate is a method only if `gate_uniform` or `gate_random` beats Random on RIN with CI > 0 |
+| 4b | Gate + coverage selectors (E1g) | ✅ DONE | 2.56 | 0 | Nov 3 | Rule met on Lingshu only (`gate_random` − Random +3.2 [+1.2, +5.2]); Qwen +0.5 [−1.3, +2.3] → **diagnosis-first paper**, gate = partial remedy |
 | 5 | Main grid (E3) + modality panel (E4) | 🔄 STARTED | 1.73 | 16.3 | Nov 3–5 | Qwen K-block done (FastV − Random −33.7 on RIN); scoring preflight, then the rest |
 | 6 | Curves, controls, natural (E5, E6-P1, E7) | ⏳ NEXT | 0 | 13.8 | Nov 4–6 | Decisions K3, K4 |
 | 7 | Supplementary (E6-P2, E8, E9) | ⏳ LATER (C, parallel) | 0 | 9.9 | Nov 4–7 | E8 needs the HuatuoGPT port (T4) |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
-**Totals (measured rates, §C4):** spent 5.5 GPU-h · running 2.5 · left 40.0 → **≈ 48 GPU-h for the whole project**
+**Totals (measured rates, §C4):** spent 8.0 GPU-h · running 0 · left 40.0 → **≈ 48 GPU-h for the whole project**
 (the first plan said 66.2: RadImageNet costs 0.35 s/question, not 0.6, because 224² images give only 64 visual
 tokens). With 20% contingency on what is left: ≈ 56 GPU-h. On an A100 (Part E): ≈ 10–12 h.
 
@@ -36,12 +36,13 @@ tokens). With 20% contingency on what is left: ≈ 56 GPU-h. On an A100 (Part E)
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | 3.55 (E0 0.19, E1 2.92, repairs 0.44) | 1.3 (E1g v7) | 16.3 (E3 7.2, E4 1.5, E5 4.2, E6-P1 3.4) | 8.8 |
-| B — Qwen3-VL | `pushkararora` | 30 | 1.93 (E0 0.20, Qwen K-block 1.73) | 1.2 (E1g v3) | 13.8 (E3 6.3, E4 1.3, E5 2.3, E6 1.9, E7 2.0) | 13.1 |
+| A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | — | 16.3 (E3 7.2, E4 1.5, E5 4.2, E6-P1 3.4) | 8.8 |
+| B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | — | 13.8 (E3 6.3, E4 1.3, E5 2.3, E6 1.9, E7 2.0) | 13.0 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 0 (bundle builds are CPU) | — | 9.9 (E6-P2 3.1, E8 6.3, E9 0.5) | 11.9 |
 
 Slack ≈ 34 GPU-h. Spend it on the open weaknesses, in this order: a semantic open-answer judge for SLAKE (§C1.2,
-Stage 5 preflight), RadImageNet open questions (`rin_open`, MedSTP's strongest column), Random seeds 1–2 on every
+Stage 5 preflight), RadImageNet open questions (`rin_open`, MedSTP's strongest column), a `uniform_l2` row in E3
+(1.3 / 1.1 GPU-h on A / B; the E1g control that separates coverage from image dependence), Random seeds 1–2 on every
 headline cell, and E6 position controls on Qwen.
 
 Deadlines (CVPR 2027 CFP ✓): paper enrollment **Nov 10, 23:59 AoE = Nov 11, 17:29 IST**; submission **Nov 16 AoE =
@@ -314,7 +315,7 @@ laptop; run IDs are unique, so folders merge without conflicts.
 |---|---|---|---|---|---|---|---|---|
 | E0 | Is the pipeline correct, and how fast is it? | 3 | Lingshu, Qwen3-VL | `slake_en` | 2 | 0.39 ✅ | A (+B) | Stage 3 gate |
 | E1 | Is standard FastV worse than random in our pipeline, and does it prefer background? | 4 | Lingshu | K | 14 (13) | 3.35 ✅ | A | K1, K2 |
-| E1g | Can a coverage-preserving selector inside the gate beat Random? | 4b | both | K | 6 + 6 | 2.5 🔄 | A, B | method claim |
+| E1g | Can a coverage-preserving selector inside the gate beat Random? | 4b | both | K | 6 + 6 | 2.56 ✅ | A, B | method claim |
 | E2 | Why: position, background or artifact tokens? (analysis only) | 4–6 | — | logs | 0 | 0 | laptop | Table 2, Fig. 3 |
 | E3 | Does it hold on both models and all three benchmarks, and does the gate fix it? | 5 | both | S1, S2, S3 | 45 + 45 | 15.2 (1.7 ✅) | A, B | Table 1 |
 | E4 | Does the failure grow with the amount of background? | 5 | both | P | 6 + 6 | 2.8 | A, B | Fig. 2 |
@@ -342,7 +343,7 @@ the user and not tracked here. More Kaggle accounts are available if quota runs 
 | Role | Work | Planned GPU-h | Account | Quota on Nov 2 |
 |---|---|---|---|---|
 | A | Lingshu-7B: E0, E1, E1g, E3, E4, E5, E6-P1 | 29.6 → **21.2** (measured) | `pushkararora88` | 30 h |
-| B | Qwen3-VL-8B: E1g, E3, E4, E5, E6, E7 | 26.6 → **16.9** (measured) | `pushkararora` | 30 h |
+| B | Qwen3-VL-8B: E1g, E3, E4, E5, E6, E7 | 26.6 → **17.0** (measured) | `pushkararora` | 30 h |
 | C | E6-P2, E8, E9, overflow from A/B | 10.0 → **9.9** | `pushkarsiuuarora` | 21 h 50 min left |
 
 Measured rates (§C4) leave slack on every account (A 8.8 h, B 13.1 h, C 11.9 h); see the ledger under the Stage
@@ -523,7 +524,7 @@ python -m medprune.run_eval --exp E0 --model lingshu7b --bundle $DATA --out $RES
 
 **In one sentence:** in one day, find out whether standard FastV really is worse than random in our pipeline (K1) and
 whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **Status: ✅ DONE (Nov 3), 3.35 GPU-h.
-Follow-up E1g 🔄 RUNNING (A v7, B v3).** Registered text-only truncation retry verified. K1 is GO and K2 leaves H1 alive in this Lingshu setup.
+Follow-up E1g ✅ DONE (A v7 1.32 GPU-h, B v3 1.24 GPU-h; result in the Work log, Nov 3).** Registered text-only truncation retry verified. K1 is GO and K2 leaves H1 alive in this Lingshu setup.
 This does not prove the cause, validate the gate as a competitive fix, or close the Stage 3 scoring issue.
 
 **Before you start**
@@ -622,7 +623,7 @@ the story becomes positional (H2).
 
 **In one sentence:** produce the paper's two core results — Table 1 (both models, three benchmarks, all main methods)
 and Fig. 2 (failure grows with background) — in time for the Nov 10 enrollment. **Status: 🔄 STARTED — Qwen K-block
-✅ DONE (B v2, 1.73 GPU-h: RIN FastV − Random −33.7 [−37.3, −30.1]; SLAKE −2.4 [−4.9, +0.2]); E1g running; the rest
+✅ DONE (B v2, 1.73 GPU-h: RIN FastV − Random −33.7 [−37.3, −30.1]; SLAKE −2.4 [−4.9, +0.2]); E1g ✅ done (diagnosis-first); the rest
 waits for the scoring preflight.** Record of that first block: This uses ten existing E3 conditions on English SLAKE and RIN anatomy: Full,
 text-only, Random@L2 seed 0, FastV, Gate+FastV. Retention 10%; RIN first; five-question smoke for every condition
 before bulk inference. Approximately 2.35 planned inference hours, 3.5-hour scheduling budget, role B/Father T4×2.
@@ -632,8 +633,11 @@ equivalence to published LLM-judged scores. The full 45-condition grid, other da
 **Before you start**
 - [x] K1 = GO (corrected Lingshu E1, Nov 3).
 - [ ] RadImageNet built in each session (Stage 4 commands; use `--models qwen3vl8b` on role B).
-- [ ] E1g read (gate + coverage selectors vs Random) — decides whether `gate_uniform`/`gate_random` are the headline
-  method rows of Table 1.
+- [x] E1g read (gate + coverage selectors vs Random) — decides whether `gate_uniform`/`gate_random` are the headline
+  method rows of Table 1. **Outcome (Nov 3): not headline.** The gate beats Random on Lingshu (+2–3 points, CI > 0 on
+  RIN and SLAKE) but not on Qwen3-VL. `gate_uniform` stays in E3 as the remedy row (deterministic, so no seed
+  variance; `gate_random` is indistinguishable from it on all four cells). Table 1 is organised around the
+  air / ranking decomposition (Work log, Nov 3).
 - [ ] **Scoring preflight (open SLAKE answers).** Normalized exact match under-credits synonyms: Qwen3-VL answers
   "axial" for "Transverse Plane", "brain" for "Head" (Full 58.2% vs Lingshu 77.2%, which copies SLAKE's wording).
   Decide before the S1/S2 SLAKE runs are read: (a) a local LLM judge re-scoring the saved responses offline (no new
@@ -1788,3 +1792,41 @@ run IDs, counts, accuracies with CIs. Template:
 - Re-estimated budget: whole project ≈ 48 GPU-h (was 66.2): 5.5 spent, 2.5 running (E1g), 40.0 left (A 16.3, B 13.8,
   C 9.9). Slack ≈ 34 GPU-h across accounts; proposed uses listed under the ledger. Stage 5 checklist gains the E1g
   read and the open-answer scoring preflight (Qwen synonyms).
+
+### 2026-11-03 — Claude — E1g read: the gate is a partial remedy; FastV's loss is coverage, not image dependence
+- Sessions: A `medprune-gpu-lingshu7b` v7 1.32 GPU-h, B `medprune-gpu-qwen3vl8b` v3 1.24 GPU-h (predicted 1.3 / 1.2).
+  All 12 runs complete (1000 RIN / 1061 SLAKE each), no errors or truncations in the kernel logs; git `bf4a944`.
+- Paired deltas vs `random_l2`, 10% retention, image bootstrap (4000 draws):
+  | model, dataset | `gate_uniform` | `gate_random` | `uniform_l2` | Full / Random |
+  |---|---|---|---|---|
+  | Lingshu, RIN | +2.3 [+0.0, +4.6] | **+3.2 [+1.2, +5.2]** | −0.4 [−2.8, +2.0] | 89.0 / 79.3 |
+  | Lingshu, SLAKE | **+2.4 [+0.4, +4.3]** | **+1.7 [+0.1, +3.3]** | +1.0 [−1.0, +3.0] | 77.2 / 68.8 |
+  | Qwen3-VL, RIN | +1.3 [−0.9, +3.4] | +0.5 [−1.3, +2.3] | −0.7 [−2.8, +1.5] | 89.7 / 84.6 |
+  | Qwen3-VL, SLAKE | +0.6 [−1.3, +2.5] | −0.6 [−2.3, +1.1] | **+3.1 [+1.2, +5.1]** | 58.2 / 52.6 |
+- Decision rule (registered before results): met on Lingshu (`gate_random`, CI above 0), not on Qwen3-VL. A remedy
+  that replicates on one of two models and recovers ≤ 3 of the 5–10 points between Random and Full is not a headline
+  method. **Paper is diagnosis-first**; `gate_uniform` stays in E3 as the remedy row. `gate_random` − `gate_uniform`
+  is within ±1.1 with CIs spanning 0 on all four cells, so how tokens are drawn inside the gate does not matter.
+- Decomposition of FastV's loss (accuracy points): FastV − Random = (FastV − Gate+FastV) "air" +
+  (Gate+FastV − Random) "ranking".
+  | model, dataset | FastV − Random | air | ranking |
+  |---|---|---|---|
+  | Lingshu, RIN | −41.2 | −13.2 | −28.0 [−31.7, −24.4] |
+  | Qwen3-VL, RIN | −33.7 | −15.0 | −18.7 [−22.0, −15.4] |
+  | Lingshu, SLAKE | −12.6 | −12.7 | +0.1 [−2.1, +2.2] |
+  | Qwen3-VL, SLAKE | −2.4 | −1.6 | −0.8 [−2.6, +1.1] |
+  On SLAKE (CT/MRI with large air regions) background explains all of FastV's loss. On RIN (224² crops, gate active on
+  889/1000 questions, mean background 33% of tokens) it explains a third to a half; the rest is attention ranking
+  inside the foreground. [FLAG] "Pruning the Air" describes SLAKE, not RIN; title and abstract must carry both terms.
+- Correction to the previous entry's reading. `uniform_l2` keeps the *same* 6 tokens on every RIN image (cross-image
+  Jaccard 1.000) and matches Random (78.9 vs 79.3). Image independence is therefore harmless by itself; what FastV
+  loses is spatial coverage. Mean distance from a grid cell to its nearest kept token (token cells; lower = better
+  spread): Random 1.75, Uniform 1.38, Gate+FastV 2.07 / 2.00, FastV 2.60 / 2.25 (Lingshu / Qwen3-VL, RIN); FastV's
+  kept tokens sit at mean row 0.18 / 0.36 of the grid (top), Random at 0.50. Across the six selectors on RIN,
+  accuracy vs coverage gap r = −0.91 / −0.88 (six points per model: descriptive, not a test). This whole-grid
+  statistic penalises gated selectors for leaving background empty; the paper version must measure coverage of the
+  foreground only (`analysis.py`, needs the gate masks from the bundle).
+- Qwen3-VL SLAKE stays unreadable until the scoring preflight: `uniform_l2` +3.1 over Random but `gate_uniform` −2.5
+  below `uniform_l2` [−4.6, −0.5] is the pattern a noisy open-answer metric produces (Full 58.2).
+- Ledger: A 4.87 spent, B 3.17 spent; project 8.0 spent, 40.0 left, slack ≈ 34 (A 8.8, B 13.0, C 11.9). Added a
+  `uniform_l2` row in E3 to the slack list.

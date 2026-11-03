@@ -81,14 +81,15 @@ protocol, code design and compute backends. Predictions are pre-registered in pl
 
 Status (Nov 3): **Stages 0–4 done; Stage 5 started** — live tracker at the top of [plan.md](plan.md#stage-tracker).
 K1 = GO: on RadImageNet anatomy (10% of tokens kept), FastV scores 38.1% vs Random 79.3% on Lingshu-7B and 50.9% vs
-84.6% on Qwen3-VL-8B. FastV's keep-sets are close to image-independent (Lingshu: 38 distinct keep-sets over 1,000
-images). Running: gate + coverage selectors (E1g) on both models. 87 CPU tests pass.
+84.6% on Qwen3-VL-8B. Removing background (the foreground gate) explains all of FastV's loss on SLAKE but only a
+third to a half on RadImageNet; the rest is attention ranking inside the foreground. The gate with uniform or random
+selection beats Random by 2–3 points on Lingshu and not significantly on Qwen3-VL, so the paper is diagnosis-first
+(E1g, Nov 3). 87 CPU tests pass.
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
 then read the Work log at the end of plan.md and add an entry when you finish.
 
-Compute (measured rates, plan.md §C4): ≈ 48 Kaggle T4-hours in total across three accounts (5.5 spent, 2.5 running,
-40 left), or ≈ 10–12 h on an A100. Storage: ≤ 2 GB
+Compute (measured rates, plan.md §C4): ≈ 48 Kaggle T4-hours in total across three accounts (8.0 spent, 40 left), or ≈ 10–12 h on an A100. Storage: ≤ 2 GB
 persistent; one model (~17 GB) temporarily per GPU session.
 
 ## Repository

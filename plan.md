@@ -12,38 +12,38 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-03 13:45 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-03 18:05 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
 |---|---|---|---|---|---|---|
 | 0 | Accounts, access, repo | ✅ DONE | 0 | 0 | Nov 2 | Accounts, HF secret `cvpr`, RadImageNet access |
-| 1 | Code and tests | ✅ DONE | 0 | 0 | Nov 2–3 | 87 CPU tests pass (Nov 3) |
-| 2 | Data bundle | ✅ DONE | 0 (CPU) | 0 | Nov 2 | Rebuilt on A and B with the revised gate (git `3188c2f`); manifest committed |
+| 1 | Code and tests | ✅ DONE | 0 | 0 | Nov 2–3 | 90 CPU tests pass (Nov 3) |
+| 2 | Data bundle | ✅ DONE | 0 (CPU) | 0 | Nov 2–3 | A and B rebuilt with the revised gate (git `3188c2f`); C rebuilding (v3, Nov 3) |
 | 3 | Validation (E0) | ✅ DONE | 0.39 | 0 | Nov 2 | E0b–E0d 50/50 on both models; SLAKE scoring contract moved to the Stage 5 preflight |
 | 4 | Kill test (E1) + diagnostics (E2) | ✅ DONE | 3.35 | 0 | Nov 2–3 | **K1 GO** (FastV − Random −41.2 [−44.9, −37.6], RIN, Lingshu); **K2: H1 alive** (BRR 2.32) |
 | 4b | Gate + coverage selectors (E1g) | ✅ DONE | 2.56 | 0 | Nov 3 | Rule met on Lingshu only (`gate_random` − Random +3.2 [+1.2, +5.2]); Qwen +0.5 [−1.3, +2.3] → **diagnosis-first paper**, gate = partial remedy |
-| 5 | Main grid (E3) + modality panel (E4) | 🔄 STARTED | 1.73 | 16.3 | Nov 3–5 | Qwen K-block done (FastV − Random −33.7 on RIN); scoring preflight, then the rest |
-| 6 | Curves, controls, natural (E5, E6-P1, E7) | ⏳ NEXT | 0 | 13.8 | Nov 4–6 | Decisions K3, K4 |
-| 7 | Supplementary (E6-P2, E8, E9) | ⏳ LATER (C, parallel) | 0 | 9.9 | Nov 4–7 | E8 needs the HuatuoGPT port (T4) |
+| 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | 🔄 RUNNING: A v8, B v4 (17:50) | 1.73 | 18.5 running + 1.7 spill | Nov 3–4 | Table 1; E6 decides the mechanism claims (§A9) |
+| 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | 🔄 C queued behind its bundle; RadImageNet arms in A/B session 2 | 0 | 7.5 (C) + 2.6 (A/B) | Nov 3–4 | Token count or domain? Position or content? Is attention informative? (G1, G3, G4) |
+| 6 | Modality panel (E4), budget curves (E5) | ⏳ NEXT (A/B session 2) | 0 | 9.3 | Nov 4–5 | Fig. 2, Fig. 4 |
+| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ⏳ LATER | 0 | 9.9 + 3.0 | Nov 5–7 | E8 needs the HuatuoGPT port (T5) |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
-**Totals (measured rates, §C4):** spent 8.0 GPU-h · running 0 · left 40.0 → **≈ 48 GPU-h for the whole project**
-(the first plan said 66.2: RadImageNet costs 0.35 s/question, not 0.6, because 224² images give only 64 visual
-tokens). With 20% contingency on what is left: ≈ 56 GPU-h. On an A100 (Part E): ≈ 10–12 h.
+**Totals (measured rates, §C4):** spent 8.0 GPU-h · running 18.5 · queued 7.5 · left 26.5 → **≈ 61 GPU-h for the whole
+project** (48 before Nov 3 evening; the 13 added hours are the diagnostic controls of §A9: E6 on both models before the
+grid, E10, E11, Random seeds). On an A100 (Part E): ≈ 13–15 h.
 
 **Compute ledger (Kaggle T4×2 hours)**
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | — | 16.3 (E3 7.2, E4 1.5, E5 4.2, E6-P1 3.4) | 8.8 |
-| B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | — | 13.8 (E3 6.3, E4 1.3, E5 2.3, E6 1.9, E7 2.0) | 13.0 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 0 (bundle builds are CPU) | — | 9.9 (E6-P2 3.1, E8 6.3, E9 0.5) | 11.9 |
+| A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 8.9 (spill 1.7, E10r 1.1, E11r 0.4, E4 1.5, E5 4.2) | 6.7 |
+| B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 7.7 (E10r 0.8, E11r 0.3, E4 1.3, E5 2.3, judge 3.0) | 10.1 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 0 (bundle builds are CPU) | 7.5 queued (E7, E10, E11, both models) | 9.9 (E6-P2 3.1, E8 6.3, E9 0.5) | 4.4 |
 
-Slack ≈ 34 GPU-h. Spend it on the open weaknesses, in this order: a semantic open-answer judge for SLAKE (§C1.2,
-Stage 5 preflight), RadImageNet open questions (`rin_open`, MedSTP's strongest column), a `uniform_l2` row in E3
-(1.3 / 1.1 GPU-h on A / B; the E1g control that separates coverage from image dependence), Random seeds 1–2 on every
-headline cell, and E6 position controls on Qwen.
+Slack ≈ 21 GPU-h. Next uses, in order: RadImageNet open questions (`rin_open`, MedSTP's strongest column), the
+FastV-definition variant (G2), HuatuoGPT on K once ported (G6). Restore datasets for the A/B sessions:
+`medprune-restore-<model>` (private, one per account; run files + static maps, `RESTORE_FROM = "auto"`).
 
 Deadlines (CVPR 2027 CFP ✓): paper enrollment **Nov 10, 23:59 AoE = Nov 11, 17:29 IST**; submission **Nov 16 AoE =
 Nov 17, 17:29 IST**; supplementary **Nov 23 AoE**. All authors must accept reviewing duties.
@@ -64,6 +64,19 @@ background and the keep-set becomes anti-informative. A geometric prior that rem
 
 Not another scorer: MedSTP, ViToS and others propose new pruners; none explains why the standard family fails.
 
+*Revision 2026-11-03 (evidence from E1, E1g and the offline diagnostics, §A9; the frozen predictions in §A6 stand).*
+The rotary component is not supported: FastV's keep-set sits in the **top** rows (P4 contradicted), and RoPE-free
+layer-1 scores pick almost the same tokens (Jaccard 0.94 Lingshu, 0.77 Qwen3-VL on RadImageNet). Layer-1 attention
+from the last prompt token behaves as a **question-blind, largely image-blind prior**: keep-sets of different questions
+about one image overlap 97% (Lingshu) / 80% (Qwen3-VL); at 64 tokens the keep-set is nearly the same for every image
+(cross-image Jaccard 0.77 / 0.47); and within Random's own draws, high-attention tokens predict *lower* accuracy for
+Lingshu. Background capture is real but is only one of two regimes: on SLAKE, FastV loses 16–20 points on CT/MRI and
+1.9 on X-ray, and the gate recovers all of it; on RadImageNet, FastV loses 45 points even on images with no background.
+**Working thesis:** early-layer attention pruning applies a fixed prior instead of reading the image or the question;
+it fails where the prior lands on acquisition background (CT/MRI) and where the budget is too small for a fixed prior to
+cover the content (64-token inputs). E10 (resolution), E11 (flip, bottom-k) and E7 (photographs) test which half is
+domain-specific.
+
 ## A2. Claims and required evidence
 
 | Claim | Evidence (reviewer bar) | Experiments | Paper element |
@@ -75,6 +88,15 @@ Not another scorer: MedSTP, ViToS and others propose new pruners; none explains 
 | **C5 Protocol**: report image-dependent accuracy, image-clustered CIs, background fraction | At least one conclusion that shrinks or flips under the stricter protocol | E3 analysis | §3 + supp |
 
 If C3 fails but C1, C2, C4 hold, the paper stands as empirical + fix. If C1 fails in our pipeline, stop (K1).
+
+**Status (Nov 3, evening).** C1 holds on RadImageNet for both models and on SLAKE for Lingshu; Qwen3-VL SLAKE waits for
+the open-answer judge; generality waits for OmniMedVQA (E3) and photographs (E7). C2 holds on SLAKE (per-image Spearman
+−0.35 Lingshu, −0.27 Qwen3-VL) but **not** on RadImageNet (FastV − Random is −45 on its 111 background-free images), so
+C2 becomes "two regimes": background capture, measured by the dose-response, plus a background-independent collapse at
+small token counts (E10 decides whether the second is about tokens or domain). C3 is now carried by question
+independence, image independence, the RoPE-free control and the attention-informativeness test, not by rotary
+geometry. C4 is partial: the gate closes FastV's whole SLAKE gap but recovers only 13–15 of 34–41 RadImageNet points,
+and gate + coverage selection beats Random by 2–3 points on Lingshu only. The paper is diagnosis-first (§A9).
 
 ## A3. Prior work and our delta
 
@@ -205,6 +227,34 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 | SLAKE has 96 test images | Image-clustered bootstrap; RadImageNet (1,000 images) and panel carry statistics |
 | RadImageNet license forbids redistribution | Per-account download; aggregates only |
 | Public repo before submission | Keep the GitHub repo **private** until the paper is submitted (scooping, double-blind) |
+
+## A9. Gap register — reviewer objections → tests (opened 2026-11-03)
+
+The diagnosis carries the paper, so every objection a reviewer can raise against it gets a named test here. Update the
+Status column as results land; numbers come from the Work log (Nov 3, "Offline diagnostics").
+
+| ID | Objection a reviewer will raise | Evidence now | Decisive test | Status | Pri |
+|---|---|---|---|---|---|
+| G1 | "It is the 64-token input, not the medical domain" | RIN (224², 64 tokens) −41.2 vs SLAKE (324 tokens) −12.6; background-free RIN images −45 but SLAKE X-ray −1.9 | E10: SLAKE + photographs at 224²; E10r: RIN at 448²; E7: photographs at native size | C queued; E10r in A/B session 2 | P0 |
+| G2 | "Your FastV is not FastV" | Masking ≡ physical removal (`fastv_prellm` 37.4 vs `fastv` 38.1); our layer-1 scores reproduce the FastV run's keep-set (Jaccard 1.000 / 0.999); last-token scoring follows the official code (§A4) | Variant scoring by mean attention of all text tokens after the image (the FastV paper's wording) | Needs `attention_hook` work | P1 |
+| G3 | "The top rows are just uninformative content" | Same positions across images (cross-image Jaccard 0.77 / 0.47 on RIN) | E11/E11r: same images upside down — a keep-set that stays in place is positional; `static_map` (E6) | E6 running; E11 queued | P0 |
+| G4 | "Attention is noisy but informative on average" | Within Random's draws, +1 SD of kept-token attention rank → −0.14 to −0.35 log-odds for Lingshu (p < 0.05 in 4/6 cells); ≈ 0 for Qwen3-VL | `fastv_bottom` (keep the least-attended tokens; E11/E11r); re-fit with Random seeds 1–2 (E6) | Queued / running | P0 |
+| G5 | "FastV is text-guided; you test the wrong questions" | Keep-sets of different questions about one SLAKE image overlap 97% (Lingshu) / 80% (Qwen3-VL); the scoring token is a fixed template token | Report as a finding; G2's variant scores from question tokens | Analysis done | P0 |
+| G6 | "Two Qwen-family models with M-RoPE" | — | HuatuoGPT-Vision-7B (LLaVA, 1D RoPE, fixed 576 tokens; also a token-count control for RIN) on K | Port (T5) not started | P1 |
+| G7 | "10% is an extreme budget" | — | E5 (5/25/50%) | A/B session 2 | P0 |
+| G8 | "Score at a deeper layer and it works" | Offline: top-10% by layer-7/15 attention is still image-independent on RIN (cross-image Jaccard 0.62 / 0.38) and background-heavy (BRR 2.6 / 2.0, Lingshu) | `fastv_k8`, `fastv_k16` (E6) | Running | P0 |
+| G9 | "Open-answer scoring is unfair to Qwen3-VL" | Synonyms ("axial" vs "Transverse Plane"); Qwen3-VL SLAKE Full 58.2 | Local LLM judge on saved responses, validated against ~100 hand labels (κ) | Code not started; B session | P0 |
+| G10 | "Yes/no accuracy on an imbalanced set" | RIN abnormality is 71.9% yes | Report the majority baseline and balanced accuracy for every yes/no cell | Analysis task | P0 |
+| G11 | "Coverage explains it; nothing new" | Selector-level coverage correlates with accuracy (r −0.91 to −0.99) but per question it explains 0–46% of FastV's penalty (logistic mediation) | Report both; DivPrune (max coverage) in E6 | Analysis done; E6 running | P1 |
+| G12 | "The gate removes informative tokens" / "background is not empty" | Gate = 100% of SLAKE CT/MRI; 889/1000 RIN questions gated | `inverse_gate` (background only) should sit near text-only; `oracle_gate` (SLAKE organ masks) | E6 running | P1 |
+| G13 | "Post-hoc analyses" | Predictions frozen Nov 2 (§A6); E10/E11/G-tests added Nov 3 after seeing E1/E1g | Label E10, E11 and the offline diagnostics *exploratory* in the paper; list every deviation (gate revision, scoring, RIN builder) | Writing | P0 |
+| G14 | "How blind is a pruned model?" | FastV's answer equals the text-only answer for 33% of RIN questions (Random 22%); FastV keeps 26% of the image's contribution, Random 86% | Report retained visual gain (acc − text-only) / (Full − text-only) for every cell | Analysis done | P0 |
+| G15 | "Contamination" | Lingshu was trained on SLAKE-style data | Paired comparisons only; limitation paragraph | Writing | P2 |
+
+**Paper consequence.** Section 5 (Diagnosis) leads with G5 + G3 (question- and image-blind prior), G4 (attention is
+not informative), G14 (the pruned model falls back on the language prior), then splits the loss into the two regimes
+(background capture on CT/MRI, prior collapse at small token counts — G1). The gate (C4) is a remedy for the first
+regime; coverage-preserving selection (Random, Uniform, DivPrune) is the baseline any attention pruner must beat.
 
 ---
 
@@ -622,9 +672,13 @@ the story becomes positional (H2).
 ## Stage 5 — Main grid (E3) and modality panel (E4)
 
 **In one sentence:** produce the paper's two core results — Table 1 (both models, three benchmarks, all main methods)
-and Fig. 2 (failure grows with background) — in time for the Nov 10 enrollment. **Status: 🔄 STARTED — Qwen K-block
-✅ DONE (B v2, 1.73 GPU-h: RIN FastV − Random −33.7 [−37.3, −30.1]; SLAKE −2.4 [−4.9, +0.2]); E1g ✅ done (diagnosis-first); the rest
-waits for the scoring preflight.** Record of that first block: This uses ten existing E3 conditions on English SLAKE and RIN anatomy: Full,
+and Fig. 2 (failure grows with background) — in time for the Nov 10 enrollment. **Status: 🔄 RUNNING (Nov 3, 17:50 IST) — A
+`medprune-gpu-lingshu7b` v8 and B `medprune-gpu-qwen3vl8b` v4 run `EXP = "E6,E3"`: the E6 mechanism controls on K
+first (pulled forward, §A9), then the rest of E3 (RIN abnormality, OmniMedVQA anatomy, SLAKE-zh last). Finished runs
+are restored from the private datasets `medprune-restore-<model>` (`RESTORE_FROM = "auto"`). Estimated 11.2 / 9.0
+GPU-h; `MAX_HOURS = 9.5` leaves ≈ 1.7 h of Lingshu SLAKE-zh for session 2. Scoring the open SLAKE answers is offline
+(saved responses), so it no longer blocks inference.** Qwen K-block ✅ DONE (B v2, 1.73 GPU-h: RIN FastV − Random −33.7
+[−37.3, −30.1]; SLAKE −2.4 [−4.9, +0.2]); E1g ✅ done (diagnosis-first). Record of that first block: This uses ten existing E3 conditions on English SLAKE and RIN anatomy: Full,
 text-only, Random@L2 seed 0, FastV, Gate+FastV. Retention 10%; RIN first; five-question smoke for every condition
 before bulk inference. Approximately 2.35 planned inference hours, 3.5-hour scheduling budget, role B/Father T4×2.
 The full Lingshu scoring-comparability issue remains open; this within-Qwen comparison does not require claiming
@@ -632,7 +686,7 @@ equivalence to published LLM-judged scores. The full 45-condition grid, other da
 
 **Before you start**
 - [x] K1 = GO (corrected Lingshu E1, Nov 3).
-- [ ] RadImageNet built in each session (Stage 4 commands; use `--models qwen3vl8b` on role B).
+- [x] RadImageNet built in each session (the notebook does it when `NEEDS_RIN`; masks for `MODEL` only).
 - [x] E1g read (gate + coverage selectors vs Random) — decides whether `gate_uniform`/`gate_random` are the headline
   method rows of Table 1. **Outcome (Nov 3): not headline.** The gate beats Random on Lingshu (+2–3 points, CI > 0 on
   RIN and SLAKE) but not on Qwen3-VL. `gate_uniform` stays in E3 as the remedy row (deterministic, so no seed
@@ -735,12 +789,14 @@ OpenReview by Nov 10, evening IST** (deadline Nov 10 23:59 AoE = Nov 11 17:29 IS
 ## Stage 6 — Budget curves (E5), mechanism controls (E6-P1), natural control (E7)
 
 **In one sentence:** show the effect is not a 10%-only artifact, pin down the mechanism with controls, and test
-whether it is specific to medical images. **Status: ⏳ NEXT (after Stage 5; 13.8 GPU-h at measured rates).** Decisions K3 and K4 are taken here.
+whether it is specific to medical images. **Status: ⏳ NEXT — partly pulled forward on Nov 3: E6-P1's controls on K run
+in the Stage 5 sessions (both models), E7 moved to C with the new E10/E11 controls (Stage 5b); E5 and E4 run in A/B
+session 2.** Decisions K3 and K4 are taken here.
 
 **Before you start**
 - [ ] Stage 5 done.
-- [ ] Static maps built on the laptop (task T4): `results/static_maps/<model>__for_<dataset>.npy` from the `full`
-      runs' scores on the *other* anchor dataset; upload them with the restored results.
+- [x] Static maps built on the laptop (task T4): `results/static_maps/<model>__for_<dataset>.npy` from the `full`
+      runs' scores on the *other* anchor dataset; uploaded in `medprune-restore-<model>` (Nov 3).
 
 ### E5 — Budget curves
 
@@ -786,7 +842,7 @@ python -m medprune.run_eval --exp E6 --model qwen3vl8b --account B --bundle $DAT
 |---|---|
 | Question | On ordinary photographs, is FastV still worse than random for the same models? |
 | Why it matters | Separates "medical images break FastV" from "FastV is generally weak at 10%". The keep-maps show whether the same positional bias exists but lands on content. |
-| Setup | Both models on role B; group N (500 GQA + 500 POPE); `full`, `random_l2`, `uniform_l2`, `fastv`, `ropefree`; no gate (photos have no acquisition background). |
+| Setup | Both models on role C (moved from B on Nov 3, now P0); group N (500 GQA + 500 POPE); `full`, `random_l2`, `uniform_l2`, `fastv`, `ropefree`; no gate (photos have no acquisition background). |
 | Runs, time | 10 run IDs, 2.0 h at measured rates (planned 2.5). |
 
 ```bash
@@ -796,6 +852,24 @@ python -m medprune.run_eval --exp E7 --model qwen3vl8b --bundle $DATA --out $RES
 
 **Expected result:** P13 — FastV ≥ Random − 2 points on photographs. If FastV is below Random on photos too, the claim
 becomes "background-driven, strongest on medical images", carried by Fig. 2.
+
+### E10 / E10r — Resolution control (added Nov 3, exploratory)
+
+| Field | Value |
+|---|---|
+| Question | Is RadImageNet's large loss about 64-token inputs or about the domain? (G1) |
+| Setup | Same questions, other resolution (`python -m medprune.data resize`, IDs unchanged → paired with the native runs): `slake_en_s224` and `natural_s224` (64 tokens) on C; `rin_anat_mc_s448` (256 tokens Lingshu, 196 Qwen3-VL) on A/B. Methods `full`, `random_l2`, `uniform_l2`, `fastv` (+ `gate_fastv`, `gate_uniform` on the medical sets). |
+| Runs, time | C: 10 runs per model, ≈ 1.5 / 1.4 GPU-h; A/B: 6 runs per model, 1.1 / 0.8 GPU-h. |
+| Reading | FastV − Random grows on SLAKE at 224² and shrinks on RIN at 448² → token count drives the collapse; unchanged → domain. Photographs at 224² decide whether the collapse is medical at all. |
+
+### E11 / E11r — Position or content, and is attention informative? (added Nov 3, exploratory)
+
+| Field | Value |
+|---|---|
+| Question | Does FastV's keep-set follow the content or the grid position (G3), and are the least-attended tokens any worse than the most-attended ones (G4)? |
+| Setup | `slake_en_vflip` / `rin_anat_mc_vflip`: the same images upside down (`python -m medprune.data vflip`), `full`, `random_l2`, `fastv`; `fastv_bottom` (lowest layer-1 attention) on `slake_en` / `rin_anat_mc`. |
+| Runs, time | C: 4 runs per model, ≈ 1.3 / 1.2 GPU-h; A/B: 4 runs per model, 0.4 / 0.3 GPU-h. |
+| Reading | Keep-set positions on flipped images ≈ original positions → positional prior; ≈ flipped positions → content-driven. `fastv_bottom` ≥ `fastv` → attention ranks informative tokens last. Up/down answers change under the flip: compare keep-sets, and accuracy only on questions without a vertical direction. |
 
 **Decisions**
 - **K3:** if Gate+FastV recovers less than ⅓ of (Full − FastV) on CT/MRI, the paper becomes analysis-first.
@@ -1462,7 +1536,8 @@ and a log entry shows the notebook output on the dry-run results.
 **T4 — static maps.** `python -m medprune.analysis static-maps --results results --bundle ...` builds
 `results/static_maps/<model>__for_<dataset>.npy` from the `full` runs' `scores_l1` of the *other* anchor dataset
 (SLAKE-en → RadImageNet datasets; RadImageNet anatomy → SLAKE) with `stats.static_map_from_scores`. Done when: tested
-and logged.
+and logged. ✅ Done Nov 3 (`analysis.build_static_maps`, test in `tests/test_analysis.py`; maps peak in the top rows for
+both models: mean row of the 20 strongest cells 0.02–0.21).
 
 **T5 — HuatuoGPT-Vision port.** §D3 `huatuo_llava.py`. First read `model.safetensors.index.json` to find the vision
 tower weights (the authors' loader uses `init_vision_encoder_from_ckpt=True`). Done when: a 50-question SLAKE
@@ -1830,3 +1905,43 @@ run IDs, counts, accuracies with CIs. Template:
   below `uniform_l2` [−4.6, −0.5] is the pattern a noisy open-answer metric produces (Full 58.2).
 - Ledger: A 4.87 spent, B 3.17 spent; project 8.0 spent, 40.0 left, slack ≈ 34 (A 8.8, B 13.0, C 11.9). Added a
   `uniform_l2` row in E3 to the slack list.
+
+### 2026-11-03 — Claude — Stage 5 launched; diagnostic controls; offline diagnostics; gap register
+- **Launched** (17:50 IST): A `medprune-gpu-lingshu7b` v8 and B `medprune-gpu-qwen3vl8b` v4, `EXP = "E6,E3"`,
+  `MAX_HOURS = 9.5`, git `1c4fef2`. E6's controls on K run first: `static_map`, `inverse_gate`, `divprune` ± gate,
+  `ropefree` ± gate, `fastv_k8`, `fastv_k16`, `artifact_excl`, Random seeds 1–2. Earlier runs are restored from the
+  new private datasets `pushkararora88/medprune-restore-lingshu7b` and `pushkararora/medprune-restore-qwen3vl8b`
+  (run files + static maps, marker `medprune_restore.json`). C's bundle is rebuilding (v3, CPU); C then runs
+  `EXP = "E7,E10,E11"` for both models (3.8 / 3.4 GPU-h). Nothing on C needs the RadImageNet token.
+- **Code** (90 tests): `run_eval --exp` takes a comma list; `analysis static-maps` (T4); `data resize` / `data vflip`
+  (same-question variants, IDs unchanged); method `fastv_bottom` (`MethodSpec.invert`); notebook restore from an
+  attached dataset and E10/E10r/E11/E11r variant building under `/tmp`. Commits `1c4fef2`, `106b85d`, `cd25732`.
+- **Offline diagnostics** on the 36 finished runs (laptop, no GPU; scripts in the session scratchpad, to be folded into
+  `analysis.py`):
+  | test | Lingshu RIN | Qwen3-VL RIN | Lingshu SLAKE | Qwen3-VL SLAKE |
+  |---|---|---|---|---|
+  | FastV answer = text-only answer (Random) | 33.3% (21.6%) | 46.7% (33.2%) | 37.3% (31.5%) | 32.8% (33.6%) |
+  | retained visual gain, FastV / Random / Gate+FastV | 26% / 86% / 45% | 35% / 91% / 60% | 60% / 84% / 84% | 76% / 83% / 81% |
+  | keep-set Jaccard, same image, other question (FastV) | — | — | 0.974 | 0.801 |
+  | cross-image Jaccard, FastV top-10% by layer-1 score | 0.773 | 0.460 | 0.299 | 0.170 |
+  | same, RoPE-free layer-1 score; overlap with FastV | 0.770; 0.94 | 0.489; 0.77 | 0.305; 0.91 | 0.152; 0.68 |
+  | same, layer-15 score; BRR | 0.384; 1.99 | 0.489; 2.89 | 0.126; 1.11 | 0.195; 1.62 |
+  | attention-rank effect inside Random (log-odds per SD; p) | −0.12 (0.18) | −0.05 (0.57) | −0.14 (0.03) | +0.06 (0.39) |
+  | same inside Gate+Random | −0.35 (<0.001) | −0.18 (0.06) | −0.19 (0.005) | −0.05 (0.42) |
+  | FastV penalty explained by foreground coverage (mediation) | 11% | 0% | 46% | n.s. |
+  Retained visual gain = (acc − text-only) / (Full − text-only). Text-only: 20.1 / 30.1 / 24.5 / 24.2.
+- **Dose-response** (FastV − Random by the image's background fraction): RIN Lingshu −45.0 (no background, n = 111),
+  −51.0, −42.5, −28.6, −50.0 → flat; Gate+FastV − Random −45.0 → +5.6 as background grows (ρ = +0.33). SLAKE Lingshu
+  −1.9 (X-ray, no background), −17.0, −20.3, −16.3 (ρ = −0.35, p = 0.001); Qwen3-VL ρ = −0.27 (p = 0.008).
+- **SLAKE by question type** (Lingshu FastV − Random): Organ −25.3 (n = 253), Size −20.0, Quantity −13.5, Position −13.4,
+  Modality −11.1, Plane −8.6, Abnormality −2.7, KG −0.7; Gate+FastV is within ±6 everywhere.
+- **High-norm tokens** (robust z > 5 on layer-1 norms): 3.3% of FastV's picks vs 1.0% base rate (Lingshu RIN), 1.9% vs
+  0.3% (SLAKE); Qwen3-VL 0% and 0.5% vs 0.1% → over-selected (P5) but too rare to explain the loss.
+- **Reading.** FastV's layer-1 ranking ignores the question, is close to a fixed map at 64 tokens, is not caused by
+  RoPE, and — at least for Lingshu — prefers tokens that are *less* useful than random ones; the pruned model then falls
+  back on the language prior. Background capture explains SLAKE (CT/MRI) fully but not RadImageNet. Coverage correlates
+  with accuracy across selectors but does not explain FastV per question, so the claim is about *which* tokens attention
+  picks, not only how spread they are. Thesis revised (§A1), claims status (§A2), gap register opened (§A9).
+- [FLAG] The 224² / 64-token confound (G1) can still reframe the paper: if photographs at 224² collapse like
+  RadImageNet, the paper becomes "attention pruning fails at small token counts; medical benchmarks are small and CT/MRI
+  add background capture". E10 decides it tonight.

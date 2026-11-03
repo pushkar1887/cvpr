@@ -79,12 +79,13 @@ Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and unif
 **[plan.md](plan.md)** is the single plan: stage tracker (Stages 0–8 with checkboxes and exit gates), research,
 protocol, code design and compute backends. Predictions are pre-registered in plan.md §A6 (2026-11-02).
 
-Status (Nov 3): **Stages 0–4 done; Stage 5 started** — live tracker at the top of [plan.md](plan.md#stage-tracker).
+Status (Nov 3, evening): **Stages 0–4b done; Stage 5 running on A and B; confound controls queued on C** — live
+tracker at the top of [plan.md](plan.md#stage-tracker), open reviewer objections in its gap register (§A9).
 K1 = GO: on RadImageNet anatomy (10% of tokens kept), FastV scores 38.1% vs Random 79.3% on Lingshu-7B and 50.9% vs
-84.6% on Qwen3-VL-8B. Removing background (the foreground gate) explains all of FastV's loss on SLAKE but only a
-third to a half on RadImageNet; the rest is attention ranking inside the foreground. The gate with uniform or random
-selection beats Random by 2–3 points on Lingshu and not significantly on Qwen3-VL, so the paper is diagnosis-first
-(E1g, Nov 3). 87 CPU tests pass.
+84.6% on Qwen3-VL-8B. The diagnosis so far: FastV's layer-1 ranking ignores the question (97% of the keep-set is shared
+across questions about one image), is close to a fixed map at 64 tokens, is not caused by RoPE, and for Lingshu ranks
+tokens that are less useful than random ones; the pruned model falls back on its text-only answers. Background capture
+explains SLAKE's CT/MRI loss fully but not RadImageNet's. 90 CPU tests pass.
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
 then read the Work log at the end of plan.md and add an entry when you finish.

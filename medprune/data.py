@@ -4,6 +4,7 @@ CLI (identical on Kaggle and SSH):
     python -m medprune.data build   --out DIR [--work DIR] [--skip radimagenet]
     python -m medprune.data masks   --bundle DIR
     python -m medprune.data summary --bundle DIR
+    python -m medprune.data resize  --source DIR --bundle DIR --datasets slake_en,natural --size 224
 RadImageNet-VQA may not be redistributed: build it inside each GPU session with `--only radimagenet`.
 """
 
@@ -344,6 +345,30 @@ def build_natural(gqa_instructions: Path, gqa_images: Path, pope: Path, out_root
     return {"natural": len(samples)}
 
 
+# ------------------------------------------------------------------------------- resolution controls
+
+def build_resized(source: Path, out_root: Path, dataset: str, size: int) -> dict[str, int]:
+    """`<dataset>_s<size>`: the same questions with every image resized to size x size (bicubic, saved as PNG).
+
+    Question and image IDs are unchanged, so runs pair with the native-resolution runs question by question and only
+    the number of visual tokens differs (224² gives 64 tokens for Lingshu and Qwen3-VL, as RadImageNet does). Square
+    resizing distorts non-square images; every selector sees the same distorted input, so comparisons stay fair.
+    """
+    from dataclasses import replace
+
+    name = f"{dataset}_s{size}"
+    samples = []
+    for s in load_manifest(source, dataset):
+        rel = str(Path("images") / name / Path(s.image_path).relative_to("images").with_suffix(".png")).replace("\\", "/")
+        dst = Path(out_root) / rel
+        if not dst.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            Image.open(Path(source) / s.image_path).convert("RGB").resize((size, size), Image.BICUBIC).save(dst)
+        samples.append(replace(s, dataset=name, image_path=rel, meta={**s.meta, "resized_from": dataset, "size": size}))
+    write_manifest(samples, out_root, name)
+    return {name: len(samples)}
+
+
 # ------------------------------------------------------------------------------------------- masks
 
 def build_masks(bundle: Path, datasets: list[str], models: list[str], overlays_per_modality: int = 20) -> None:
@@ -439,8 +464,10 @@ def _download(repo: str, filename: str, work: Path) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=["build", "masks", "summary"])
+    parser.add_argument("command", choices=["build", "masks", "summary", "resize"])
     parser.add_argument("--out", "--bundle", dest="bundle", type=Path, required=True)
+    parser.add_argument("--source", type=Path, help="resize: bundle holding the native-resolution datasets")
+    parser.add_argument("--size", type=int, default=224, help="resize: output side in pixels")
     parser.add_argument("--work", type=Path, default=Path("data_work"), help="download/scratch directory")
     parser.add_argument("--only", default="slake,omnimedvqa,natural", help="comma list: slake,omnimedvqa,natural,radimagenet")
     parser.add_argument("--skip", default="", help="comma list of sources to skip")
@@ -479,6 +506,11 @@ def main() -> None:
         datasets = [d for d in args.datasets.split(",") if d] or \
             sorted(p.stem for p in (bundle / "manifests").glob("*.jsonl"))
         build_masks(bundle, datasets, args.models.split(","))
+    elif args.command == "resize":
+        counts = {}
+        for dataset in [d for d in args.datasets.split(",") if d]:
+            counts.update(build_resized(args.source, bundle, dataset, args.size))
+        print(json.dumps(counts, indent=2))
     else:
         print(json.dumps(write_summary(bundle), indent=2, ensure_ascii=False))
 

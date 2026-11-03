@@ -7,11 +7,14 @@ rates_s_per_q:  # T4x2 fp16, batch 1. "m" = measured (Stage 3-4 run files), "p" 
   lingshu7b:
     {slake_en: 1.07, slake_zh: 1.10, rin_anat_mc: 0.35, rin_abn_closed: 0.30, omni_anat: 0.50, omni_panel: 0.80,
      natural: 0.72, slake: 1.10, rin: 0.35, omni: 0.80,
+     slake_en_s224: 0.65, natural_s224: 0.30, rin_anat_mc_s448: 0.66,
      text_only: {slake: 0.66, rin: 0.23, omni: 0.25, natural: 0.30}}
-    # m: slake_en, rin_anat_mc, text_only slake/rin. p: the rest (slake_zh +3% for longer CJK answers).
+    # m: slake_en, rin_anat_mc, text_only slake/rin. p: the rest (slake_zh +3% for longer CJK answers; resized
+    # datasets from the cost model at 64 / 256 visual tokens).
   qwen3vl8b:
     {slake_en: 0.98, slake_zh: 1.00, rin_anat_mc: 0.28, rin_abn_closed: 0.26, omni_anat: 0.43, omni_panel: 0.68,
      natural: 0.58, slake: 1.00, rin: 0.28, omni: 0.68,
+     slake_en_s224: 0.65, natural_s224: 0.25, rin_anat_mc_s448: 0.49,
      text_only: {slake: 0.35, rin: 0.18, omni: 0.20, natural: 0.25}}
     # m: slake_en, rin_anat_mc, text_only slake/rin. p: the rest.
   huatuo7b:
@@ -87,9 +90,23 @@ blocks:
   - {exp: E6, tier: P1, account: B, model: qwen3vl8b, groups: [K],
      methods: [fastv_k16, static_map, inverse_gate, divprune, gate_divprune]}
 
-  # Stage 6 — E7: natural-image control (no gate)
-  - {exp: E7, tier: P1, account: B, model: lingshu7b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
-  - {exp: E7, tier: P1, account: B, model: qwen3vl8b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
+  # Stage 6 — E7: natural-image control (no gate). Moved to C (2026-11-03): it decides the "medical-specific" claim.
+  - {exp: E7, tier: P0, account: C, model: lingshu7b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
+  - {exp: E7, tier: P0, account: C, model: qwen3vl8b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
+
+  # E10 / E10r — resolution control (added 2026-11-03). RadImageNet (224², 64 tokens) shows the largest loss, so token
+  # count is confounded with domain. Same questions at another resolution (`python -m medprune.data resize`): SLAKE and
+  # natural images down to 224² (C, no RadImageNet needed), RadImageNet up to 448² (A/B: needs the HF token).
+  - {exp: E10, tier: P0, account: C, model: lingshu7b, groups: [slake_en_s224],
+     methods: [full, random_l2, uniform_l2, fastv, gate_fastv, gate_uniform]}
+  - {exp: E10, tier: P0, account: C, model: lingshu7b, groups: [natural_s224], methods: [full, random_l2, uniform_l2, fastv]}
+  - {exp: E10, tier: P0, account: C, model: qwen3vl8b, groups: [slake_en_s224],
+     methods: [full, random_l2, uniform_l2, fastv, gate_fastv, gate_uniform]}
+  - {exp: E10, tier: P0, account: C, model: qwen3vl8b, groups: [natural_s224], methods: [full, random_l2, uniform_l2, fastv]}
+  - {exp: E10r, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc_s448],
+     methods: [full, random_l2, uniform_l2, fastv, gate_fastv, gate_uniform]}
+  - {exp: E10r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc_s448],
+     methods: [full, random_l2, uniform_l2, fastv, gate_fastv, gate_uniform]}
 
   # Stage 7 — E6 (P2): gate robustness, artifacts, PDrop
   - {exp: E6, tier: P2, account: C, model: lingshu7b, groups: [S1],

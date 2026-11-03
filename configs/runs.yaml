@@ -141,9 +141,15 @@ blocks:
 
   # Stage 7 — E8: HuatuoGPT-Vision-7B (LLaVA-1.5, 1D RoPE, always 576 tokens: RadImageNet's 224² images get 9x the
   # Qwen models' 64 tokens, so it doubles as a model-level token-count contrast for G1). K first (G6), then the rest.
-  - {exp: E8, tier: P1, account: C, model: huatuo7b, groups: [K],
+  # Split Nov 3 (port validated, E0 50/50 checks): E8 = SLAKE (no token needed); E8r = RadImageNet, which needs the
+  # `cvpr` secret attached to C's notebook.
+  - {exp: E8, tier: P1, account: C, model: huatuo7b, groups: [slake_en],
      methods: [full, text_only, random_l2, uniform_l2, fastv, gate_fastv]}
-  - {exp: E8, tier: P2, account: C, model: huatuo7b, groups: [K],
+  - {exp: E8, tier: P2, account: C, model: huatuo7b, groups: [slake_en],
      methods: [full_profile, fastv_text, ropefree, gate_ropefree, fastv_bottom]}  # profile: the 1D-RoPE case (G18)
-  - {exp: E8, tier: P2, account: C, model: huatuo7b, groups: [rin_abn_closed],
+  - {exp: E8r, tier: P1, account: C, model: huatuo7b, groups: [rin_anat_mc],
+     methods: [full, text_only, random_l2, uniform_l2, fastv, gate_fastv]}
+  - {exp: E8r, tier: P2, account: C, model: huatuo7b, groups: [rin_anat_mc],
+     methods: [full_profile, fastv_text, ropefree, gate_ropefree, fastv_bottom]}
+  - {exp: E8r, tier: P2, account: C, model: huatuo7b, groups: [rin_abn_closed],
      methods: [full, text_only, random_l2, fastv, gate_fastv]}

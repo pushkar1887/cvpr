@@ -175,7 +175,7 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
     state = PruneState(vis_pos=inputs.vis_pos)
     rule = method.rule
     if rule == "random":
-        state.apply_keep(select_random(n, k, rng_for(spec.seed, sample.qid)), method.mask_from)
+        state.apply_keep(select_random(n, k, rng_for(spec.seed, sample.qid), allowed), method.mask_from)
     elif rule == "uniform":
         state.apply_keep(select_uniform(n, k, allowed), method.mask_from)
     elif rule == "inverse":

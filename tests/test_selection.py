@@ -108,8 +108,26 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 25
+    assert len(METHODS) == 26
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name
     assert METHODS["fastv"].score_layer == 1 and METHODS["fastv"].mask_from == 2
+
+
+def test_gated_random_stays_inside_the_gate_and_tops_up():
+    rng = np.random.default_rng(0)
+    allowed = np.zeros(64, bool)
+    allowed[10:30] = True
+    keep = select_random(64, 6, rng, allowed)
+    assert keep.size == 6 and allowed[keep].all()
+    small = np.zeros(64, bool)
+    small[:3] = True
+    keep = select_random(64, 6, np.random.default_rng(1), small)
+    assert keep.size == 6 and set(range(3)) <= set(keep.tolist())
+
+
+def test_ungated_random_draw_is_unchanged():
+    a = select_random(64, 6, np.random.default_rng(7))
+    b = np.sort(np.random.default_rng(7).choice(64, size=6, replace=False))
+    assert np.array_equal(a, b)

@@ -24,6 +24,11 @@ blocks:
   - {exp: E1, tier: P0, account: A, model: lingshu7b, groups: [K],
      methods: [full, text_only, random_l2, random_l0, fastv, fastv_prellm, gate_fastv]}
 
+  # Stage 4b — E1g: can a coverage-preserving selector inside the gate beat Random? (added 2026-11-03: FastV keeps
+  # 38 distinct keep-sets over 1,000 RadImageNet images, so a gated top-k inherits its positional collapse)
+  - {exp: E1g, tier: P0, account: A, model: lingshu7b, groups: [K], methods: [gate_uniform, gate_random, uniform_l2]}
+  - {exp: E1g, tier: P0, account: B, model: qwen3vl8b, groups: [K], methods: [gate_uniform, gate_random, uniform_l2]}
+
   # Stage 5 — E3: main grid at 10%
   - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1],
      methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}

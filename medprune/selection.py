@@ -53,6 +53,7 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_fastv", "topk", score="attn", score_layer=1, mask_from=2, gate="foreground"),
         _spec("gate_ropefree", "topk", score="ropefree", score_layer=1, mask_from=2, gate="foreground"),
         _spec("gate_uniform", "uniform", mask_from=2, gate="foreground"),
+        _spec("gate_random", "random", mask_from=2, gate="foreground"),
         _spec("fastv_k8", "topk", score="attn", score_layer=7, mask_from=8),
         _spec("fastv_k16", "topk", score="attn", score_layer=15, mask_from=16),
         _spec("static_map", "static", mask_from=2),
@@ -102,8 +103,14 @@ def _finish(chosen: np.ndarray, n: int, k: int, fallback_order: np.ndarray) -> n
     return np.sort(chosen[:k]).astype(np.int64)
 
 
-def select_random(n: int, k: int, rng: np.random.Generator) -> np.ndarray:
-    return np.sort(rng.choice(n, size=k, replace=False)).astype(np.int64)
+def select_random(n: int, k: int, rng: np.random.Generator, allowed: np.ndarray | None = None) -> np.ndarray:
+    """k tokens uniformly at random, among `allowed` tokens when given (topped up at random from the rest)."""
+    if allowed is None:
+        return np.sort(rng.choice(n, size=k, replace=False)).astype(np.int64)
+    inside = np.flatnonzero(allowed)
+    chosen = rng.choice(inside, size=min(k, inside.size), replace=False)
+    outside = np.setdiff1d(np.arange(n), chosen)
+    return _finish(chosen, n, k, rng.permutation(outside))
 
 
 def select_uniform(n: int, k: int, allowed: np.ndarray | None = None) -> np.ndarray:

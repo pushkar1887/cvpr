@@ -1704,3 +1704,33 @@ run IDs, counts, accuracies with CIs. Template:
   same-owner builder input attached. API accepted the submission and returned **RUNNING**. Receipt:
   `results/ops/qwen_stage5_block_submission_v2_reviewed/account_operation_receipt.json`. This confirms the notebook
   run started; runtime/input assertions, smoke checks, inference and final accuracy still require its outputs.
+
+### 2026-11-03 — Claude — Stage 4 verification, Qwen block check, E1g launched
+- Re-derived Codex's Stage 4 numbers from the raw run files (`results/stage4_lingshu_20261103/runs`): all match.
+  Lingshu RIN anatomy: Full 89.0, Random@L2 79.3, FastV 38.1, Gate+FastV 51.3; FastV − Random −41.2 [−44.9, −37.6]
+  (image bootstrap). K1 = GO stands.
+- Verified Codex's Qwen E3 block (B, `medprune-gpu-qwen3vl8b` v2, git `f53a663`). RIN anatomy: Full 89.7, Random@L2
+  84.6, FastV 50.9, Gate+FastV 65.9, text-only 30.1; FastV − Random −33.7 [−37.3, −30.1]; Gate+FastV − Random −18.7
+  [−22.0, −15.3]. SLAKE-en: Full 58.2, Random 52.6, FastV 50.2, Gate+FastV 51.8; FastV − Random −2.4 [−4.9, +0.2].
+- [FLAG] Qwen's SLAKE Full (58.2) is depressed by vocabulary, not errors: it answers "axial" for gold "Transverse
+  Plane", "coronal" for "Coronal Plane", "brain" for "Head". Lingshu was trained on SLAKE-style labels and copies the
+  wording. Normalized EM therefore compresses Qwen's SLAKE headroom; RIN (multiple choice) is unaffected. Needs a
+  semantic open-answer judge (or closed-only reporting) before SLAKE-Qwen numbers go into the paper.
+- New statistic `analysis.image_dependence` (one keep-set per image; distinct sets, share of the most common set,
+  mean cross-image Jaccard; Random ≈ 0.05). FastV is close to image-independent, and the loss to Random follows it:
+  | model, dataset | FastV distinct sets / images | top share | cross-image Jaccard | FastV − Random |
+  |---|---|---|---|---|
+  | Lingshu, RIN | 38 / 1000 | 0.447 | 0.769 | −41.2 |
+  | Qwen, RIN | 508 / 1000 | 0.030 | 0.465 | −33.7 |
+  | Lingshu, SLAKE | 73 / 96 | 0.250 | 0.303 | −12.6 |
+  | Qwen, SLAKE | 80 / 96 | 0.115 | 0.174 | −2.4 |
+  Reading: at layer 2 FastV mostly applies a fixed positional prior, and fewer tokens (RIN 224² → 64) make it worse.
+  This is a sharper paper claim than "attention points at air"; H1 (background over-selection, 2.3× on RIN) may be
+  a by-product of the prior's location. Gate+FastV breaks the collapse (Jaccard 0.175 / 0.087) but stays below
+  Random, so a gated top-k is not the method.
+- Added `gate_random` (random within the gate; ungated draw unchanged — tested) and block **E1g** = {gate_uniform,
+  gate_random, uniform_l2} × K for both models. Decision rule (set before results): the gate is a method only if
+  gate_uniform or gate_random beats random_l2 on RIN with the paired CI above 0; otherwise the paper is diagnosis-first
+  and the gate is reported as a partial remedy. 87 CPU tests pass.
+- Launched E1g with the standard `notebooks/01_run_gpu.ipynb` (clones `main`): A `medprune-gpu-lingshu7b` v7,
+  B `medprune-gpu-qwen3vl8b` v3, T4×2, each on its own `medprune-00-build-data-bundle` output.

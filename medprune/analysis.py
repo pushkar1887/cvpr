@@ -223,6 +223,26 @@ def query_dependence(df: pd.DataFrame, model: str, method: str, budget: int = 10
     return pd.DataFrame(rows, columns=["model", "method", "dataset", "images", "jaccard", "ci_low", "ci_high"])
 
 
+def image_dependence(df: pd.DataFrame, model: str, method: str, budget: int = 10, pairs: int = 5000,
+                     seed: int = 0) -> pd.DataFrame:
+    """Does the selector look at the image? One keep-set per image (its first question): the number of distinct
+    keep-sets, the largest share of images sharing one keep-set, and the mean Jaccard between keep-sets of random
+    pairs of different images (Random is the reference; ~1 = the same tokens for every image)."""
+    d = df[(df["model"] == model) & (df["method"] == method) & (df["budget_pct"] == budget) & df["keep_idx"].notna()]
+    rows = []
+    for dataset, g in d.groupby("dataset"):
+        sets = [tuple(np.asarray(k).tolist()) for k in g.sort_values("qid").groupby("image_id")["keep_idx"].first()]
+        counts = pd.Series(sets).value_counts()
+        rng = np.random.default_rng(seed)
+        i, j = rng.integers(0, len(sets), pairs), rng.integers(0, len(sets), pairs)
+        jac = [jaccard(np.asarray(sets[a]), np.asarray(sets[b])) for a, b in zip(i, j) if a != b]
+        rows.append({"model": model, "method": method, "dataset": dataset, "images": len(sets),
+                     "distinct_keepsets": int(counts.size), "top_share": float(counts.iloc[0] / len(sets)),
+                     "cross_image_jaccard": float(np.mean(jac)) if jac else np.nan})
+    return pd.DataFrame(rows, columns=["model", "method", "dataset", "images", "distinct_keepsets", "top_share",
+                                       "cross_image_jaccard"])
+
+
 def high_norm_rates(df: pd.DataFrame, results: Path, model: str, method: str = "fastv", budget: int = 10,
                     z_threshold: float = 5.0) -> pd.DataFrame:
     """How often high-norm (artifact) visual tokens are kept, relative to the budget, and where they sit."""
@@ -287,6 +307,8 @@ def stage4_report(results: Path, model: str = "lingshu7b", profile: str = "t4x2"
                                      for m in ("fastv", "random_l2", "gate_fastv")], ignore_index=True)
     report["query_dependence"] = pd.concat([query_dependence(df, model, m, budget) for m in ("fastv", "random_l2")],
                                            ignore_index=True)
+    report["image_dependence"] = pd.concat([image_dependence(df, model, m, budget)
+                                            for m in ("fastv", "random_l2", "gate_fastv")], ignore_index=True)
     report["high_norm"] = high_norm_rates(df, results, model, budget=budget)
     report["keep_maps"] = {m: keep_maps(df, model, m, budget) for m in ("fastv", "random_l2", "gate_fastv")}
     report["decisions"] = stage4_decisions(report)
@@ -330,7 +352,7 @@ def _write_stage4(report: dict, results: Path) -> None:
     tables.mkdir(parents=True, exist_ok=True)
     figures.mkdir(parents=True, exist_ok=True)
     for name in ("accuracy", "accuracy_by_modality", "accuracy_image_dependent", "paired", "retention",
-                 "query_dependence", "high_norm"):
+                 "query_dependence", "image_dependence", "high_norm"):
         report[name].to_csv(tables / f"stage4_{name}.csv", index=False)
     (tables / "stage4_decisions.json").write_text(json.dumps(report["decisions"], indent=2, default=str),
                                                   encoding="utf-8")

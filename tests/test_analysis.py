@@ -124,3 +124,16 @@ def test_stage4_report_end_to_end_on_dry_run(tmp_path):
     assert (results / "figures" / "stage4_keepmaps.pdf").exists()
     decisions = json.loads((results / "tables" / "stage4_decisions.json").read_text())
     assert decisions["K1"].startswith(("GO", "REFRAME", "STOP", "undecided"))
+
+
+def test_image_dependence_flags_a_fixed_keep_set():
+    from medprune.analysis import image_dependence
+    rows = [dict(model="m", dataset="d", method="fastv", budget_pct=10, qid=f"q{i}", image_id=f"img{i}",
+                 keep_idx=[0, 1, 2], modality="CT") for i in range(6)]
+    rows += [dict(model="m", dataset="d", method="random_l2", budget_pct=10, qid=f"q{i}", image_id=f"img{i}",
+                  keep_idx=[3 * i, 3 * i + 1, 3 * i + 2], modality="CT") for i in range(6)]
+    df = _frame(rows)
+    fixed = image_dependence(df, "m", "fastv").iloc[0]
+    varied = image_dependence(df, "m", "random_l2").iloc[0]
+    assert fixed["distinct_keepsets"] == 1 and fixed["top_share"] == 1.0 and fixed["cross_image_jaccard"] == 1.0
+    assert varied["distinct_keepsets"] == 6 and varied["cross_image_jaccard"] == 0.0

@@ -8,14 +8,20 @@ pass per unique (question, reference, response) and needs no API. MedEvalKit's o
 not used: without its reasoning step, a CPU smoke test (Qwen2.5-0.5B) read "0" as "incorrect" even for exact
 matches. The judge sees no image, no model name and no method name.
 
+Prompt v3 (Nov 3): pass 1 with MedEvalKit's wording (v2) let Qwen2.5-7B overrule the reference with its own knowledge
+("largest organ in the picture? Liver" -> "No") and accept partial or refusing answers. v3 states the rubric — the
+reference is ground truth, the judge cannot see the image, partial / less specific / refusing answers are wrong,
+consistent extra detail is fine — and the scorer is `rule OR judge`: a normalized exact match is always correct, the
+judge only rescues answers the rule misses. The hand-label sheet carries the same rubric.
+
 Workflow (laptop -> Kaggle GPU -> laptop):
     python -m medprune.judge export --results results/all --out results/judge/items.jsonl
     python -m medprune.judge run --items items.jsonl --out verdicts.jsonl          # GPU, resumable
     python -m medprune.judge sheet --results results/all                           # blind hand-label sheet
     python -m medprune.judge kappa --results results/all                           # judge and rule vs hand labels
-Decision rule (fixed before any label is read): the judge becomes the primary open-question metric
-(analysis.load_runs(open_scoring="judge")) if kappa(judge, human) >= 0.8 and is above kappa(rule, human); otherwise
-normalized exact match stays primary and the judge is reported as a robustness check.
+Decision rule (fixed before any label is read): the scorer rule OR judge becomes the primary open-question metric
+(analysis.load_runs(open_scoring="judge")) if its kappa with the hand labels is >= 0.8 and above kappa(rule, human);
+otherwise normalized exact match stays primary and the judge is reported as a robustness check.
 """
 
 from __future__ import annotations
@@ -30,7 +36,14 @@ import pandas as pd
 from .scoring import extract_boxed_content, extract_tag, judge_open
 
 JUDGE_MODEL = "Qwen/Qwen2.5-7B-Instruct"  # Apache-2.0, ungated, bilingual (SLAKE-zh); fp16 on T4x2
-PROMPT_VERSION = "medevalkit-compare/yes-no/v2"
+PROMPT_VERSION = "rubric/yes-no/v3"
+RUBRIC = (
+    "The model's answer is correct if it means the same as the standard answer: synonyms, paraphrases, different "
+    "formatting, or extra detail that is consistent with the standard answer count as correct. It is incorrect if it "
+    "names a different thing, contradicts the standard answer, is less specific than the standard answer (for example "
+    "'Left' for 'Upper Left'), gives only part of a standard answer that lists several items, or does not answer (for "
+    "example, says it cannot see the image)."
+)
 VERDICTS = {"yes": ("Yes", "yes"), "no": ("No", "no")}  # first-token spellings summed per verdict
 KAPPA_TARGET = 0.8
 
@@ -53,15 +66,15 @@ def item_key(question: str, answer: str, response: str) -> str:
 
 
 def judge_prompt(question: str, answer: str, response: str) -> str:
-    """MedEvalKit's comparison instructions; the verdict is one word (Yes/No), read from the first token's logits."""
+    """Comparison against the reference under RUBRIC; the verdict is one word (Yes/No), read from the logits."""
     return (
-        "Your task is to determine whether the user's answer is correct based on the provided questions and standard "
-        "answers (for example, if the user expresses a similar meaning to the standard answer, or another "
-        "interpretation of the standard answer, it is considered correct.)\n\n"
-        f"The question is: {question}\n\n"
-        f"The standard answer: {answer}\n\n"
-        f"The user's answer: {clean_response(response)}\n\n"
-        "Is the user's answer correct? Reply with one word: Yes or No."
+        "You are grading a medical visual question answering system. You cannot see the image. The standard answer is "
+        "the ground truth for this image; do not use your own medical knowledge to decide what the image shows.\n\n"
+        f"Question: {question}\n"
+        f"Standard answer: {answer}\n"
+        f"Model's answer: {clean_response(response)}\n\n"
+        f"{RUBRIC}\n\n"
+        "Is the model's answer correct? Reply with one word: Yes or No."
     )
 
 
@@ -103,13 +116,16 @@ def export_items(results: Path, out: Path, verdicts: Path | None = None) -> int:
     return len(items)
 
 
-def load_verdicts(path: Path) -> dict[str, float]:
-    """{key: P(correct)} from a verdicts file; a key judged twice must agree (resumed runs append)."""
+def load_verdicts(path: Path, prompt: str | None = PROMPT_VERSION) -> dict[str, float]:
+    """{key: P(correct)} from a verdicts file, for one prompt version (None = any); a key judged twice under the same
+    prompt must agree (resumed runs append)."""
     out: dict[str, float] = {}
     with Path(path).open(encoding="utf-8") as f:
         for line in f:
             if line.strip():
                 v = json.loads(line)
+                if prompt is not None and v.get("prompt") != prompt:
+                    continue
                 if v["key"] in out and abs(out[v["key"]] - v["p_correct"]) > 1e-3:
                     raise ValueError(f"conflicting verdicts for {v['key']} in {path}")
                 out[v["key"]] = float(v["p_correct"])
@@ -117,7 +133,8 @@ def load_verdicts(path: Path) -> dict[str, float]:
 
 
 def apply_judge(df: pd.DataFrame, verdicts: dict[str, float], threshold: float = 0.5) -> pd.DataFrame:
-    """Open rows' `correct` from the judge (P(correct) >= threshold); `correct_rule` keeps the rule verdict.
+    """Open rows' `correct` = rule OR judge (P(correct) >= threshold): a normalized exact match is always correct, the
+    judge rescues the rest; `correct_rule` keeps the rule verdict.
 
     Raises if an open row has no verdict: a table must never mix judged and rule-scored open questions.
     """
@@ -131,7 +148,7 @@ def apply_judge(df: pd.DataFrame, verdicts: dict[str, float], threshold: float =
         raise ValueError(f"{len(missing)} open rows have no judge verdict (first key {missing[0]}); "
                          "export and judge them first")
     df.loc[is_open, "p_judge"] = [verdicts[k] for k in keys]
-    df.loc[is_open, "correct"] = df.loc[is_open, "p_judge"] >= threshold
+    df.loc[is_open, "correct"] = df.loc[is_open, "correct_rule"].astype(bool) | (df.loc[is_open, "p_judge"] >= threshold)
     df["correct"] = df["correct"].astype(bool)
     return df
 
@@ -190,20 +207,25 @@ def run_judge(items_path: Path, out_path: Path, model_id: str = JUDGE_MODEL, bat
 
 # ------------------------------------------------------------------------------------------ validation
 
+SHEET_STRATA = {"exact": 0.1, "judge_yes": 0.45, "judge_no": 0.45}  # share of the n labelled items
+
+
 def label_sheet(results: Path, verdicts: dict[str, float], out_csv: Path, n: int = 200, lang: str = "en",
                 seed: int = 0) -> pd.DataFrame:
-    """Blind hand-label sample. Rows (question x run) are drawn in two strata, judge and rule disagreeing / agreeing,
-    n/2 each (all disagreements if fewer); one line per unique item, shuffled. The sheet shows only question,
-    reference and response; the strata and weights go to a separate key file for `kappa_report`."""
+    """Blind hand-label sample, stratified where the scorer (rule OR judge) can be wrong: answers the rule already
+    accepts ("exact", a small check), and rule-rejected answers the judge accepts / rejects ("judge_yes", "judge_no").
+    Within a stratum, unique items are drawn with probability proportional to how many rows they stand for. The sheet
+    shows only question, reference and response; strata and weights go to a key file for `kappa_report`, and the
+    rubric the judge used to a README next to the sheet."""
     rows = open_rows(results)
     rows = rows[(rows["lang"] == lang) & rows["key"].isin(verdicts)].copy()
-    rows["judge"] = rows["key"].map(verdicts) >= 0.5
-    rows["stratum"] = np.where(rows["judge"] == rows["rule"], "agree", "disagree")
+    rows["judge"] = rows["rule"] | (rows["key"].map(verdicts) >= 0.5)
+    rows["stratum"] = np.where(rows["rule"], "exact", np.where(rows["judge"], "judge_yes", "judge_no"))
     rng = np.random.default_rng(seed)
     picked = []
     for stratum, g in rows.groupby("stratum"):
         unique = g.drop_duplicates("key")
-        take = min(len(unique), n // 2)
+        take = min(len(unique), int(round(n * SHEET_STRATA[stratum])))
         # one draw per unique item, chosen with probability proportional to how many rows it stands for
         weights = g["key"].value_counts().reindex(unique["key"]).to_numpy(float)
         chosen = rng.choice(len(unique), size=take, replace=False, p=weights / weights.sum())
@@ -217,6 +239,9 @@ def label_sheet(results: Path, verdicts: dict[str, float], out_csv: Path, n: int
         out_csv, index=False, encoding="utf-8-sig")
     sheet[["item", "key", "stratum", "stratum_rows", "stratum_items", "rule", "judge"]].to_csv(
         out_csv.with_name(out_csv.stem + "_key.csv"), index=False)
+    out_csv.with_name(out_csv.stem + "_README.txt").write_text(
+        "Label each row: 1 = the response is a correct answer, 0 = it is not. Judge only against the reference answer "
+        "(treat it as the truth for that image); leave a cell empty to skip. Rubric:\n" + RUBRIC + "\n", encoding="utf-8")
     return sheet
 
 
@@ -252,7 +277,7 @@ def kappa_report(labels_csv: Path, B: int = 2000, seed: int = 0) -> dict:
                                      for g in groups])))
     ci = {k: (float(np.percentile([b[k] for b in boot], 2.5)), float(np.percentile([b[k] for b in boot], 97.5)))
           for k in point}
-    disagree = d[d["stratum"] == "disagree"]
+    disagree = d[d["judge"] != d["rule"]]
     report = {"labelled": len(d), "by_stratum": d["stratum"].value_counts().to_dict(), **point, "ci": ci,
               "judge_right_when_they_disagree": float((disagree["judge"] == disagree["human"]).mean())
               if len(disagree) else np.nan}

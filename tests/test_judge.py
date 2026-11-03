@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from medprune.judge import (apply_judge, clean_response, export_items, item_key, judge_prompt, kappa_report,
-                            label_sheet, load_verdicts, open_rows, weighted_kappa)
+from medprune.judge import (PROMPT_VERSION, apply_judge, clean_response, export_items, item_key, judge_prompt,
+                            kappa_report, label_sheet, load_verdicts, open_rows, weighted_kappa)
 
 
 def _write_run(results, run_id, rows):
@@ -24,7 +24,8 @@ def test_key_follows_the_scored_part_of_the_response():
     assert item_key("Which organ?", "Liver", "Liver") != item_key("Which organ?", "Liver", "Spleen")
     assert clean_response("<answer>CT</answer>") == "CT"
     prompt = judge_prompt("What plane?", "Transverse Plane", "axial.")
-    assert "The standard answer: Transverse Plane" in prompt and "The user's answer: axial." in prompt
+    assert "Standard answer: Transverse Plane" in prompt and "Model's answer: axial." in prompt
+    assert "You cannot see the image" in prompt and "less specific" in prompt
     assert prompt.endswith("Reply with one word: Yes or No.")
 
 
@@ -38,18 +39,22 @@ def test_export_is_unique_and_incremental(tmp_path):
     assert export_items(tmp_path, out) == 1
     item = json.loads(out.read_text(encoding="utf-8"))
     verdicts = tmp_path / "judge" / "verdicts.jsonl"
-    verdicts.write_text(json.dumps({"key": item["key"], "p_correct": 0.9}) + "\n", encoding="utf-8")
-    assert export_items(tmp_path, out, verdicts) == 0  # already judged
-    assert load_verdicts(verdicts) == {item["key"]: 0.9}
+    old = {"key": item["key"], "p_correct": 0.9, "prompt": "older/v2"}
+    verdicts.write_text(json.dumps(old) + "\n" + json.dumps({**old, "p_correct": 0.8, "prompt": PROMPT_VERSION}) + "\n",
+                        encoding="utf-8")
+    assert export_items(tmp_path, out, verdicts) == 0  # already judged under the current prompt
+    assert load_verdicts(verdicts) == {item["key"]: 0.8} and load_verdicts(verdicts, "older/v2") == {item["key"]: 0.9}
 
 
 def test_apply_judge_scores_open_rows_only_and_refuses_gaps():
     df = pd.DataFrame([_row("i1/q1", "What plane?", "Transverse Plane", "axial"),
-                       _row("i1/q2", "Is it normal?", "yes", "no", answer_type="yesno")])
-    key = item_key("What plane?", "Transverse Plane", "axial")
-    judged = apply_judge(df, {key: 0.97})
+                       _row("i1/q2", "Is it normal?", "yes", "no", answer_type="yesno"),
+                       _row("i1/q3", "Largest organ?", "Liver", "Liver.", correct=True)])
+    key, exact = item_key("What plane?", "Transverse Plane", "axial"), item_key("Largest organ?", "Liver", "Liver.")
+    judged = apply_judge(df, {key: 0.97, exact: 0.01})
     assert judged.loc[0, "correct"] and not judged.loc[0, "correct_rule"]
     assert not judged.loc[1, "correct"]  # closed rows keep their rule verdict
+    assert judged.loc[2, "correct"]  # an exact match stays correct whatever the judge says
     with pytest.raises(ValueError, match="no judge verdict"):
         apply_judge(df, {})
 
@@ -73,7 +78,8 @@ def test_label_sheet_is_blind_and_kappa_round_trips(tmp_path):
     sheet = label_sheet(tmp_path, verdicts, sheet_path, n=20)
     shown = pd.read_csv(sheet_path, encoding="utf-8-sig")
     assert list(shown.columns) == ["item", "question", "reference", "response", "label"]  # no verdicts, no methods
-    assert set(sheet["stratum"]) == {"agree", "disagree"}
+    assert set(sheet["stratum"]) == {"exact", "judge_yes", "judge_no"}
+    assert "less specific" in sheet_path.with_name("label_sheet_README.txt").read_text(encoding="utf-8")
     key = pd.read_csv(sheet_path.with_name("label_sheet_key.csv"))
     shown["label"] = key.set_index("item").loc[shown["item"], "judge"].astype(int).to_numpy()  # human = judge
     shown.to_csv(sheet_path, index=False, encoding="utf-8-sig")

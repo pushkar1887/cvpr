@@ -26,7 +26,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | 🔄 RUNNING: A v8, B v4 (17:50) | 1.73 | 18.5 running + 1.7 spill | Nov 3–4 | Table 1; E6 decides the mechanism claims (§A9) |
 | 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | ✅ C half DONE (Qwen3-VL 21:14, Lingshu 21:18; 38 runs, all complete); RadImageNet arms (E10r, E11r) in A/B session 2 | 6.14 | 2.6 (A/B) | Nov 3–4 | **P13 contradicted**: FastV < Random on photographs (−8.7 / −4.9). **G1**: token count is a modest amplifier; RadImageNet's collapse is dataset-specific. **G3**: Lingshu's keep-set is positional (flip). **G4**: Lingshu's least-attended tokens beat its most-attended (+6.2) |
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5) | ⏳ NEXT (A/B session 2, ~03:30; order E10r → E11r (row 5b) → E12 → rest of E3 → E4 → E5 → SLAKE-zh) | 0 | 11.2 | Nov 4–5 | Fig. 2, Fig. 3 (D1), Fig. 4 |
-| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔄 HuatuoGPT validated; **E8 SLAKE DONE** (11 runs, 00:50): FastV ≈ Random (−0.6), RoPE-free +3.1, bottom-row keep-set (77% in the lowest quarter) — the FEATHER case; E8r (RadImageNet) waits for C's `cvpr` secret. Judge v3 DONE (2,855 answers); pass 3 (HuatuoGPT's 1,169) RUNNING; then the label sheet | 3.88 | 0.1 running + 7.5 | Nov 3–7 | G6 answered on SLAKE; judge κ vs hand labels decides the open-question metric |
+| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔄 HuatuoGPT validated; **E8 SLAKE DONE** (11 runs, 00:50): FastV ≈ Random (−0.6), RoPE-free +3.1, bottom-row keep-set (77% in the lowest quarter) — the FEATHER case; E8r (RadImageNet) waits for C's `cvpr` secret. Judge v3 DONE on every open answer (4,024 unique, all 85 runs); **label sheet written** (`results/all/judge/label_sheet.csv`, 200 items) — waits for Pushkar's labels | 3.99 | 7.5 | Nov 3–7 | G6 answered on SLAKE; judge κ vs hand labels decides the open-question metric |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Totals (measured rates, §C4):** spent 14.1 GPU-h · running 18.5 (A, B) + 1.0 (C) · left 27.8 → **≈ 61
@@ -40,7 +40,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 9.9 (E10r 1.1, E11r 0.4, E12 1.0, spill 1.7, E4 1.5, E5 4.2) | 5.7 |
 | B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 5.6 (E10r 0.8, E11r 0.3, E12 0.9, E4 1.3, E5 2.3) | 12.2 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 10.02 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34; judge 0.10 + 0.21) | judge pass 3 (≈ 0.1) | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 3.7 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 10.13 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34; judge 0.10 + 0.21 + 0.11) | — | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 3.7 |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks (incl.
@@ -2205,3 +2205,16 @@ run IDs, counts, accuracies with CIs. Template:
   generic answers, so the flip is unlikely to be a leniency artefact.
 - **Session 2 prepared** (`push_s6_<model>` in the scratchpad): EXP `E10r,E11r,E12,E3,E4,E5`, RESTORE_FROM auto,
   MAX_HOURS 9.5 — launch after session 1 ends (~03:30) and the restore datasets are re-versioned with its outputs.
+
+### 2026-11-04 — Claude — Judge pass 3; label sheet; SLAKE under rule-OR-judge
+- Judge pass 3 (1,169 HuatuoGPT answers, 0.11 GPU-h) done: every open row of all 85 runs (31,605) has a v3 verdict
+  (4,024 unique answers).
+- **Label sheet** for Pushkar: `results/all/judge/label_sheet.csv` (200 blind items: 20 exact matches, 90 rule-rejected
+  answers the judge accepts, 90 it rejects; populations 13,602 / 3,443 / 14,560 rows), rubric in
+  `label_sheet_README.txt`, strata and weights in `label_sheet_key.csv`. Then `python -m medprune.judge kappa
+  --results results/all`.
+- **SLAKE (open + closed) FastV − Random, exact match → rule-OR-judge (provisional until κ)**: Lingshu −12.6 → −13.9
+  [−17.1, −10.7]; **Qwen3-VL −2.4 (n.s.) → −5.0 [−7.9, −2.0]**, Gate+FastV −0.1; HuatuoGPT −0.6 → −1.6 [−3.5, +0.4],
+  RoPE-free +3.6 [+1.5, +5.7], Gate+FastV +2.7 [+0.7, +4.9]. Full accuracy under the judge: Lingshu 82.4, Qwen3-VL
+  64.8, HuatuoGPT 56.6 (exact match 77.2 / 58.2 / 44.7). If κ holds, C1 on SLAKE holds for both Qwen-family models
+  and the gate closes both gaps.

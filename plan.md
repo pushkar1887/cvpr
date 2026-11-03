@@ -40,7 +40,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 9.9 (E10r 1.1, E11r 0.4, E12 1.0, spill 1.7, E4 1.5, E5 4.2) | 5.7 |
 | B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 5.6 (E10r 0.8, E11r 0.3, E12 0.9, E4 1.3, E5 2.3) | 12.2 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 6.14 (v1 ×2: E7, E10, E11 — Qwen3-VL 3.04, Lingshu 3.10) | 1.0 (HuatuoGPT E0 from 21:15, judge pass 1 from 21:18) | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 3.7 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 6.14 (v1 ×2: E7, E10, E11 — Qwen3-VL 3.04, Lingshu 3.10) | HuatuoGPT E0 (from 21:15); judge pass 1 done (0.1); judge v3 (≈ 0.15) | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 3.7 |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks (incl.
@@ -263,7 +263,7 @@ Status column as results land; numbers come from the Work log (Nov 3, "Offline d
 | G6 | "Two Qwen-family models with M-RoPE" | — | HuatuoGPT-Vision-7B (LLaVA, 1D RoPE, fixed 576 tokens; also a token-count control for RIN) on K | Port done (`6e69839`; 339/339 LLM and 391/391 CLIP keys checked against the checkpoint); E0 check (50 q) queued on C; then E8 on K | P1 |
 | G7 | "10% is an extreme budget" | — | E5 (5/25/50%) | A/B session 2 | P0 |
 | G8 | "Score at a deeper layer and it works" | Offline: top-10% by layer-7/15 attention is still image-independent on RIN (cross-image Jaccard 0.62 / 0.38) and background-heavy (BRR 2.6 / 2.0, Lingshu) | `fastv_k8`, `fastv_k16` (E6) | Running | P0 |
-| G9 | "Open-answer scoring is unfair to Qwen3-VL" | Synonyms ("axial" vs "Transverse Plane"); Qwen3-VL SLAKE Full 58.2 | Local LLM judge on saved responses (Qwen2.5-7B-Instruct, one-token Yes/No verdict), validated against 200 blind hand labels (population-weighted κ) | Code done (`medprune/judge.py`); pass 1 (2,141 unique answers) queued on C; labelling sheet after pass 1. Rule fixed now: the judge becomes primary iff κ(judge, human) ≥ 0.8 and > κ(rule, human) | P0 |
+| G9 | "Open-answer scoring is unfair to Qwen3-VL" | Synonyms ("axial" vs "Transverse Plane"); Qwen3-VL SLAKE Full 58.2 | Local LLM judge on saved responses (Qwen2.5-7B-Instruct, one-token Yes/No verdict), validated against 200 blind hand labels (population-weighted κ) | Pass 1 (v2 prompt, 2,141 answers, 0.1 GPU-h) exposed two failure modes — it overruled the reference with its own knowledge (16 of 364 exact matches rejected, e.g. "largest organ? Liver" → No) and accepted partial/refusing answers (text-only open accuracy 11% → 25%). Fixed in v3 (`d9d678c`): explicit rubric + scorer = exact match OR judge; v3 pass over all 2,855 answers queued on C; labelling sheet after it. Preliminary (v2): Qwen3-VL SLAKE-open FastV − Random flips from +0.8 (rule) to −3.4 [−6.4, −0.8]; Lingshu unchanged (−11.5 / −11.6). Rule fixed now: rule OR judge becomes primary iff its κ with the hand labels ≥ 0.8 and > κ(rule, human) | P0 |
 | G10 | "Yes/no accuracy on an imbalanced set" | RIN abnormality is 71.9% yes | Report the majority baseline and balanced accuracy for every yes/no cell | Analysis task | P0 |
 | G11 | "Coverage explains it; nothing new" | Selector-level coverage correlates with accuracy (r −0.91 to −0.99) but per question it explains 0–46% of FastV's penalty (logistic mediation) | Report both; DivPrune (max coverage) in E6 | Analysis done; E6 running | P1 |
 | G12 | "The gate removes informative tokens" / "background is not empty" | Gate = 100% of SLAKE CT/MRI; 889/1000 RIN questions gated | `inverse_gate` (background only) should sit near text-only; `oracle_gate` (SLAKE organ masks) | E6 running | P1 |
@@ -2137,3 +2137,22 @@ run IDs, counts, accuracies with CIs. Template:
   question-blind prior that loses to random selection on any image at 10%; medical scans amplify it (background,
   large-organ avoidance) and RadImageNet collapses". "Pruning the Air" still names the CT/MRI amplifier but no longer
   the whole paper. Needs a decision before the abstract (Nov 9) and enrollment (Nov 10).
+
+### 2026-11-03 — Claude — Judge pass 1 read; v3 prompt
+- `pushkarsiuuarora/medprune-judge` v1 COMPLETE 21:28 (0.10 GPU-h): 2,141 unique open answers from the 36 Stage 4/4b
+  runs; verdict mass on Yes/No ≈ 1.000 for every item, 2.2% undecided (P between 0.2 and 0.8).
+- Against the rule (normalized exact match), row level: agreement 83.8%; the judge accepts 89.2% of rule-correct rows
+  and 21.6% of rule-rejected rows. Two failure modes: (1) it overrules the reference with its own knowledge — 16 of 364
+  unique exact matches rejected, all of the type "What is the largest organ in the picture? — Liver / Liver." (p =
+  0.00) or "Which organs appear in pairs? — Temporal Lobe"; (2) leniency — "Not applicable — no picture provided." for
+  "None", "Left" for "Upper Left", "Pneumonia" for "Pulmonary Infiltration"; text-only open accuracy 10.9% → 25.1%
+  (Lingshu). Legitimate rescues also occur: "There is one heart shown in the image." for "1", "magnetic resonance
+  imaging" for "MRI".
+- Open-question FastV − Random (question-level CI), rule vs judge-v2: Lingshu −11.5 vs −11.6; **Qwen3-VL +0.8 vs −3.4
+  [−6.4, −0.8]**; Qwen3-VL Full open accuracy 45.6 → 55.8 (exact match penalizes its longer answers). Preliminary until
+  the v3 pass and the hand labels.
+- **v3** (`d9d678c`): rubric prompt (reference = ground truth, the judge cannot see the image; partial, less specific
+  or refusing answers are wrong; consistent extra detail is fine), scorer = exact match OR judge, verdicts filtered by
+  prompt version, label sheet stratified as exact (10%) / rule-rejected-judge-accepts (45%) / rule-rejected-judge-
+  rejects (45%) with the rubric in a README. v3 pass: 2,855 unique answers from all 74 runs (dataset version 2), queued
+  on C.

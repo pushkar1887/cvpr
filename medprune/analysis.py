@@ -616,11 +616,16 @@ def evidence_report(ev: pd.DataFrame, reference: str = "random_l2") -> dict[str,
 
 # ------------------------------------------------------------------------------------ layer profile (§A10 D1)
 
-def rank_variance_shares(scores: dict[str, np.ndarray], meta: pd.DataFrame, bins: int = 8) -> dict:
-    """Split the variance of within-question score ranks (u = rank / N) into grid position (bins x bins cells of
-    normalized coordinates), the image beyond position, and the question beyond the image. Exactly additive.
-    `meta`: indexed by qid with `image_id` and `grid_hw`. With one question per image the "image" share includes the
-    question."""
+def rank_variance_shares(scores: dict[str, np.ndarray], meta: pd.DataFrame, bins: int = 8,
+                         position: str = "normalized", min_images: int = 5) -> dict:
+    """Split the variance of within-question score ranks (u = rank / N) into grid position, the image beyond
+    position, and the question beyond the image. Exactly additive. `meta`: indexed by qid with `image_id` and
+    `grid_hw`. With one question per image the "image" share includes the question.
+
+    position="normalized": bins x bins cells of normalized coordinates, pooled over grid sizes (a lower bound when a
+    prior is tied to absolute token indices and the dataset mixes image sizes). position="grid": the exact token index
+    within each grid shape, using only grid shapes with at least `min_images` images.
+    """
     import scipy.stats as sps
 
     by_image: dict[str, list[np.ndarray]] = {}
@@ -631,14 +636,24 @@ def rank_variance_shares(scores: dict[str, np.ndarray], meta: pd.DataFrame, bins
         image = meta.at[qid, "image_id"]
         by_image.setdefault(image, []).append(sps.rankdata(s) / len(s))
         grid[image] = tuple(meta.at[qid, "grid_hw"])
-    pos_sum, pos_cnt, cached = np.zeros(bins * bins), np.zeros(bins * bins), []
+    if position == "grid":
+        shapes = pd.Series(grid).value_counts()
+        keep = set(shapes[shapes >= min_images].index)
+        by_image = {i: u for i, u in by_image.items() if grid[i] in keep}
+        cells = {shape: k for k, shape in enumerate(sorted(keep))}
+        offsets = np.cumsum([0] + [h * w for h, w in sorted(keep)])
+    n_pos = bins * bins if position == "normalized" else (int(offsets[-1]) if by_image else 0)
+    pos_sum, pos_cnt, cached = np.zeros(n_pos), np.zeros(n_pos), []
     for image, us in by_image.items():
         h, w = grid[image]
         u = np.stack(us)
-        r, c = np.divmod(np.arange(h * w), w)
-        b = np.minimum(r * bins // h, bins - 1) * bins + np.minimum(c * bins // w, bins - 1)
-        pos_sum += np.bincount(b, weights=u.sum(0), minlength=bins * bins)
-        pos_cnt += np.bincount(b, minlength=bins * bins) * u.shape[0]
+        if position == "normalized":
+            r, c = np.divmod(np.arange(h * w), w)
+            b = np.minimum(r * bins // h, bins - 1) * bins + np.minimum(c * bins // w, bins - 1)
+        else:
+            b = offsets[cells[(h, w)]] + np.arange(h * w)
+        pos_sum += np.bincount(b, weights=u.sum(0), minlength=n_pos)
+        pos_cnt += np.bincount(b, minlength=n_pos) * u.shape[0]
         cached.append((u, b))
     if not cached:
         return {"questions": 0}

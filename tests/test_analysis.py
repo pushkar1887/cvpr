@@ -285,3 +285,20 @@ def test_layer_profile_on_a_dry_run(tmp_path):
     assert np.allclose(shares, 1.0) and table["sink_rate_all"].between(0, 1).all()
     plot_layer_profile(table, results / "figures" / "layer_profile.pdf")
     assert (results / "figures" / "layer_profile.pdf").exists()
+
+
+def test_grid_position_mode_keeps_absolute_priors_that_normalized_bins_dilute():
+    from medprune.analysis import rank_variance_shares
+
+    rng = np.random.default_rng(1)
+    prior = {(4, 4): rng.random(16), (6, 6): rng.random(36)}  # a different fixed map per grid size
+    rows, scores = [], {}
+    for i in range(24):
+        shape = (4, 4) if i % 2 else (6, 6)
+        qid = f"q{i}"
+        rows.append({"qid": qid, "image_id": f"img{i}", "grid_hw": list(shape)})
+        scores[qid] = prior[shape]
+    meta = pd.DataFrame(rows).set_index("qid")
+    exact = rank_variance_shares(scores, meta, position="grid")
+    pooled = rank_variance_shares(scores, meta, bins=2)
+    assert exact["position"] == pytest.approx(1.0) and pooled["position"] < 0.6

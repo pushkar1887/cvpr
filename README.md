@@ -83,9 +83,12 @@ Status (Nov 3, evening): **Stages 0–4b done; Stage 5 running on A and B; confo
 tracker at the top of [plan.md](plan.md#stage-tracker), open reviewer objections in its gap register (§A9).
 K1 = GO: on RadImageNet anatomy (10% of tokens kept), FastV scores 38.1% vs Random 79.3% on Lingshu-7B and 50.9% vs
 84.6% on Qwen3-VL-8B. The diagnosis so far: FastV's layer-1 ranking ignores the question (98% of the keep-set is shared
-across questions about one image), is close to a fixed map at 64 tokens, is not caused by RoPE, and for Lingshu ranks
-tokens that are less useful than random ones; the pruned model falls back on its text-only answers. Background capture
-explains SLAKE's CT/MRI loss fully but not RadImageNet's. 90 CPU tests pass.
+across questions about one image; the question explains 0.3% of the ranking's variance), is close to a fixed map at 64
+tokens (position explains 69%), is not caused by RoPE, and for Lingshu ranks tokens that are less useful than random
+ones; the pruned model falls back on its text-only answers. On SLAKE it keeps the large organs the questions ask about
+at about a fifth of chance, which is where its loss sits. Background capture explains SLAKE's CT/MRI loss fully but not
+RadImageNet's. Open-answer judge and HuatuoGPT-Vision port done (validation queued); 104 CPU tests pass. Depth plan:
+plan.md §A10.
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
 then read the Work log at the end of plan.md and add an entry when you finish.

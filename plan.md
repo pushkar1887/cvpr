@@ -12,24 +12,24 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-03 18:05 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-03 18:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
 |---|---|---|---|---|---|---|
 | 0 | Accounts, access, repo | ✅ DONE | 0 | 0 | Nov 2 | Accounts, HF secret `cvpr`, RadImageNet access |
 | 1 | Code and tests | ✅ DONE | 0 | 0 | Nov 2–3 | 90 CPU tests pass (Nov 3) |
-| 2 | Data bundle | ✅ DONE | 0 (CPU) | 0 | Nov 2–3 | A and B rebuilt with the revised gate (git `3188c2f`); C rebuilding (v3, Nov 3) |
+| 2 | Data bundle | ✅ DONE | 0 (CPU) | 0 | Nov 2–3 | A, B and C rebuilt with the revised gate; C (v3, git `1c4fef2`) has the same manifest hashes and mask summaries as A |
 | 3 | Validation (E0) | ✅ DONE | 0.39 | 0 | Nov 2 | E0b–E0d 50/50 on both models; SLAKE scoring contract moved to the Stage 5 preflight |
 | 4 | Kill test (E1) + diagnostics (E2) | ✅ DONE | 3.35 | 0 | Nov 2–3 | **K1 GO** (FastV − Random −41.2 [−44.9, −37.6], RIN, Lingshu); **K2: H1 alive** (BRR 2.32) |
 | 4b | Gate + coverage selectors (E1g) | ✅ DONE | 2.56 | 0 | Nov 3 | Rule met on Lingshu only (`gate_random` − Random +3.2 [+1.2, +5.2]); Qwen +0.5 [−1.3, +2.3] → **diagnosis-first paper**, gate = partial remedy |
 | 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | 🔄 RUNNING: A v8, B v4 (17:50) | 1.73 | 18.5 running + 1.7 spill | Nov 3–4 | Table 1; E6 decides the mechanism claims (§A9) |
-| 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | 🔄 C queued behind its bundle; RadImageNet arms in A/B session 2 | 0 | 7.5 (C) + 2.6 (A/B) | Nov 3–4 | Token count or domain? Position or content? Is attention informative? (G1, G3, G4) |
+| 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | 🔄 RUNNING on C: `medprune-gpu-lingshu7b` v1 and `medprune-gpu-qwen3vl8b` v1 (18:10, in parallel); RadImageNet arms in A/B session 2 | 0 | 7.5 running (C) + 2.6 (A/B) | Nov 3–4 | Token count or domain? Position or content? Is attention informative? (G1, G3, G4) |
 | 6 | Modality panel (E4), budget curves (E5) | ⏳ NEXT (A/B session 2) | 0 | 9.3 | Nov 4–5 | Fig. 2, Fig. 4 |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ⏳ LATER | 0 | 9.9 + 3.0 | Nov 5–7 | E8 needs the HuatuoGPT port (T5) |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
-**Totals (measured rates, §C4):** spent 8.0 GPU-h · running 18.5 · queued 7.5 · left 26.5 → **≈ 61 GPU-h for the whole
+**Totals (measured rates, §C4):** spent 8.0 GPU-h · running 26.0 (A, B, C) · left 26.5 → **≈ 61 GPU-h for the whole
 project** (48 before Nov 3 evening; the 13 added hours are the diagnostic controls of §A9: E6 on both models before the
 grid, E10, E11, Random seeds). On an A100 (Part E): ≈ 13–15 h.
 
@@ -39,7 +39,7 @@ grid, E10, E11, Random seeds). On an A100 (Part E): ≈ 13–15 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 8.9 (spill 1.7, E10r 1.1, E11r 0.4, E4 1.5, E5 4.2) | 6.7 |
 | B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 7.7 (E10r 0.8, E11r 0.3, E4 1.3, E5 2.3, judge 3.0) | 10.1 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 0 (bundle builds are CPU) | 7.5 queued (E7, E10, E11, both models) | 9.9 (E6-P2 3.1, E8 6.3, E9 0.5) | 4.4 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 0 (bundle builds are CPU) | 7.5 (v1 ×2: E7, E10, E11) | 9.9 (E6-P2 3.1, E8 6.3, E9 0.5) | 4.4 |
 
 Slack ≈ 21 GPU-h. Next uses, in order: RadImageNet open questions (`rin_open`, MedSTP's strongest column), the
 FastV-definition variant (G2), HuatuoGPT on K once ported (G6). Restore datasets for the A/B sessions:
@@ -1945,3 +1945,6 @@ run IDs, counts, accuracies with CIs. Template:
 - [FLAG] The 224² / 64-token confound (G1) can still reframe the paper: if photographs at 224² collapse like
   RadImageNet, the paper becomes "attention pruning fails at small token counts; medical benchmarks are small and CT/MRI
   add background capture". E10 decides it tonight.
+- 18:10 IST: C's bundle (v3) finished; its manifest hashes and mask summaries equal A's committed
+  `configs/bundle_manifest.json` for all five datasets. C's two GPU notebooks (`pushkarsiuuarora/medprune-gpu-lingshu7b`,
+  `.../medprune-gpu-qwen3vl8b`, v1, `EXP = "E7,E10,E11"`) started in parallel; C accepts two concurrent T4×2 sessions.

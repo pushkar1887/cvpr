@@ -149,5 +149,7 @@ class QwenVLAdapter:
 
 def load_adapter(model: str, profile: Profile, vision_fp32: bool = False):
     if model == "huatuo7b":
-        raise NotImplementedError("HuatuoGPT-Vision port (medprune/huatuo_llava.py) is written at Stage 7, plan.md")
+        from .huatuo_llava import HuatuoAdapter  # LLaVA-1.5 on Qwen2, without the authors' code (task T5)
+
+        return HuatuoAdapter(profile, vision_fp32=vision_fp32)
     return QwenVLAdapter(model, profile, vision_fp32=vision_fp32)

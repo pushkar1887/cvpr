@@ -44,8 +44,12 @@ def modality_group(modality: str) -> str:
     return str(modality)
 
 
-def load_runs(results: Path, profile: str | None = None) -> pd.DataFrame:
-    """One row per (run, question): the run file's fields plus model/dataset/method/budget/seed/profile."""
+def load_runs(results: Path, profile: str | None = None, open_scoring: str = "rule") -> pd.DataFrame:
+    """One row per (run, question): the run file's fields plus model/dataset/method/budget/seed/profile.
+
+    `open_scoring="judge"` scores open questions with the LLM judge's verdicts (results/judge/verdicts.jsonl,
+    medprune/judge.py) instead of normalized exact match; the rule verdict stays in `correct_rule`.
+    """
     rows = []
     for path in sorted((Path(results) / "runs").glob("*.jsonl")):
         info = parse_run_id(path.stem)
@@ -65,7 +69,14 @@ def load_runs(results: Path, profile: str | None = None) -> pd.DataFrame:
     if df.empty:
         return df
     df["modality_group"] = df["modality"].map(modality_group)
-    return add_image_dependent(rescore_open(df))
+    df = rescore_open(df)
+    if open_scoring == "judge":
+        from .judge import apply_judge, load_verdicts
+
+        df = apply_judge(df, load_verdicts(Path(results) / "judge" / "verdicts.jsonl"))
+    elif open_scoring != "rule":
+        raise ValueError(f"open_scoring must be 'rule' or 'judge', not {open_scoring!r}")
+    return add_image_dependent(df)
 
 
 def rescore_open(df: pd.DataFrame) -> pd.DataFrame:
@@ -470,10 +481,11 @@ def score_selection(df: pd.DataFrame, results: Path, model: str, dataset: str, b
 
 
 def diagnosis_report(results: Path, models: tuple[str, ...] = ("lingshu7b", "qwen3vl8b"),
-                     datasets: tuple[str, ...] = ("rin_anat_mc", "slake_en"), budget: int = 10) -> dict:
+                     datasets: tuple[str, ...] = ("rin_anat_mc", "slake_en"), budget: int = 10,
+                     open_scoring: str = "rule") -> dict:
     """All §A9 diagnostics for the anchor datasets; writes results/tables/diagnosis_*.csv."""
     results = Path(results)
-    df = load_runs(results)
+    df = load_runs(results, open_scoring=open_scoring)
     df = df[df["dataset"].isin(datasets) & df["model"].isin(models)]
     cov = foreground_coverage(df, results, budget)
     report = {
@@ -608,9 +620,11 @@ def main() -> None:
     p.add_argument("--results", type=Path, required=True)
     p.add_argument("--models", default="lingshu7b,qwen3vl8b")
     p.add_argument("--profile", default="t4x2")
+    p.add_argument("--open-scoring", choices=["rule", "judge"], default="rule")
     args = p.parse_args()
     if args.command == "diagnosis":
-        for name, table in diagnosis_report(args.results, tuple(args.models.split(","))).items():
+        for name, table in diagnosis_report(args.results, tuple(args.models.split(",")),
+                                            open_scoring=args.open_scoring).items():
             print(f"\n## {name}\n{table.round(3).to_string(index=False)}")
         return
     for model in args.models.split(","):

@@ -109,7 +109,7 @@ blocks:
      methods: [full, random_l2, uniform_l2, fastv, gate_fastv, gate_uniform]}
 
   # E11 / E11r — content or position, and does attention rank informative tokens first? (added 2026-11-03 after the
-  # offline diagnostics: FastV's keep-set is 97% the same across questions of one image, and random keep-sets holding
+  # offline diagnostics: FastV's keep-set is 98% the same across questions of one image, and random keep-sets holding
   # high-attention tokens are answered less often). fastv_bottom keeps the least-attended tokens; *_vflip shows the
   # same images upside down — a keep-set that stays in place is positional. `python -m medprune.data vflip`.
   - {exp: E11, tier: P0, account: C, model: lingshu7b, groups: [slake_en], methods: [fastv_bottom]}

@@ -13,12 +13,13 @@ from __future__ import annotations
 from itertools import combinations
 from pathlib import Path
 import json
+import re
 
 import numpy as np
 import pandas as pd
 
 from .masks import MaskStore
-from .scoring import judge_open
+from .scoring import judge_open, normalize_answer, parse_response
 from .stats import (background_retention_ratio, cluster_bootstrap_ci, jaccard, keep_map, mcnemar_exact,
                     paired_delta_ci, quadrant_concentration, static_map_from_scores)
 
@@ -305,6 +306,198 @@ def high_norm_rates(df: pd.DataFrame, results: Path, model: str, method: str = "
                                        "selection_rate_vs_budget", "outliers_in_background"])
 
 
+# --------------------------------------------------------------------------------------------- diagnosis
+# Added 2026-11-03 (plan.md §A9). Each function answers one reviewer objection from the gap register.
+
+def answer_key(answer_type: str, response: str) -> str:
+    """The answer a response commits to: the option letter for multiple choice, else the normalized parsed text."""
+    if answer_type == "mc":
+        match = re.match(r"\s*\(?([A-Ea-e])(?:[.):\s]|$)", str(response))
+        return match.group(1).upper() if match else "?"
+    return normalize_answer(parse_response(str(response)))
+
+
+def retained_gain(df: pd.DataFrame, budget: int = 10) -> pd.DataFrame:
+    """How blind is a pruned model? (G14) Per model x dataset x method, seed 0, on questions answered by Full and
+    text-only too: accuracy, the share of the image's contribution kept, (acc - text-only) / (Full - text-only), and how
+    often the pruned answer equals the text-only answer and the Full answer to the same question."""
+    d = df[(df["seed"] == 0) & df["budget_pct"].isin([budget, 100])].copy()
+    d["pred"] = [answer_key(t, r) for t, r in zip(d["answer_type"], d["response"].fillna(""))]
+    rows = []
+    for (model, dataset), g in d.groupby(["model", "dataset"]):
+        full, text = (g[g["method"] == m].set_index("qid") for m in ("full", "text_only"))
+        if full.empty or text.empty:
+            continue
+        for method, r in g[~g["method"].isin(["full", "text_only"])].groupby("method"):
+            r = r.set_index("qid")
+            common = r.index.intersection(full.index).intersection(text.index)
+            acc, acc_full, acc_text = (100 * x.loc[common, "correct"].mean() for x in (r, full, text))
+            rows.append({"model": model, "dataset": dataset, "method": method, "n": len(common), "acc": acc,
+                         "full": acc_full, "text_only": acc_text,
+                         "retained_gain": (acc - acc_text) / (acc_full - acc_text) if acc_full > acc_text else np.nan,
+                         "agree_text_only": 100 * (r.loc[common, "pred"] == text.loc[common, "pred"]).mean(),
+                         "agree_full": 100 * (r.loc[common, "pred"] == full.loc[common, "pred"]).mean()})
+    return pd.DataFrame(rows)
+
+
+def _foreground(gates: MaskStore | None, image_id: str, n: int) -> np.ndarray:
+    if gates is None or image_id not in gates:
+        return np.ones(n, dtype=bool)
+    fg = gates.get(image_id)[1].reshape(-1) >= TAU
+    return fg if fg.any() else np.ones(n, dtype=bool)
+
+
+def foreground_coverage(df: pd.DataFrame, results: Path, budget: int = 10) -> pd.DataFrame:
+    """Per question of every pruned run: `fg_gap`, the mean distance from a foreground cell to its nearest kept token in
+    units of the ideal spacing sqrt(n_foreground / k) (lower = better spread over the body), and `fg_share`, the share of
+    kept tokens in the foreground (G11)."""
+    d = df[(df["budget_pct"] == budget) & df["keep_idx"].notna()]
+    rows = []
+    for (model, dataset), g in d.groupby(["model", "dataset"]):
+        gates = load_gates(results, model, dataset)
+        for r in g.itertuples():
+            h, w = r.grid_hw
+            n, keep = h * w, np.asarray(r.keep_idx)
+            fg = _foreground(gates, r.image_id, n)
+            cy, cx = np.divmod(np.flatnonzero(fg), w)
+            ky, kx = np.divmod(keep, w)
+            gap = np.sqrt((cy[:, None] - ky[None]) ** 2 + (cx[:, None] - kx[None]) ** 2).min(axis=1).mean()
+            rows.append({"model": model, "dataset": dataset, "method": r.method, "seed": r.seed, "qid": r.qid,
+                         "image_id": r.image_id, "correct": float(r.correct),
+                         "fg_gap": gap / np.sqrt(fg.sum() / len(keep)), "fg_share": fg[keep].mean()})
+    return pd.DataFrame(rows)
+
+
+def coverage_mediation(cov: pd.DataFrame, reference: str = "random_l2",
+                       methods: tuple[str, ...] = ("fastv", "gate_fastv", "gate_uniform")) -> pd.DataFrame:
+    """Does coverage explain a method's penalty? Logistic regressions on seed-0 questions, image-clustered SEs:
+    correct ~ method versus correct ~ method + fg_gap + fg_share; `attenuation` = share of the method's log-odds
+    coefficient (relative to `reference`) removed by the coverage terms."""
+    import statsmodels.formula.api as smf
+
+    rows = []
+    for (model, dataset), g in cov[cov["seed"] == 0].groupby(["model", "dataset"]):
+        present = [reference] + sorted(set(g["method"]) - {reference})
+        g = g.assign(method=pd.Categorical(g["method"], categories=present))
+        cluster = {"groups": pd.factorize(g["image_id"])[0]}
+        terms = [t for t in ("fg_gap", "fg_share") if g[t].std() > 1e-9]
+        raw = smf.logit("correct ~ C(method)", g).fit(disp=0, cov_type="cluster", cov_kwds=cluster)
+        ctrl = smf.logit("correct ~ C(method) + " + " + ".join(terms), g).fit(disp=0, cov_type="cluster",
+                                                                             cov_kwds=cluster)
+        for method in methods:
+            name = f"C(method)[T.{method}]"
+            if name not in raw.params:
+                continue
+            significant = raw.pvalues[name] < 0.05  # attenuation of a null effect is noise
+            rows.append({"model": model, "dataset": dataset, "method": method, "logodds_raw": raw.params[name],
+                         "p_raw": raw.pvalues[name], "logodds_controlled": ctrl.params[name],
+                         "p_controlled": ctrl.pvalues[name],
+                         "attenuation": 1 - ctrl.params[name] / raw.params[name] if significant else np.nan})
+    return pd.DataFrame(rows)
+
+
+def attention_informativeness(df: pd.DataFrame, results: Path, model: str, dataset: str,
+                              method: str = "random_l2", seed: int = 0, profile: str = "t4x2") -> dict:
+    """Does layer-1 attention mark useful tokens? (G4) Natural experiment inside a random selector: the mean
+    within-image rank of the kept tokens' layer-1 attention (the `full` run's `scores_l1` for the same question) is
+    assigned at random. Logistic regression of correctness on its z-score, image-clustered SEs; a negative coefficient
+    means high-attention tokens are less useful than random ones."""
+    import scipy.stats as sps
+    import statsmodels.formula.api as smf
+
+    diag = load_diag(results, f"{model}__{dataset}__full__r100__s0__{profile}")
+    gates = load_gates(results, model, dataset)
+    runs = df[(df["model"] == model) & (df["dataset"] == dataset) & (df["method"] == method) & (df["seed"] == seed)]
+    rows = []
+    for r in runs.itertuples():
+        if r.qid not in diag or "scores_l1" not in diag[r.qid] or r.keep_idx is None:
+            continue
+        scores, keep = diag[r.qid]["scores_l1"], np.asarray(r.keep_idx)
+        h, w = r.grid_hw
+        rows.append({"correct": float(r.correct), "image_id": r.image_id,
+                     "attn_rank": (sps.rankdata(scores) / len(scores))[keep].mean(),
+                     "top_rows": (keep // w < max(1, round(0.25 * h))).mean(),
+                     "fg_share": _foreground(gates, r.image_id, h * w)[keep].mean()})
+    t = pd.DataFrame(rows)
+    out = {"model": model, "dataset": dataset, "method": method, "n": len(t), "coef_per_sd": np.nan, "p": np.nan}
+    if len(t) < 30 or t["correct"].nunique() < 2:
+        return out
+    t["z"] = (t["attn_rank"] - t["attn_rank"].mean()) / t["attn_rank"].std()
+    terms = ["z"] + [c for c in ("top_rows", "fg_share") if t[c].std() > 1e-9]
+    fit = smf.logit("correct ~ " + " + ".join(terms), t).fit(
+        disp=0, cov_type="cluster", cov_kwds={"groups": pd.factorize(t["image_id"])[0]})
+    quartile = pd.qcut(t["attn_rank"], 4, labels=False, duplicates="drop")
+    out.update(coef_per_sd=fit.params["z"], p=fit.pvalues["z"],
+               acc_by_attention_quartile=(100 * t.groupby(quartile)["correct"].mean()).round(1).tolist())
+    return out
+
+
+def score_selection(df: pd.DataFrame, results: Path, model: str, dataset: str, budget: float = 0.10,
+                    keys: tuple[str, ...] = ("scores_l1", "scores_ropefree_l1", "scores_l7", "scores_l15"),
+                    profile: str = "t4x2", pairs: int = 3000, seed: int = 0) -> pd.DataFrame:
+    """What would top-k by each logged score of the `full` run keep? Mean row (0 = top), background retention ratio,
+    overlap with layer-1 FastV, and cross-image Jaccard. Previews E6 (RoPE-free, deeper layers) without a GPU (G8)."""
+    diag = load_diag(results, f"{model}__{dataset}__full__r100__s0__{profile}")
+    gates = load_gates(results, model, dataset)
+    full = df[(df["model"] == model) & (df["dataset"] == dataset) & (df["method"] == "full")].set_index("qid")
+    picks: dict[str, list] = {k: [] for k in keys}
+    for qid, logged in diag.items():
+        if qid not in full.index or "scores_l1" not in logged:
+            continue
+        h, w = full.loc[qid, "grid_hw"]
+        n = h * w
+        k = max(1, min(n, int(round(budget * n))))
+        background = ~_foreground(gates, full.loc[qid, "image_id"], n)
+        layer1 = np.argsort(-logged["scores_l1"], kind="stable")[:k]
+        for key in keys:
+            if key in logged:
+                top = np.sort(np.argsort(-logged[key], kind="stable")[:k])
+                picks[key].append((full.loc[qid, "image_id"], top, (top // w).mean() / max(h - 1, 1),
+                                   background_retention_ratio(top, background) if background.any() else np.nan,
+                                   jaccard(top, layer1)))
+    rows, rng = [], np.random.default_rng(seed)
+    for key, items in picks.items():
+        if not items:
+            continue
+        first = list({image_id: top for image_id, top, *_ in items}.values())
+        i, j = rng.integers(0, len(first), pairs), rng.integers(0, len(first), pairs)
+        cross = [jaccard(first[a], first[b]) for a, b in zip(i, j) if a != b]
+        rows.append({"model": model, "dataset": dataset, "score": key, "questions": len(items),
+                     "mean_row": np.mean([x[2] for x in items]), "brr": np.nanmean([x[3] for x in items]),
+                     "jaccard_with_layer1": np.mean([x[4] for x in items]),
+                     "cross_image_jaccard": np.mean(cross) if cross else np.nan})
+    return pd.DataFrame(rows)
+
+
+def diagnosis_report(results: Path, models: tuple[str, ...] = ("lingshu7b", "qwen3vl8b"),
+                     datasets: tuple[str, ...] = ("rin_anat_mc", "slake_en"), budget: int = 10) -> dict:
+    """All §A9 diagnostics for the anchor datasets; writes results/tables/diagnosis_*.csv."""
+    results = Path(results)
+    df = load_runs(results)
+    df = df[df["dataset"].isin(datasets) & df["model"].isin(models)]
+    cov = foreground_coverage(df, results, budget)
+    report = {
+        "retained_gain": retained_gain(df, budget),
+        "question_dependence": pd.concat([query_dependence(df, m, method, budget) for m in models
+                                          for method in ("fastv", "gate_fastv", "random_l2")], ignore_index=True),
+        "image_dependence": pd.concat([image_dependence(df, m, method, budget) for m in models
+                                       for method in ("fastv", "gate_fastv", "uniform_l2", "random_l2")],
+                                      ignore_index=True),
+        "coverage": cov.groupby(["model", "dataset", "method"])[["correct", "fg_gap", "fg_share"]].mean().reset_index(),
+        "coverage_mediation": coverage_mediation(cov),
+        "attention_informativeness": pd.DataFrame([attention_informativeness(df, results, m, d, method)
+                                                   for m in models for d in datasets
+                                                   for method in ("random_l2", "gate_random")]),
+        "score_selection": pd.concat([score_selection(df, results, m, d, budget / 100) for m in models
+                                      for d in datasets], ignore_index=True),
+    }
+    tables = results / "tables"
+    tables.mkdir(parents=True, exist_ok=True)
+    for name, table in report.items():
+        table.to_csv(tables / f"diagnosis_{name}.csv", index=False)
+    return report
+
+
 # --------------------------------------------------------------------------------------------- Stage 4
 
 STAGE4_PAIRS = [("fastv", "random_l2"), ("fastv_prellm", "random_l0"), ("gate_fastv", "fastv")]
@@ -411,11 +604,15 @@ def main() -> None:
     import argparse
 
     p = argparse.ArgumentParser(description="Laptop-side analysis commands.")
-    p.add_argument("command", choices=["static-maps"])
+    p.add_argument("command", choices=["static-maps", "diagnosis"])
     p.add_argument("--results", type=Path, required=True)
     p.add_argument("--models", default="lingshu7b,qwen3vl8b")
     p.add_argument("--profile", default="t4x2")
     args = p.parse_args()
+    if args.command == "diagnosis":
+        for name, table in diagnosis_report(args.results, tuple(args.models.split(","))).items():
+            print(f"\n## {name}\n{table.round(3).to_string(index=False)}")
+        return
     for model in args.models.split(","):
         for path in build_static_maps(args.results, model, args.profile):
             print("wrote", path)

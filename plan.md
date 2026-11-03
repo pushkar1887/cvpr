@@ -68,7 +68,7 @@ Not another scorer: MedSTP, ViToS and others propose new pruners; none explains 
 The rotary component is not supported: FastV's keep-set sits in the **top** rows (P4 contradicted), and RoPE-free
 layer-1 scores pick almost the same tokens (Jaccard 0.94 Lingshu, 0.77 Qwen3-VL on RadImageNet). Layer-1 attention
 from the last prompt token behaves as a **question-blind, largely image-blind prior**: keep-sets of different questions
-about one image overlap 97% (Lingshu) / 80% (Qwen3-VL); at 64 tokens the keep-set is nearly the same for every image
+about one image overlap 98% (Lingshu) / 82% (Qwen3-VL); at 64 tokens the keep-set is nearly the same for every image
 (cross-image Jaccard 0.77 / 0.47); and within Random's own draws, high-attention tokens predict *lower* accuracy for
 Lingshu. Background capture is real but is only one of two regimes: on SLAKE, FastV loses 16–20 points on CT/MRI and
 1.9 on X-ray, and the gate recovers all of it; on RadImageNet, FastV loses 45 points even on images with no background.
@@ -239,7 +239,7 @@ Status column as results land; numbers come from the Work log (Nov 3, "Offline d
 | G2 | "Your FastV is not FastV" | Masking ≡ physical removal (`fastv_prellm` 37.4 vs `fastv` 38.1); our layer-1 scores reproduce the FastV run's keep-set (Jaccard 1.000 / 0.999); last-token scoring follows the official code (§A4) | Variant scoring by mean attention of all text tokens after the image (the FastV paper's wording) | Needs `attention_hook` work | P1 |
 | G3 | "The top rows are just uninformative content" | Same positions across images (cross-image Jaccard 0.77 / 0.47 on RIN) | E11/E11r: same images upside down — a keep-set that stays in place is positional; `static_map` (E6) | E6 running; E11 queued | P0 |
 | G4 | "Attention is noisy but informative on average" | Within Random's draws, +1 SD of kept-token attention rank → −0.14 to −0.35 log-odds for Lingshu (p < 0.05 in 4/6 cells); ≈ 0 for Qwen3-VL | `fastv_bottom` (keep the least-attended tokens; E11/E11r); re-fit with Random seeds 1–2 (E6) | Queued / running | P0 |
-| G5 | "FastV is text-guided; you test the wrong questions" | Keep-sets of different questions about one SLAKE image overlap 97% (Lingshu) / 80% (Qwen3-VL); the scoring token is a fixed template token | Report as a finding; G2's variant scores from question tokens | Analysis done | P0 |
+| G5 | "FastV is text-guided; you test the wrong questions" | Keep-sets of different questions about one SLAKE image overlap 0.978 [0.974, 0.982] (Lingshu) / 0.820 [0.805, 0.836] (Qwen3-VL), Random 0.054; the scoring token is a fixed template token | Report as a finding; G2's variant scores from question tokens | Analysis done | P0 |
 | G6 | "Two Qwen-family models with M-RoPE" | — | HuatuoGPT-Vision-7B (LLaVA, 1D RoPE, fixed 576 tokens; also a token-count control for RIN) on K | Port (T5) not started | P1 |
 | G7 | "10% is an extreme budget" | — | E5 (5/25/50%) | A/B session 2 | P0 |
 | G8 | "Score at a deeper layer and it works" | Offline: top-10% by layer-7/15 attention is still image-independent on RIN (cross-image Jaccard 0.62 / 0.38) and background-heavy (BRR 2.6 / 2.0, Lingshu) | `fastv_k8`, `fastv_k16` (E6) | Running | P0 |
@@ -1922,7 +1922,7 @@ run IDs, counts, accuracies with CIs. Template:
   |---|---|---|---|---|
   | FastV answer = text-only answer (Random) | 33.3% (21.6%) | 46.7% (33.2%) | 37.3% (31.5%) | 32.8% (33.6%) |
   | retained visual gain, FastV / Random / Gate+FastV | 26% / 86% / 45% | 35% / 91% / 60% | 60% / 84% / 84% | 76% / 83% / 81% |
-  | keep-set Jaccard, same image, other question (FastV) | — | — | 0.974 | 0.801 |
+  | keep-set Jaccard, same image, other question (FastV; Random 0.054) | — | — | 0.978 | 0.820 |
   | cross-image Jaccard, FastV top-10% by layer-1 score | 0.773 | 0.460 | 0.299 | 0.170 |
   | same, RoPE-free layer-1 score; overlap with FastV | 0.770; 0.94 | 0.489; 0.77 | 0.305; 0.91 | 0.152; 0.68 |
   | same, layer-15 score; BRR | 0.384; 1.99 | 0.489; 2.89 | 0.126; 1.11 | 0.195; 1.62 |

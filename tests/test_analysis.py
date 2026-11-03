@@ -154,3 +154,54 @@ def test_static_map_comes_from_the_other_dataset(tmp_path):
     assert written == {"m__for_rin_anat_mc.npy", "m__for_rin_abn_closed.npy"}  # no RadImageNet run: no SLAKE map
     smap = np.load(tmp_path / "static_maps" / "m__for_rin_anat_mc.npy")
     assert smap[-1, -1] == smap.max() and smap[0, 0] == smap.min()
+
+
+def test_answer_key_reads_letters_and_normalizes_text():
+    from medprune.analysis import answer_key
+
+    assert answer_key("mc", "D.") == "D" and answer_key("mc", "(b) the liver") == "B" and answer_key("mc", "?") == "?"
+    assert answer_key("open", "The CT.") == "ct"
+
+
+def test_retained_gain_and_agreement_on_known_values():
+    from medprune.analysis import retained_gain
+
+    rows = []
+    for i in range(4):
+        common = dict(model="m", dataset="d", seed=0, qid=f"q{i}", answer_type="mc")
+        rows += [{**common, "method": "full", "budget_pct": 100, "response": "A", "correct": True},
+                 {**common, "method": "text_only", "budget_pct": 100, "response": "B", "correct": False},
+                 {**common, "method": "fastv", "budget_pct": 10, "response": "A" if i < 2 else "B", "correct": i < 2}]
+    row = retained_gain(pd.DataFrame(rows)).iloc[0]
+    assert row["retained_gain"] == pytest.approx(0.5) and row["agree_text_only"] == 50 and row["agree_full"] == 50
+
+
+def test_foreground_coverage_in_units_of_ideal_spacing(tmp_path):
+    from medprune.analysis import foreground_coverage
+
+    (tmp_path / "gates").mkdir()
+    MaskStore(["img"], [(4, 4)], [np.ones((4, 4), np.float32)]).save(tmp_path / "gates" / "d__m.npz")
+    df = pd.DataFrame([dict(model="m", dataset="d", method="fastv", seed=0, budget_pct=10, qid="q", image_id="img",
+                            correct=True, keep_idx=[0], grid_hw=[4, 4])])
+    row = foreground_coverage(df, tmp_path).iloc[0]
+    yy, xx = np.divmod(np.arange(16), 4)
+    assert row["fg_gap"] == pytest.approx(np.sqrt(yy ** 2 + xx ** 2).mean() / 4) and row["fg_share"] == 1.0
+
+
+def test_attention_informativeness_detects_harmful_attention(tmp_path):
+    from medprune.analysis import attention_informativeness
+
+    rng = np.random.default_rng(0)
+    writer = DiagWriter(tmp_path / "diag" / "m__d__full__r100__s0__t4x2")
+    rows = []
+    for i in range(300):
+        scores = rng.permutation(16).astype(float)
+        writer.add(f"q{i}", {"scores_l1": scores})
+        keep = np.sort(rng.choice(16, 4, replace=False))
+        rank = (scores[keep] + 1).mean() / 16
+        correct = rank + rng.normal(0, 0.1) < 0.53  # keeping high-attention tokens hurts
+        rows.append(dict(model="m", dataset="d", method="random_l2", seed=0, qid=f"q{i}", image_id=f"img{i}",
+                         correct=correct, keep_idx=keep.tolist(), grid_hw=[4, 4]))
+    writer.flush()
+    result = attention_informativeness(pd.DataFrame(rows), tmp_path, "m", "d")
+    assert result["n"] == 300 and result["coef_per_sd"] < -1 and result["p"] < 0.001

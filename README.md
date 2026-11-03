@@ -87,8 +87,10 @@ across questions about one image; the question explains 0.3% of the ranking's va
 tokens (position explains 69%), is not caused by RoPE, and for Lingshu ranks tokens that are less useful than random
 ones; the pruned model falls back on its text-only answers. On SLAKE it keeps the large organs the questions ask about
 at about a fifth of chance, which is where its loss sits. Background capture explains SLAKE's CT/MRI loss fully but not
-RadImageNet's. Open-answer judge and HuatuoGPT-Vision port done (validation queued); 104 CPU tests pass. Depth plan:
-plan.md §A10.
+RadImageNet's. **Nov 3, 21:45:** FastV also loses to Random on ordinary photographs (−8.7 Lingshu, −4.9 Qwen3-VL), so
+the failure is not medical-only; medical scans amplify it, and RadImageNet's collapse is not explained by its 64-token
+inputs (framing under revision, plan.md §A9). Open-answer judge and HuatuoGPT-Vision port running on C; 115 CPU tests
+pass. Depth plan: plan.md §A10.
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
 then read the Work log at the end of plan.md and add an entry when you finish.

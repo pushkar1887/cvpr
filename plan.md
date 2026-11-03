@@ -26,7 +26,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | 🔄 RUNNING: A v8, B v4 (17:50) | 1.73 | 18.5 running + 1.7 spill | Nov 3–4 | Table 1; E6 decides the mechanism claims (§A9) |
 | 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | ✅ C half DONE (Qwen3-VL 21:14, Lingshu 21:18; 38 runs, all complete); RadImageNet arms (E10r, E11r) in A/B session 2 | 6.14 | 2.6 (A/B) | Nov 3–4 | **P13 contradicted**: FastV < Random on photographs (−8.7 / −4.9). **G1**: token count is a modest amplifier; RadImageNet's collapse is dataset-specific. **G3**: Lingshu's keep-set is positional (flip). **G4**: Lingshu's least-attended tokens beat its most-attended (+6.2) |
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5) | ⏳ NEXT (A/B session 2, ~03:30; order E10r → E11r (row 5b) → E12 → rest of E3 → E4 → E5 → SLAKE-zh) | 0 | 11.2 | Nov 4–5 | Fig. 2, Fig. 3 (D1), Fig. 4 |
-| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔧 CODE DONE (`6e69839`): HuatuoGPT port (T5) and judge (G9); C runs the HuatuoGPT check (E0, 50 q) and judge pass 1 (2,141 answers) as soon as its two slots free (~22:00) | 0 | 1.0 queued + 11.5 | Nov 3–7 | HuatuoGPT E0 passes → E8 on K; judge κ vs hand labels decides the open-question metric |
+| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔄 HuatuoGPT port **validated** (E0 on C, 21:34: all checks 50/50); **E8 (SLAKE, 11 runs) RUNNING on C** since 21:40; E8r (RadImageNet) waits for the `cvpr` secret on C's notebook; judge v3 RUNNING on C | 0.33 | 3.7 running + 7.5 | Nov 3–7 | E8 → G6 (does a 1D-RoPE LLaVA show FastV < Random?); judge κ vs hand labels decides the open-question metric |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Totals (measured rates, §C4):** spent 14.1 GPU-h · running 18.5 (A, B) + 1.0 (C) · left 27.8 → **≈ 61
@@ -40,7 +40,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 9.9 (E10r 1.1, E11r 0.4, E12 1.0, spill 1.7, E4 1.5, E5 4.2) | 5.7 |
 | B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 5.6 (E10r 0.8, E11r 0.3, E12 0.9, E4 1.3, E5 2.3) | 12.2 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 6.14 (v1 ×2: E7, E10, E11 — Qwen3-VL 3.04, Lingshu 3.10) | HuatuoGPT E0 (from 21:15); judge pass 1 done (0.1); judge v3 (≈ 0.15) | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 3.7 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 6.47 (E7/E10/E11: Qwen3-VL 3.04, Lingshu 3.10; HuatuoGPT E0 0.23; judge pass 1 0.10) | HuatuoGPT E8 SLAKE (≈ 3.7, from 21:40); judge v3 (≈ 0.15) | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 3.7 |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks (incl.
@@ -260,7 +260,7 @@ Status column as results land; numbers come from the Work log (Nov 3, "Offline d
 | G3 | "The top rows are just uninformative content" | Same positions across images (cross-image Jaccard 0.77 / 0.47 on RIN) | E11/E11r: same images upside down — a keep-set that stays in place is positional; `static_map` (E6) | **E11 read**: on flipped SLAKE, FastV keeps the same grid positions (Jaccard 0.64 Lingshu, 0.36 Qwen3-VL) rather than the moved content (0.13 / 0.20; random 0.05) → Lingshu positional, Qwen3-VL mixed. E11r (RIN) and `static_map` pending | P0 |
 | G4 | "Attention is noisy but informative on average" | Within Random's draws, +1 SD of kept-token attention rank → −0.14 to −0.35 log-odds for Lingshu (p < 0.05 in 4/6 cells); ≈ 0 for Qwen3-VL | `fastv_bottom` (keep the least-attended tokens; E11/E11r); re-fit with Random seeds 1–2 (E6) | **E11 read**: on SLAKE, bottom-10% − top-10% = **+6.2 [+2.5, +10.1] Lingshu** (attention ranks useful tokens last) and −4.2 [−7.2, −1.4] Qwen3-VL (weakly informative); both below Random (−6.4 / −6.6). E11r (RIN) pending | P0 |
 | G5 | "FastV is text-guided; you test the wrong questions" | Keep-sets of different questions about one SLAKE image overlap 0.978 [0.974, 0.982] (Lingshu) / 0.820 [0.805, 0.836] (Qwen3-VL), Random 0.054; the question explains 0.3% / 3.1% of the variance of layer-1 token ranks (exact grid positions: position 40% / 27%, image 59% / 70%; layer 15: question 23% / 3.5%) — and ≤ 1.2% on photographs too, so question-blindness is general, not medical; the scoring token is a fixed template token | Report as a finding; the layer profile (D1) shows where question dependence starts, per readout | Analysis done | P0 |
-| G6 | "Two Qwen-family models with M-RoPE" | — | HuatuoGPT-Vision-7B (LLaVA, 1D RoPE, fixed 576 tokens; also a token-count control for RIN) on K | Port done (`6e69839`; 339/339 LLM and 391/391 CLIP keys checked against the checkpoint); E0 check (50 q) queued on C; then E8 on K | P1 |
+| G6 | "Two Qwen-family models with M-RoPE" | — | HuatuoGPT-Vision-7B (LLaVA, 1D RoPE, fixed 576 tokens; also a token-count control for RIN) on K | Port **validated** on C (E0, 50 q: fp16 = fp32-vision 50/50, logits finite, logging inert 50/50, offline keep-sets 50/50; clean responses; closed 71%, n = 21); E8 SLAKE running; E8r (RIN) needs the `cvpr` secret attached to C's notebook | P1 |
 | G7 | "10% is an extreme budget" | — | E5 (5/25/50%) | A/B session 2 | P0 |
 | G8 | "Score at a deeper layer and it works" | Offline: top-10% by layer-7/15 attention is still image-independent on RIN (cross-image Jaccard 0.62 / 0.38) and background-heavy (BRR 2.6 / 2.0, Lingshu) | `fastv_k8`, `fastv_k16` (E6) | Running | P0 |
 | G9 | "Open-answer scoring is unfair to Qwen3-VL" | Synonyms ("axial" vs "Transverse Plane"); Qwen3-VL SLAKE Full 58.2 | Local LLM judge on saved responses (Qwen2.5-7B-Instruct, one-token Yes/No verdict), validated against 200 blind hand labels (population-weighted κ) | Pass 1 (v2 prompt, 2,141 answers, 0.1 GPU-h) exposed two failure modes — it overruled the reference with its own knowledge (16 of 364 exact matches rejected, e.g. "largest organ? Liver" → No) and accepted partial/refusing answers (text-only open accuracy 11% → 25%). Fixed in v3 (`d9d678c`): explicit rubric + scorer = exact match OR judge; v3 pass over all 2,855 answers queued on C; labelling sheet after it. Preliminary (v2): Qwen3-VL SLAKE-open FastV − Random flips from +0.8 (rule) to −3.4 [−6.4, −0.8]; Lingshu unchanged (−11.5 / −11.6). Rule fixed now: rule OR judge becomes primary iff its κ with the hand labels ≥ 0.8 and > κ(rule, human) | P0 |
@@ -2156,3 +2156,17 @@ run IDs, counts, accuracies with CIs. Template:
   prompt version, label sheet stratified as exact (10%) / rule-rejected-judge-accepts (45%) / rule-rejected-judge-
   rejects (45%) with the rubric in a README. v3 pass: 2,855 unique answers from all 74 runs (dataset version 2), queued
   on C.
+
+### 2026-11-03 — Claude — HuatuoGPT port validated on C; E8 (SLAKE) launched
+- `pushkarsiuuarora/medprune-gpu-huatuo7b` v1 (EXP E0, LIMIT 50, git `55231d1`) COMPLETE 21:34, 0.23 GPU-h incl. the
+  17.6 GB download. `e0_report__huatuo7b__t4x2.json` passes: fp16 vs fp32 vision 50/50 identical, logits finite,
+  logging inert 50/50, offline keep-sets = FastV's 50/50. Responses are clean (no template text; 3 of 50 Full answers
+  hit 64 tokens). Rule-scored accuracy on the 50 questions: Full 42, FastV 56, Random 54, text-only 18 — open answers
+  are verbose and correct in meaning ("CT scan", "Thorax", "Lungs"), so exact match fails them (open 21%, closed 71%
+  of 21); the judge scores them. Not comparable with the authors' published numbers (different scorer); the
+  mechanical checks are the validation. 1.13 s per question (predicted 1.15).
+- C's notebooks have no `cvpr` secret (log: "RadImageNet steps will fail"), so `runs.yaml` splits E8 into E8 (SLAKE:
+  6 P1 + 5 P2 methods incl. `full_profile`, `fastv_text`) and E8r (RadImageNet anatomy + abnormality). Notebook 01:
+  E8r (not E8) needs RadImageNet. E8 v2 launched on C 21:40 (`40914ce`, MAX_HOURS 5).
+- Needs Pushkar (UI only): attach the `cvpr` secret to C's `medprune-gpu-huatuo7b` notebook (Add-ons → Secrets) so
+  E8r can run; the same is needed for E6-P2 on C (S1 includes RadImageNet).

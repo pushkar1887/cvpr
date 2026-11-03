@@ -63,6 +63,20 @@ def model_view(image: Image.Image, model: str) -> tuple[Image.Image, tuple[int, 
     return canvas.resize((view["size"], view["size"]), Image.BICUBIC), box
 
 
+def label_view(mask: Image.Image, model: str) -> np.ndarray:
+    """A label image (SLAKE `mask.png`) in the model's view: model_view's geometry, nearest-neighbour resampling,
+    padding = 0 (no structure). Cells of the result line up with the model's visual tokens."""
+    view = MODEL_VIEWS[model]
+    mask = mask.convert("L")
+    if view["kind"] == "qwen":
+        h, w = smart_resize(mask.height, mask.width, view["cell"], view["min_pixels"], view["max_pixels"])
+        return np.asarray(mask.resize((w, h), Image.NEAREST))
+    side = max(mask.width, mask.height)
+    canvas = Image.new("L", (side, side), 0)
+    canvas.paste(mask, ((side - mask.width) // 2, (side - mask.height) // 2))
+    return np.asarray(canvas.resize((view["size"], view["size"]), Image.NEAREST))
+
+
 def _luminance(img: np.ndarray) -> np.ndarray:
     img = img.astype(np.float32)
     if img.ndim == 2:

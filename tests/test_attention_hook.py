@@ -127,6 +127,49 @@ def test_logged_scores_equal_eager_attention(models):
     np.testing.assert_allclose(state.logs["scores_l1"], expected, atol=1e-6)
 
 
+TEXT = torch.arange(20, T)  # positions after the "image"
+
+
+def test_text_readout_equals_eager_attention_of_the_tokens_after_the_image(models):
+    _, hooked, _, eager = models
+    state = PruneState(vis_pos=VIS, text_pos=TEXT, stages=[Stage(1, 2, lambda s, _surv: np.sort(np.argsort(-s)[:5]),
+                                                               score_kind="text")])
+    last_logits(hooked, IDS, state=state)
+    with torch.no_grad():
+        attention = eager(input_ids=IDS[None], output_attentions=True).attentions[1]
+    expected = attention[0][:, TEXT, :].mean(dim=(0, 1))[VIS].numpy()
+    np.testing.assert_allclose(state.logs["scores_text_l1"], expected, atol=1e-6)
+    np.testing.assert_array_equal(state.keep, np.sort(np.argsort(-expected)[:5]))
+
+
+def test_profile_logs_both_readouts_and_sink_scores_at_every_layer(models):
+    _, hooked, _, eager = models
+    handles = hook.install_profile_hooks(hooked.model.layers)
+    try:
+        state = PruneState(vis_pos=VIS, text_pos=TEXT, profile=True)
+        last_logits(hooked, IDS, state=state)
+    finally:
+        for handle in handles:
+            handle.remove()
+    n_layers = len(hooked.model.layers)
+    assert {f"{k}_l{i}" for k in ("lp_last", "lp_text", "sink") for i in range(n_layers)} == set(state.logs)
+    with torch.no_grad():
+        attention = eager(input_ids=IDS[None], output_attentions=True).attentions
+    for i in range(n_layers):
+        np.testing.assert_allclose(np.exp(state.logs[f"lp_last_l{i}"]), attention[i][0, :, -1, :].mean(0)[VIS].numpy(),
+                                   atol=1e-6)
+    assert all(state.logs[f"sink_l{i}"].shape == (16,) for i in range(n_layers))
+
+
+def test_sink_score_flags_tokens_sharing_the_first_tokens_massive_dimension():
+    h = torch.randn(6, 4096, generator=torch.Generator().manual_seed(0))  # RMS-normalized values reach sqrt(4096)
+    h[0, 7] = 400.0  # token 0: massive activation in dimension 7
+    h[3, 7] = 400.0  # a visual token with the same massive dimension
+    h[4, 9] = 400.0  # massive, but in another dimension: not a sink by this definition
+    scores = hook.sink_scores(h, torch.tensor([2, 3, 4]))
+    assert scores[1] > hook.SINK_TAU and scores[0] < 5 and scores[2] < 5
+
+
 def test_fastv_stage_keeps_the_top_scored_tokens(models):
     _, hooked, _, eager = models
     k = 5

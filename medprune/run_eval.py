@@ -170,6 +170,8 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
     if not method.image:
         return None
     if method.rule == "none":
+        if method.profile:  # every layer, both readouts, sink scores (plan.md §A10 D1)
+            return PruneState(vis_pos=inputs.vis_pos, text_pos=inputs.text_pos, profile=True)
         return PruneState(vis_pos=inputs.vis_pos, log_layers=tuple(l for l in LOG_LAYERS if l < adapter.num_layers),
                           log_ropefree=True)
     n = len(inputs.vis_pos)
@@ -184,7 +186,7 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
         not_outlier = _robust_z(np.linalg.norm(adapter.visual_embeddings(inputs), axis=1)) <= OUTLIER_Z
         allowed = not_outlier if allowed is None else allowed & not_outlier
 
-    state = PruneState(vis_pos=inputs.vis_pos)
+    state = PruneState(vis_pos=inputs.vis_pos, text_pos=inputs.text_pos)
     rule = method.rule
     if rule == "random":
         state.apply_keep(select_random(n, k, rng_for(spec.seed, sample.qid), allowed), method.mask_from)
@@ -260,7 +262,7 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
         oracle = MaskStore.load(oracle_path) if oracle_path.exists() else None
     static_path = out / "static_maps" / f"{spec.model}__for_{spec.dataset}.npy"
     static_map = np.load(static_path) if static_path.exists() else None
-    log_diag = spec.method == "full" or method.score is not None
+    log_diag = spec.method == "full" or method.score is not None or method.profile
     diag = DiagWriter(out / "diag" / run_id) if log_diag else None
 
     meta_path = runs_dir / f"{run_id}.meta.json"
@@ -355,7 +357,7 @@ class FakeAdapter:
         if image is None:
             return PreparedInputs({"qid": sample.qid}, torch.empty(0, dtype=torch.long), (0, 0), np.zeros((0, 2), int), 8)
         rc = np.array([(r, c) for r in range(4) for c in range(4)])
-        return PreparedInputs({"qid": sample.qid}, torch.arange(10, 26), (4, 4), rc, 40)
+        return PreparedInputs({"qid": sample.qid}, torch.arange(10, 26), (4, 4), rc, 40, torch.arange(26, 40))
 
     @staticmethod
     def _scores(qid: str, layer, n: int) -> np.ndarray:
@@ -373,9 +375,15 @@ class FakeAdapter:
         if state.log_layers:
             state.logs["vit_norm"] = 1 + self._scores(qid, "vit", state.n)
             state.logs["llm_norm_l1"] = 1 + self._scores(qid, "llm", state.n)
+        if state.profile:
+            for layer in range(self.num_layers):
+                state.logs[f"lp_last_l{layer}"] = np.log(self._scores(qid, layer, state.n))
+                state.logs[f"lp_text_l{layer}"] = np.log(self._scores(qid, f"text{layer}", state.n))
+                state.logs[f"sink_l{layer}"] = 40 * self._scores(qid, f"sink{layer}", state.n)
         for stage in state.stages:
             if not stage.done:
-                scores = self._scores(qid, stage.score_layer, state.n)
+                key = f"text{stage.score_layer}" if stage.score_kind == "text" else stage.score_layer
+                scores = self._scores(qid, key, state.n)
                 state.logs.setdefault(f"scores_{stage.score_kind}_l{stage.score_layer}", scores)
                 state.apply_keep(stage.select(scores, state.survivors()), stage.mask_from)
                 stage.done = True

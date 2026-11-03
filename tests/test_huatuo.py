@@ -73,6 +73,7 @@ def test_prepare_splices_576_raster_tokens():
     assert text_only.input_len == len(CharTokenizer()(conversation(make_prompt(SAMPLE), False)).input_ids)
     after = conversation(make_prompt(SAMPLE), True).split("<image>")[1]
     assert inputs.input_len == before + 576 + len(CharTokenizer()(after).input_ids)
+    assert torch.equal(inputs.text_pos, torch.arange(before + 576, inputs.input_len))
 
 
 @torch.no_grad()

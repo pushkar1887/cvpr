@@ -31,6 +31,7 @@ class PreparedInputs:
     grid_hw: tuple[int, int]  # visual-token grid (H, W); N == H * W
     rc: np.ndarray  # [N, 2] (row, col) of each visual token
     input_len: int
+    text_pos: torch.Tensor | None = None  # sequence positions after the image: question and chat-template suffix
 
     @property
     def cell_index(self) -> np.ndarray:
@@ -66,6 +67,7 @@ class QwenVLAdapter:
         attn = self.layers[1].self_attn
         q_mod, k_mod = (attn.q_norm, attn.k_norm) if hasattr(attn, "q_norm") else (attn.q_proj, attn.k_proj)
         hook.install_pre_rope_capture(q_mod, k_mod, layer=1)  # RoPE-free scores (Qwen3: q/k norms precede RoPE)
+        hook.install_profile_hooks(self.layers)  # visual-sink scores per layer, only under a profile state
         self._visual_out: torch.Tensor | None = None
         self.base.visual.register_forward_hook(self._record_visual)
         self.layers[1].register_forward_pre_hook(self._record_layer1_norms, with_kwargs=True)
@@ -110,7 +112,8 @@ class QwenVLAdapter:
         rc = np.stack([pos[1] - pos[1].min(), pos[2] - pos[2].min()], axis=1)
         if len(vis_pos) != grid[0] * grid[1] or rc[:, 0].max() + 1 != grid[0] or rc[:, 1].max() + 1 != grid[1]:
             raise RuntimeError(f"visual tokens ({len(vis_pos)}) do not match grid {grid}")
-        return PreparedInputs(dict(enc), vis_pos, grid, rc, ids.numel())
+        text_pos = torch.arange(int(vis_pos[-1]) + 1, ids.numel())  # <|vision_end|>, question, template suffix
+        return PreparedInputs(dict(enc), vis_pos, grid, rc, ids.numel(), text_pos)
 
     @torch.inference_mode()
     def generate(self, inputs: PreparedInputs, max_new_tokens: int) -> tuple[str, int]:

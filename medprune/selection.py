@@ -24,7 +24,7 @@ class MethodSpec:
 
     name: str
     rule: str  # "none" | "random" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop"
-    score: str | None = None  # None | "attn" | "ropefree"
+    score: str | None = None  # None | "attn" (last prompt token) | "ropefree" | "text" (every token after the image)
     score_layer: int | None = None
     mask_from: int | None = None
     gate: str | None = None  # None | "foreground" | "oracle"
@@ -35,6 +35,7 @@ class MethodSpec:
     exclude_outliers: bool = False
     physical_gate: bool = False
     invert: bool = False  # keep the lowest scores instead (attention-informativeness control)
+    profile: bool = False  # no pruning; log both readouts and sink scores at every layer (plan.md §A10 D1)
 
 
 def _spec(name: str, rule: str, **kw) -> tuple[str, MethodSpec]:
@@ -71,6 +72,8 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_input_fastv", "topk", score="attn", score_layer=1, mask_from=2, gate="foreground",
               physical_gate=True),
         _spec("fastv_bottom", "topk", score="attn", score_layer=1, mask_from=2, invert=True),
+        _spec("fastv_text", "topk", score="text", score_layer=1, mask_from=2),
+        _spec("full_profile", "none", profile=True),
     ]
 )
 

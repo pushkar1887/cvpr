@@ -17,8 +17,9 @@ import re
 
 import numpy as np
 import pandas as pd
+from PIL import Image
 
-from .masks import MaskStore
+from .masks import MODEL_VIEWS, MaskStore, label_view, token_foreground_fraction
 from .scoring import judge_open, normalize_answer, parse_response
 from .stats import (background_retention_ratio, cluster_bootstrap_ci, jaccard, keep_map, mcnemar_exact,
                     paired_delta_ci, quadrant_concentration, static_map_from_scores)
@@ -480,6 +481,260 @@ def score_selection(df: pd.DataFrame, results: Path, model: str, dataset: str, b
     return pd.DataFrame(rows)
 
 
+# ------------------------------------------------------------------------------- evidence grounding (§A10 D3)
+# Does a keep-set contain the structure the question is about? SLAKE ships a label mask per image (mask.png, values
+# in mask.txt); a question's evidence is the union of the structures its text or answer names.
+
+PAIRED_STRUCTURES = {"lung": "Lung", "kidney": "Kidney", "eye": "Eye", "parotid": "Parotid",
+                     "temporal lobe": "Temporal Lobe", "femoral head": "Femoral Head", "mandible": "Mandible",
+                     "humerus head": "Humerus Head", "ear": "Ear"}
+SINGLE_STRUCTURES = {r"liver": ["Liver"], r"heart": ["Heart"], r"spleen": ["Spleen"], r"stomach": ["Stomach"],
+                     r"colon": ["Colon"], r"bladder": ["Bladder"], r"rectum": ["Rectum"], r"esophagus": ["Esophagus"],
+                     r"trachea": ["Trachea"], r"duodenum": ["Duodenum"], r"small (?:bowel|intestine)": ["Small Bowel"],
+                     r"spinal cord": ["Spinal Cord"], r"brain ?stem": ["Brain Stem"], r"larynx": ["Larynx"],
+                     r"tooth|teeth": ["Tooth"],
+                     r"tumou?rs?|edema": ["Brain Edema", "Brain Non-enhancing Tumor", "Brain Enhancing Tumor"],
+                     r"cancers?|nodules?|mass": ["Lung Cancer", "Liver Cancer", "Kidney Cancer"]}
+
+
+def read_mask_labels(path: Path) -> dict[str, int]:
+    """SLAKE mask.txt ("value:Name" per line) -> {Name: value}."""
+    labels = {}
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if ":" in line:
+            value, name = line.split(":", 1)
+            labels[name.strip()] = int(value)
+    return labels
+
+
+def slake_targets(text: str) -> set[str]:
+    """SLAKE mask labels named in a question/answer text; "left lung" names one side, "lungs" both."""
+    text, found = text.lower(), set()
+    for base, label in PAIRED_STRUCTURES.items():
+        for side in ("left", "right"):
+            if re.search(rf"\b{side} {base}s?\b", text):
+                found.add(f"{side.title()} {label}")
+        if re.search(rf"(?<!left )(?<!right )\b{base}s?\b", text):
+            found.update({f"Left {label}", f"Right {label}"})
+    for pattern, names in SINGLE_STRUCTURES.items():
+        if re.search(rf"\b(?:{pattern})\b", text):
+            found.update(names)
+    return found
+
+
+def _variant_mask(mask: Image.Image, dataset: str) -> Image.Image:
+    """The label mask transformed like a variant dataset's images (data.build_variant)."""
+    size = re.search(r"_s(\d+)$", dataset)
+    if size:
+        return mask.resize((int(size.group(1)),) * 2, Image.NEAREST)
+    return mask.transpose(Image.FLIP_TOP_BOTTOM) if dataset.endswith("_vflip") else mask
+
+
+def evidence_fractions(df: pd.DataFrame, slake_images: Path, labels: dict[str, int]) -> dict[tuple, dict]:
+    """{(model, dataset, qid): {"frac": per-token share of the named structures [N], "area": share of the image}} for
+    SLAKE questions (any variant) whose text or answer names a structure present in the image's mask."""
+    out: dict[tuple, dict] = {}
+    masks: dict[str, Image.Image] = {}
+    d = df[df["dataset"].str.startswith("slake_en") & df["grid_hw"].map(lambda g: isinstance(g, list) and g[0] > 0)]
+    for r in d.drop_duplicates(["model", "dataset", "qid"]).itertuples():
+        folder = str(r.image_id).split("/")[-1]
+        path = Path(slake_images) / folder / "mask.png"
+        if not path.exists():
+            continue
+        if folder not in masks:
+            masks[folder] = Image.open(path).convert("L")
+        base = np.asarray(masks[folder])
+        named = {n for n in slake_targets(f"{r.question} {r.answer}") if n in labels and (base == labels[n]).any()}
+        if not named:
+            continue
+        values = [labels[n] for n in named]
+        view = label_view(_variant_mask(masks[folder], r.dataset), r.model)
+        cell = MODEL_VIEWS[r.model]["cell"]
+        frac = token_foreground_fraction(np.isin(view, values), cell)
+        if tuple(frac.shape) != tuple(r.grid_hw):
+            raise RuntimeError(f"{r.qid}: evidence grid {frac.shape} != model grid {tuple(r.grid_hw)}")
+        out[(r.model, r.dataset, r.qid)] = {"frac": frac.reshape(-1), "area": float(np.isin(base, values).mean()),
+                                            "structures": "+".join(sorted(named))}
+    return out
+
+
+def evidence_retention(df: pd.DataFrame, evidence: dict[tuple, dict], budget: int = 10) -> pd.DataFrame:
+    """Per pruned question: `recall` = share of evidence tokens (cells touching the structure) kept, `err` = recall /
+    (k / N) (1 = chance, the evidence retention ratio), `hit` = at least one evidence token kept."""
+    d = df[(df["budget_pct"] == budget) & df["keep_idx"].notna()]
+    rows = []
+    for r in d.itertuples():
+        e = evidence.get((r.model, r.dataset, r.qid))
+        if e is None:
+            continue
+        ev, keep = e["frac"] > 0, np.asarray(r.keep_idx)
+        if not ev.any():
+            continue
+        recall = ev[keep].sum() / ev.sum()
+        rows.append({"model": r.model, "dataset": r.dataset, "method": r.method, "seed": r.seed, "qid": r.qid,
+                     "image_id": r.image_id, "structures": e["structures"], "area": e["area"], "n_ev": int(ev.sum()),
+                     "n": len(ev), "k": len(keep), "recall": recall, "err": recall / (len(keep) / len(ev)),
+                     "hit": float(ev[keep].any()), "correct": float(r.correct)})
+    return pd.DataFrame(rows)
+
+
+def evidence_report(ev: pd.DataFrame, reference: str = "random_l2") -> dict[str, pd.DataFrame]:
+    """Evidence retention by method (image-clustered CIs), by structure-area tertile, and the paired accuracy loss of
+    each method against `reference` per tertile."""
+    if ev.empty:
+        return {"summary": ev, "tertiles": ev, "paired_by_tertile": ev}
+    first = ev.drop_duplicates(["model", "dataset", "qid"])[["model", "dataset", "qid", "area"]].copy()
+    first["tertile"] = first.groupby(["model", "dataset"])["area"].transform(  # equal-count tertiles by area rank
+        lambda a: (3 * (a.rank(method="first") - 1) // len(a)).astype(int)).map({0: "small", 1: "medium", 2: "large"})
+    ev = ev.merge(first[["model", "dataset", "qid", "tertile"]], on=["model", "dataset", "qid"])
+    summary = []
+    for (model, dataset, method), g in ev.groupby(["model", "dataset", "method"]):
+        mean, low, high = cluster_bootstrap_ci(g["err"].to_numpy(float), g["image_id"].to_numpy())
+        summary.append({"model": model, "dataset": dataset, "method": method, "questions": g["qid"].nunique(),
+                        "images": g["image_id"].nunique(), "err": mean, "err_low": low, "err_high": high,
+                        "hit": g["hit"].mean(), "acc": 100 * g["correct"].mean()})
+    tertiles = (ev.groupby(["model", "dataset", "tertile", "method"], observed=True)
+                .agg(questions=("qid", "nunique"), median_area=("area", "median"), err=("err", "mean"),
+                     hit=("hit", "mean"), acc=("correct", "mean")).reset_index())
+    tertiles["acc"] *= 100
+    paired = []
+    seed0 = ev[ev["seed"] == 0]
+    for (model, dataset, t), g in seed0.groupby(["model", "dataset", "tertile"], observed=True):
+        wide = g.pivot_table(index=["qid", "image_id"], columns="method", values="correct").reset_index()
+        if reference not in wide:
+            continue
+        for method in [m for m in wide.columns if m not in ("qid", "image_id", reference)]:
+            both = wide.dropna(subset=[method, reference])
+            if both.empty:
+                continue
+            delta, low, high = paired_delta_ci(both[method].to_numpy(float), both[reference].to_numpy(float),
+                                               both["image_id"].to_numpy())
+            paired.append({"model": model, "dataset": dataset, "tertile": t, "comparison": f"{method} - {reference}",
+                           "n": len(both), "delta": 100 * delta, "ci_low": 100 * low, "ci_high": 100 * high})
+    return {"summary": pd.DataFrame(summary), "tertiles": tertiles, "paired_by_tertile": pd.DataFrame(paired)}
+
+
+# ------------------------------------------------------------------------------------ layer profile (§A10 D1)
+
+def rank_variance_shares(scores: dict[str, np.ndarray], meta: pd.DataFrame, bins: int = 8) -> dict:
+    """Split the variance of within-question score ranks (u = rank / N) into grid position (bins x bins cells of
+    normalized coordinates), the image beyond position, and the question beyond the image. Exactly additive.
+    `meta`: indexed by qid with `image_id` and `grid_hw`. With one question per image the "image" share includes the
+    question."""
+    import scipy.stats as sps
+
+    by_image: dict[str, list[np.ndarray]] = {}
+    grid: dict[str, tuple[int, int]] = {}
+    for qid, s in scores.items():
+        if qid not in meta.index:
+            continue
+        image = meta.at[qid, "image_id"]
+        by_image.setdefault(image, []).append(sps.rankdata(s) / len(s))
+        grid[image] = tuple(meta.at[qid, "grid_hw"])
+    pos_sum, pos_cnt, cached = np.zeros(bins * bins), np.zeros(bins * bins), []
+    for image, us in by_image.items():
+        h, w = grid[image]
+        u = np.stack(us)
+        r, c = np.divmod(np.arange(h * w), w)
+        b = np.minimum(r * bins // h, bins - 1) * bins + np.minimum(c * bins // w, bins - 1)
+        pos_sum += np.bincount(b, weights=u.sum(0), minlength=bins * bins)
+        pos_cnt += np.bincount(b, minlength=bins * bins) * u.shape[0]
+        cached.append((u, b))
+    if not cached:
+        return {"questions": 0}
+    pos = pos_sum / np.maximum(pos_cnt, 1)
+    grand = pos_sum.sum() / pos_cnt.sum()
+    ss_pos = ss_img = ss_q = 0.0
+    for u, b in cached:
+        img = u.mean(0)
+        ss_pos += u.shape[0] * float(np.sum((pos[b] - grand) ** 2))
+        ss_img += u.shape[0] * float(np.sum((img - pos[b]) ** 2))
+        ss_q += float(np.sum((u - img) ** 2))
+    total = ss_pos + ss_img + ss_q
+    return {"questions": sum(len(u) for u, _ in cached), "q_per_image": np.mean([len(u) for u, _ in cached]),
+            "position": ss_pos / total, "image_beyond_position": ss_img / total, "question_beyond_image": ss_q / total}
+
+
+def layer_profile(df: pd.DataFrame, results: Path, model: str, dataset: str, budget: float = 0.10,
+                  evidence: dict[tuple, dict] | None = None, profile: str = "t4x2", sink_tau: float = 20.0) -> pd.DataFrame:
+    """Per readout ("last" prompt token = FastV; "text" = every token after the image) and decoder layer, from a
+    `full_profile` run: the position / image / question variance split of the token ranking, and what top-k by that
+    layer would keep — background retention ratio, evidence retention ratio (SLAKE), share of visual-sink tokens
+    (Kang et al.) — plus the attention mass on visual tokens and Spearman(score, sink score)."""
+    import scipy.stats as sps
+
+    diag = load_diag(results, f"{model}__{dataset}__full_profile__r100__s0__{profile}")
+    meta = df[(df["model"] == model) & (df["dataset"] == dataset) & (df["method"] == "full_profile")] \
+        .drop_duplicates("qid").set_index("qid")
+    gates = load_gates(results, model, dataset)
+    layers = sorted({int(k.rsplit("_l", 1)[1]) for x in diag.values() for k in x if k.startswith("lp_last_l")})
+    rows = []
+    for readout in ("last", "text"):
+        for layer in layers:
+            key, sink_key = f"lp_{readout}_l{layer}", f"sink_l{layer}"
+            scores = {q: x[key] for q, x in diag.items() if key in x and q in meta.index}
+            if not scores:
+                continue
+            stats: dict[str, list] = {k: [] for k in ("brr", "err", "hit", "mass", "sink_top", "sink_all", "rho")}
+            for qid, s in scores.items():
+                n = len(s)
+                k = max(1, min(n, int(round(budget * n))))
+                top = np.argsort(-s, kind="stable")[:k]
+                stats["mass"].append(float(np.exp(s.astype(np.float64)).sum()))
+                background = ~_foreground(gates, meta.at[qid, "image_id"], n)
+                if background.any() and not background.all():
+                    stats["brr"].append(background_retention_ratio(np.sort(top), background))
+                e = (evidence or {}).get((model, dataset, qid))
+                if e is not None and (e["frac"] > 0).any():
+                    ev = e["frac"] > 0
+                    stats["err"].append(ev[top].sum() / ev.sum() / (k / n))
+                    stats["hit"].append(float(ev[top].any()))
+                sink = diag[qid].get(sink_key)
+                if sink is not None:
+                    stats["sink_top"].append(float(np.mean(sink[top] > sink_tau)))
+                    stats["sink_all"].append(float(np.mean(sink > sink_tau)))
+                    if np.std(sink) > 0:
+                        stats["rho"].append(sps.spearmanr(s, sink)[0])
+            mean = {k: (float(np.nanmean(v)) if v else np.nan) for k, v in stats.items()}
+            rows.append({"model": model, "dataset": dataset, "readout": readout, "layer": layer,
+                         **rank_variance_shares(scores, meta), "brr_top": mean["brr"], "err_top": mean["err"],
+                         "hit_top": mean["hit"], "visual_mass": mean["mass"], "sink_rate_top": mean["sink_top"],
+                         "sink_rate_all": mean["sink_all"], "spearman_score_sink": mean["rho"]})
+    return pd.DataFrame(rows)
+
+
+def plot_layer_profile(table: pd.DataFrame, path: Path) -> None:
+    """One row of panels per (model, dataset): variance shares, evidence/background retention, sink share by layer."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    groups = list(table.groupby(["model", "dataset"]))
+    fig, axes = plt.subplots(len(groups), 3, figsize=(12, 3 * len(groups)), squeeze=False)
+    for i, ((model, dataset), g) in enumerate(groups):
+        for readout, style in (("last", "-"), ("text", "--")):
+            x = g[g["readout"] == readout]
+            axes[i][0].plot(x["layer"], x["question_beyond_image"], style, color="C0", label=f"question ({readout})")
+            axes[i][0].plot(x["layer"], x["position"], style, color="C1", label=f"position ({readout})")
+            axes[i][1].plot(x["layer"], x["err_top"], style, color="C2", label=f"evidence ({readout})")
+            axes[i][1].plot(x["layer"], x["brr_top"], style, color="C3", label=f"background ({readout})")
+            axes[i][2].plot(x["layer"], x["sink_rate_top"], style, color="C4", label=f"sinks in top 10% ({readout})")
+        axes[i][2].plot(g[g["readout"] == "last"]["layer"], g[g["readout"] == "last"]["sink_rate_all"], ":", color="k",
+                        label="sinks, all tokens")
+        axes[i][1].axhline(1.0, color="grey", lw=0.5)
+        axes[i][0].set_ylabel(f"{model}\n{dataset}")
+        for ax, title in zip(axes[i], ("variance share of the ranking", "retention ratio of top 10% (1 = chance)",
+                                       "visual-sink share")):
+            ax.set_title(title, fontsize=9)
+            ax.set_xlabel("layer")
+            ax.legend(fontsize=6)
+    fig.tight_layout()
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def diagnosis_report(results: Path, models: tuple[str, ...] = ("lingshu7b", "qwen3vl8b"),
                      datasets: tuple[str, ...] = ("rin_anat_mc", "slake_en"), budget: int = 10,
                      open_scoring: str = "rule") -> dict:
@@ -616,16 +871,42 @@ def main() -> None:
     import argparse
 
     p = argparse.ArgumentParser(description="Laptop-side analysis commands.")
-    p.add_argument("command", choices=["static-maps", "diagnosis"])
+    p.add_argument("command", choices=["static-maps", "diagnosis", "evidence", "profile"])
     p.add_argument("--results", type=Path, required=True)
     p.add_argument("--models", default="lingshu7b,qwen3vl8b")
     p.add_argument("--profile", default="t4x2")
     p.add_argument("--open-scoring", choices=["rule", "judge"], default="rule")
+    p.add_argument("--slake-images", type=Path, help="folder with <xmlabN>/mask.png (the bundle's images/slake)")
+    p.add_argument("--labels", type=Path, help="SLAKE mask.txt (the bundle's slake_mask_labels.txt)")
+    p.add_argument("--datasets", default="slake_en,rin_anat_mc,natural", help="profile: datasets with full_profile runs")
     args = p.parse_args()
+    tables = args.results / "tables"
     if args.command == "diagnosis":
         for name, table in diagnosis_report(args.results, tuple(args.models.split(",")),
                                             open_scoring=args.open_scoring).items():
             print(f"\n## {name}\n{table.round(3).to_string(index=False)}")
+        return
+    if args.command in ("evidence", "profile"):
+        df = load_runs(args.results, args.profile, open_scoring=args.open_scoring)
+        df = df[df["model"].isin(args.models.split(","))]
+        evidence = evidence_fractions(df, args.slake_images, read_mask_labels(args.labels)) \
+            if args.slake_images and args.labels else {}
+        tables.mkdir(parents=True, exist_ok=True)
+        if args.command == "evidence":
+            ev = evidence_retention(df, evidence)
+            ev.to_csv(tables / "evidence_rows.csv", index=False)
+            for name, table in evidence_report(ev).items():
+                table.to_csv(tables / f"evidence_{name}.csv", index=False)
+                print(f"\n## evidence {name}\n{table.round(3).to_string(index=False)}")
+            return
+        present = set(zip(df["model"], df["dataset"], df["method"]))
+        parts = [layer_profile(df, args.results, m, d, evidence=evidence, profile=args.profile)
+                 for m in args.models.split(",") for d in args.datasets.split(",") if (m, d, "full_profile") in present]
+        table = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+        table.to_csv(tables / "layer_profile.csv", index=False)
+        if not table.empty:
+            plot_layer_profile(table, args.results / "figures" / "layer_profile.pdf")
+        print(table.round(3).to_string(index=False))
         return
     for model in args.models.split(","):
         for path in build_static_maps(args.results, model, args.profile):

@@ -127,6 +127,7 @@ class HuatuoAdapter:
         self.eos_token_id = tokenizer.eos_token_id
         attn = self.layers[1].self_attn
         hook.install_pre_rope_capture(attn.q_proj, attn.k_proj, layer=1)  # 1D RoPE: q_proj/k_proj precede it
+        hook.install_profile_hooks(self.layers)
         self._visual_out: torch.Tensor | None = None
         self.layers[1].register_forward_pre_hook(self._record_layer1_norms, with_kwargs=True)
 
@@ -166,7 +167,7 @@ class HuatuoAdapter:
         rc = np.stack(np.divmod(np.arange(n), side), axis=1)  # raster order, row-major
         mask = torch.ones(embeds.shape[:2], dtype=torch.long, device=self.device)
         return PreparedInputs({"inputs_embeds": embeds, "attention_mask": mask}, vis_pos, (side, side), rc,
-                              embeds.shape[1])
+                              embeds.shape[1], torch.arange(len(ids_before) + n, embeds.shape[1]))
 
     @torch.inference_mode()
     def generate(self, inputs: PreparedInputs, max_new_tokens: int) -> tuple[str, int]:

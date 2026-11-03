@@ -205,3 +205,83 @@ def test_attention_informativeness_detects_harmful_attention(tmp_path):
     writer.flush()
     result = attention_informativeness(pd.DataFrame(rows), tmp_path, "m", "d")
     assert result["n"] == 300 and result["coef_per_sd"] < -1 and result["p"] < 0.001
+
+
+def test_slake_targets_name_sides_structures_and_lesions():
+    from medprune.analysis import slake_targets
+
+    assert slake_targets("Where is the liver? Left") == {"Liver"}
+    assert slake_targets("Which organ is abnormal? Left Lung") == {"Left Lung"}
+    assert slake_targets("Are the lungs healthy? no") == {"Left Lung", "Right Lung"}
+    assert slake_targets("Where is the brain tumor?") >= {"Brain Enhancing Tumor", "Brain Edema"}
+    assert slake_targets("What modality is used to take this image? CT") == set()
+
+
+def test_label_view_follows_each_models_geometry():
+    from medprune.masks import label_view
+
+    mask = Image.fromarray(np.zeros((512, 512), np.uint8))
+    assert label_view(mask, "lingshu7b").shape == (504, 504)  # 18 x 18 cells of 28 px
+    wide = np.zeros((200, 300), np.uint8)
+    wide[:, :] = 70
+    view = label_view(Image.fromarray(wide), "huatuo7b")
+    assert view.shape == (336, 336) and view[0].max() == 0 and view[168].min() == 70  # zero padding top and bottom
+
+
+def test_evidence_retention_counts_the_named_structure(tmp_path):
+    from medprune.analysis import evidence_fractions, evidence_report, evidence_retention
+
+    mask = np.zeros((56, 56), np.uint8)
+    mask[:28, :28] = 70  # the liver fills the top-left token of a 2 x 2 Lingshu grid
+    (tmp_path / "xmlab1").mkdir()
+    Image.fromarray(mask).save(tmp_path / "xmlab1" / "mask.png")
+    base = {"model": "lingshu7b", "qid": "slake_en/1", "image_id": "slake/xmlab1", "question": "Where is the liver?",
+            "answer": "Left", "grid_hw": [2, 2], "budget_pct": 25, "seed": 0, "correct": True}
+    df = pd.DataFrame([{**base, "dataset": "slake_en", "method": "fastv", "keep_idx": [0]},
+                       {**base, "dataset": "slake_en", "method": "random_l2", "keep_idx": [3], "correct": False},
+                       {**base, "dataset": "slake_en_vflip", "method": "fastv", "keep_idx": [2]}])
+    evidence = evidence_fractions(df, tmp_path, {"Liver": 70})
+    assert evidence[("lingshu7b", "slake_en_vflip", "slake_en/1")]["frac"].tolist() == [0, 0, 1, 0]  # flipped
+    ev = evidence_retention(df, evidence, budget=25).set_index(["dataset", "method"])
+    assert ev.loc[("slake_en", "fastv"), "err"] == 4.0 and ev.loc[("slake_en", "random_l2"), "hit"] == 0.0
+    assert ev.loc[("slake_en_vflip", "fastv"), "recall"] == 1.0 and ev["area"].iloc[0] == 0.25
+    report = evidence_report(ev.reset_index())
+    assert set(report["summary"]["method"]) == {"fastv", "random_l2"}
+
+
+def test_rank_variance_shares_separate_position_image_and_question():
+    from medprune.analysis import rank_variance_shares
+
+    rng = np.random.default_rng(0)
+    fixed = rng.random(64)
+    qids = [f"q{i}" for i in range(40)]
+    meta = pd.DataFrame({"qid": qids, "image_id": [f"img{i // 4}" for i in range(40)],
+                         "grid_hw": [[8, 8]] * 40}).set_index("qid")
+    position = rank_variance_shares({q: fixed for q in qids}, meta)
+    assert position["position"] == pytest.approx(1.0) and position["question_beyond_image"] == pytest.approx(0.0)
+    noise = rank_variance_shares({q: rng.random(64) for q in qids}, meta)
+    assert noise["question_beyond_image"] > 0.6 and sum(noise[k] for k in ("position", "image_beyond_position",
+                                                                           "question_beyond_image")) == pytest.approx(1.0)
+
+
+def test_layer_profile_on_a_dry_run(tmp_path):
+    from medprune.analysis import layer_profile, plot_layer_profile
+
+    bundle, results = tmp_path / "bundle", tmp_path / "results"
+    (bundle / "images").mkdir(parents=True)
+    samples = []
+    for i in range(6):
+        Image.fromarray(np.full((16, 16, 3), 30 * i, np.uint8)).save(bundle / "images" / f"{i}.png")
+        samples.append(Sample(qid=f"rin/{i}", dataset="rin_anat_mc", image_id=f"rin/{i // 2}",
+                              image_path=f"images/{i}.png", question="Is it?", answer="yes", answer_type="yesno",
+                              prompt_style="judgement", modality="CT"))
+    write_manifest(samples, bundle, "rin_anat_mc")
+    run_many([RunSpec("lingshu7b", "rin_anat_mc", "full_profile", 1.0)], bundle, results,
+             {"lingshu7b": {"rin": 0.6}}, dry_run=True)
+    df = load_runs(results, "dryrun")
+    table = layer_profile(df, results, "lingshu7b", "rin_anat_mc", budget=0.25, profile="dryrun")
+    assert len(table) == 2 * 28 and set(table["readout"]) == {"last", "text"}
+    shares = table[["position", "image_beyond_position", "question_beyond_image"]].sum(axis=1)
+    assert np.allclose(shares, 1.0) and table["sink_rate_all"].between(0, 1).all()
+    plot_layer_profile(table, results / "figures" / "layer_profile.pdf")
+    assert (results / "figures" / "layer_profile.pdf").exists()

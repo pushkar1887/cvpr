@@ -6,7 +6,9 @@ identical to deleting those tokens (tests/test_attention_hook.py), so FastV, ran
 scoring, the foreground gate, DivPrune and PDrop all run through the code below.
 
 FastV reference (third_party/FastV/src/FastV/llava-hf/.../modeling_llama.py L1038-1052): scores are the last prompt
-token's attention averaged over heads, read at layer K-1; tokens are removed from layer K on.
+token's attention averaged over heads, read at layer K-1; tokens are removed from layer K on. The "text" readout
+(plan.md §A10 D2) averages the attention of every token after the image instead (question and template), the FastV
+paper's wording. A profile state (D1) logs both readouts and a visual-sink score at every layer.
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ class Stage:
     score_layer: int  # layer whose attention is read
     mask_from: int  # first layer at which this stage's dropped tokens are masked
     select: Selector
-    score_kind: str = "attn"  # "attn" | "ropefree"
+    score_kind: str = "attn"  # "attn" | "ropefree" | "text"
     done: bool = False
 
 
@@ -48,6 +50,8 @@ class PruneState:
     stages: list[Stage] = field(default_factory=list)
     log_layers: tuple[int, ...] = ()  # last-token attention logged here; outputs unchanged
     log_ropefree: bool = False  # also log RoPE-free scores at the pre-RoPE capture layer
+    text_pos: torch.Tensor | None = None  # sequence positions of the tokens after the image ("text" readout)
+    profile: bool = False  # log log-attention of both readouts and visual-sink scores at every layer (plan.md D1)
     stop_after_scoring: bool = False
     logs: dict[str, np.ndarray] = field(default_factory=dict)
     keep: np.ndarray | None = None  # kept indices into 0..N-1 after the latest selection
@@ -112,6 +116,44 @@ def last_token_attention(query: torch.Tensor, key: torch.Tensor, scaling: float,
     return logits.softmax(dim=-1).mean(dim=0)
 
 
+def text_attention(query: torch.Tensor, key: torch.Tensor, scaling: float, q_pos: torch.Tensor,
+                   exclude: torch.Tensor | None = None) -> torch.Tensor:
+    """Head- and query-mean softmax attention of the queries at sequence positions `q_pos` over all keys, [Tk] float32.
+
+    Each query attends causally (keys up to its own position), exactly as in the forward pass; `exclude` as in
+    last_token_attention.
+    """
+    n_rep = query.shape[1] // key.shape[1]
+    k = key[0].repeat_interleave(n_rep, dim=0) if n_rep > 1 else key[0]  # [Hq, Tk, D]
+    q_pos = q_pos.to(query.device)
+    logits = torch.einsum("hqd,htd->hqt", query[0][:, q_pos, :].float(), k.float()) * scaling  # [Hq, Lq, Tk]
+    future = torch.arange(k.shape[1], device=logits.device)[None, :] > q_pos[:, None]  # [Lq, Tk]
+    logits = logits.masked_fill(future[None], float("-inf"))
+    if exclude is not None:
+        logits[:, :, exclude.to(logits.device)] = float("-inf")
+    return logits.softmax(dim=-1).mean(dim=(0, 1))
+
+
+SINK_TAU = 20.0  # Kang et al. (ICLR 2025): sink dimensions are where the first token's RMS-normalized state exceeds 20
+
+
+def sink_scores(hidden: torch.Tensor, vis_pos: torch.Tensor, tau: float = SINK_TAU) -> np.ndarray:
+    """Visual attention-sink score of each visual token, [N] float32 (Kang et al., ICLR 2025, "visual attention sink").
+
+    phi(h) = h / RMS(h). Sink dimensions D = {d : |phi(h_0)[d]| > tau}, with token 0 standing in for BOS (Qwen chat
+    templates have no BOS); when no dimension passes (early layers), D = the first token's largest dimension. Score of
+    token i = max over D of |phi(h_i)[d]|; a visual sink token scores above tau.
+    """
+    h = hidden.float()
+    first = h[0] / h[0].pow(2).mean().sqrt()
+    dims = (first.abs() > tau).nonzero().squeeze(1)
+    if dims.numel() == 0:
+        dims = first.abs().argmax().view(1)
+    vis = h[vis_pos.to(h.device)]
+    phi = vis / vis.pow(2).mean(dim=-1, keepdim=True).sqrt()
+    return phi[:, dims].abs().max(dim=-1).values.cpu().numpy()
+
+
 def ropefree_attention(state: PruneState, head_dim: int, scaling: float) -> torch.Tensor:
     """Same as last_token_attention but from the captured pre-RoPE q and k (FEATHER's criterion), [T] float32."""
     q, k = state.pre_rope["q"], state.pre_rope["k"]  # [1, T, Hq*D] or [1, T, Hq, D]
@@ -136,6 +178,22 @@ def install_pre_rope_capture(q_module: torch.nn.Module, k_module: torch.nn.Modul
         return hook
 
     return [q_module.register_forward_hook(recorder("q")), k_module.register_forward_hook(recorder("k"))]
+
+
+def install_profile_hooks(layers) -> list:
+    """Log `sink_l{i}` (sink_scores of the visual tokens at the input of decoder layer i) when a profile state is
+    active, on prefill only."""
+
+    def recorder(index: int):
+        def hook(_module, args, kwargs):
+            state = ACTIVE
+            hidden = kwargs.get("hidden_states", args[0] if args else None)
+            if state is not None and state.profile and hidden is not None and hidden.shape[1] > 1:
+                state.logs[f"sink_l{index}"] = sink_scores(hidden[0], state.vis_pos)
+
+        return hook
+
+    return [layer.register_forward_pre_hook(recorder(i), with_kwargs=True) for i, layer in enumerate(layers)]
 
 
 def allow_mask(attention_mask: torch.Tensor | None, query: torch.Tensor, key: torch.Tensor,
@@ -175,14 +233,25 @@ def _prefill_step(state: PruneState, module, layer: int, query: torch.Tensor, ke
             cache["ropefree"] = ropefree_attention(state, module.head_dim, scaling)[vis].cpu().numpy()
         return cache["ropefree"]
 
+    def text_scores() -> np.ndarray:
+        if state.text_pos is None or state.text_pos.numel() == 0:
+            raise RuntimeError("text-token scores need the positions of the tokens after the image")
+        if "text" not in cache:
+            cache["text"] = text_attention(query, key, scaling, state.text_pos, state.dropped_at(layer))[vis].cpu().numpy()
+        return cache["text"]
+
     if layer in state.log_layers:
         state.logs[f"scores_l{layer}"] = attention_scores()
     if state.log_ropefree and state.pre_rope.get("layer") == layer:
         state.logs[f"scores_ropefree_l{layer}"] = ropefree_scores()
+    if state.profile:  # log-probabilities: deep-layer visual attention underflows float16 storage as a probability
+        state.logs[f"lp_last_l{layer}"] = np.log(attention_scores() + 1e-30)
+        if state.text_pos is not None and state.text_pos.numel():
+            state.logs[f"lp_text_l{layer}"] = np.log(text_scores() + 1e-30)
     for stage in state.stages:
         if stage.done or stage.score_layer != layer:
             continue
-        scores = ropefree_scores() if stage.score_kind == "ropefree" else attention_scores()
+        scores = {"ropefree": ropefree_scores, "text": text_scores}.get(stage.score_kind, attention_scores)()
         state.logs.setdefault(f"scores_{stage.score_kind}_l{layer}", scores)
         state.apply_keep(stage.select(scores, state.survivors()), stage.mask_from)
         stage.done = True

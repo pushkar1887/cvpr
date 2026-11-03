@@ -63,15 +63,22 @@ def test_dry_run_writes_one_line_per_question_and_resumes(tmp_path):
     bundle, out = tmp_path / "bundle", tmp_path / "results"
     _tiny_bundle(bundle)
     rates = {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}
-    specs = [RunSpec("lingshu7b", "slake_en", m, 0.25 if m != "full" else 1.0) for m in
-             ("full", "random_l2", "fastv", "gate_uniform", "fastv_prellm", "divprune", "pdrop", "fastv_bottom")]
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.25 if m not in ("full", "full_profile") else 1.0) for m in
+             ("full", "random_l2", "fastv", "gate_uniform", "fastv_prellm", "divprune", "pdrop", "fastv_bottom",
+              "fastv_text", "full_profile")]
     run_many(specs, bundle, out, rates, limit=4, dry_run=True)
     for spec in specs:
         path = out / "runs" / f"{spec.run_id('dryrun')}.jsonl"
         rows = [json.loads(line) for line in path.read_text().splitlines()]
         assert [r["qid"] for r in rows] == [f"toy/{i}" for i in range(4)]
-        if spec.method not in ("full", "pdrop"):
+        if spec.method not in ("full", "pdrop", "full_profile"):
             assert all(r["k_keep"] == 4 for r in rows)  # 25% of 16 tokens
+    from medprune.analysis import load_diag
+
+    profile = load_diag(out, RunSpec("lingshu7b", "slake_en", "full_profile", 1.0).run_id("dryrun"))["toy/0"]
+    assert {"lp_last_l0", "lp_text_l27", "sink_l13"} <= set(profile) and profile["sink_l13"].shape == (16,)
+    text = load_diag(out, RunSpec("lingshu7b", "slake_en", "fastv_text", 0.25).run_id("dryrun"))["toy/0"]
+    assert "scores_text_l1" in text
     keep = {m: [json.loads(line)["keep_idx"] for line in
                 (out / "runs" / f"{RunSpec('lingshu7b', 'slake_en', m, 0.25).run_id('dryrun')}.jsonl").read_text().splitlines()]
             for m in ("fastv", "fastv_bottom")}

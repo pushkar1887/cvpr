@@ -58,44 +58,8 @@ blocks:
                artifact_excl]}
   - {exp: E6, tier: P0, account: B, model: qwen3vl8b, groups: [K], methods: [random_l2], seeds: [1, 2]}
 
-  # Stage 5 — E3: main grid at 10% (S3 before S2: a third benchmark matters more than the Chinese split)
-  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1],
-     methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
-  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
-  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S3],
-     methods: [full, text_only, random_l2, uniform_l2, fastv, ropefree, gate_fastv, gate_uniform]}
-  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
-  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1],
-     methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
-  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
-  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S3],
-     methods: [full, text_only, random_l2, uniform_l2, fastv, ropefree, gate_fastv, gate_uniform]}
-  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
-
-  # Stage 5 — E4: modality panel
-  - {exp: E4, tier: P0, account: A, model: lingshu7b, groups: [P],
-     methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform]}
-  - {exp: E4, tier: P0, account: B, model: qwen3vl8b, groups: [P],
-     methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform]}
-
-  # Stage 6 — E5: budget curves
-  - {exp: E5, tier: P1, account: A, model: lingshu7b, groups: [K],
-     methods: [random_l2, fastv, gate_fastv, gate_uniform], budgets: [0.05, 0.25]}
-  - {exp: E5, tier: P1, account: A, model: lingshu7b, groups: [K], methods: [fastv, gate_fastv], budgets: [0.50]}
-  - {exp: E5, tier: P1, account: B, model: qwen3vl8b, groups: [K], methods: [random_l2, fastv, gate_fastv],
-     budgets: [0.05, 0.25]}
-
-  # Stage 6 — E6 (P1): mechanism controls
-  - {exp: E6, tier: P1, account: A, model: lingshu7b, groups: [S1],
-     methods: [fastv_k8, fastv_k16, static_map, inverse_gate, divprune, gate_divprune]}
-  - {exp: E6, tier: P1, account: A, model: lingshu7b, groups: [slake_en], methods: [oracle_gate]}
-  - {exp: E6, tier: P1, account: B, model: qwen3vl8b, groups: [K],
-     methods: [fastv_k16, static_map, inverse_gate, divprune, gate_divprune]}
-
-  # Stage 6 — E7: natural-image control (no gate). Moved to C (2026-11-03): it decides the "medical-specific" claim.
-  - {exp: E7, tier: P0, account: C, model: lingshu7b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
-  - {exp: E7, tier: P0, account: C, model: qwen3vl8b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
-
+  # Session-2 order (2026-11-03 night): the confound controls and E12 come before the rest of the grid; runs follow
+  # block order, and the Chinese split (E3 S2) moved to the end as the lowest priority.
   # E10 / E10r — resolution control (added 2026-11-03). RadImageNet (224², 64 tokens) shows the largest loss, so token
   # count is confounded with domain. Same questions at another resolution (`python -m medprune.data resize`): SLAKE and
   # natural images down to 224² (C, no RadImageNet needed), RadImageNet up to 448² (A/B: needs the HF token).
@@ -123,6 +87,54 @@ blocks:
   - {exp: E11r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc], methods: [fastv_bottom]}
   - {exp: E11r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc_vflip], methods: [full, random_l2, fastv]}
 
+  # E12 — layer profile and text readout (plan.md §A10 D1, D2; added 2026-11-03 night). `full_profile` re-runs Full
+  # (same answers) and logs, at every LLM layer, the last-token and text-token log-attention over the visual tokens
+  # and visual-sink scores; `fastv_text` prunes with the text-token readout (FastV paper's wording, G2).
+  - {exp: E12, tier: P0, account: A, model: lingshu7b, groups: [K, N], methods: [full_profile]}
+  - {exp: E12, tier: P0, account: A, model: lingshu7b, groups: [K], methods: [fastv_text]}
+  - {exp: E12, tier: P0, account: B, model: qwen3vl8b, groups: [K, N], methods: [full_profile]}
+  - {exp: E12, tier: P0, account: B, model: qwen3vl8b, groups: [K], methods: [fastv_text]}
+
+  # Stage 5 — E3: main grid at 10% (S3 before S2: a third benchmark matters more than the Chinese split)
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1],
+     methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S3],
+     methods: [full, text_only, random_l2, uniform_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1],
+     methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S3],
+     methods: [full, text_only, random_l2, uniform_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+
+  # Stage 5 — E4: modality panel
+  - {exp: E4, tier: P0, account: A, model: lingshu7b, groups: [P],
+     methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform]}
+  - {exp: E4, tier: P0, account: B, model: qwen3vl8b, groups: [P],
+     methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform]}
+
+  # Stage 6 — E5: budget curves
+  - {exp: E5, tier: P1, account: A, model: lingshu7b, groups: [K],
+     methods: [random_l2, fastv, gate_fastv, gate_uniform], budgets: [0.05, 0.25]}
+  - {exp: E5, tier: P1, account: A, model: lingshu7b, groups: [K], methods: [fastv, gate_fastv], budgets: [0.50]}
+  - {exp: E5, tier: P1, account: B, model: qwen3vl8b, groups: [K], methods: [random_l2, fastv, gate_fastv],
+     budgets: [0.05, 0.25]}
+
+  # Stage 5 — E3 S2 (SLAKE-zh), last: the lowest-priority cell of the grid
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
+
+  # Stage 6 — E6 (P1): mechanism controls
+  - {exp: E6, tier: P1, account: A, model: lingshu7b, groups: [S1],
+     methods: [fastv_k8, fastv_k16, static_map, inverse_gate, divprune, gate_divprune]}
+  - {exp: E6, tier: P1, account: A, model: lingshu7b, groups: [slake_en], methods: [oracle_gate]}
+  - {exp: E6, tier: P1, account: B, model: qwen3vl8b, groups: [K],
+     methods: [fastv_k16, static_map, inverse_gate, divprune, gate_divprune]}
+
+  # Stage 6 — E7: natural-image control (no gate). Moved to C (2026-11-03): it decides the "medical-specific" claim.
+  - {exp: E7, tier: P0, account: C, model: lingshu7b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
+  - {exp: E7, tier: P0, account: C, model: qwen3vl8b, groups: [N], methods: [full, random_l2, uniform_l2, fastv, ropefree]}
+
   # Stage 7 — E6 (P2): gate robustness, artifacts, PDrop
   - {exp: E6, tier: P2, account: C, model: lingshu7b, groups: [S1],
      methods: [artifact_excl, gate_quota3, gate_tau25, gate_tau75, pdrop, gate_pdrop]}
@@ -131,6 +143,7 @@ blocks:
   # Qwen models' 64 tokens, so it doubles as a model-level token-count contrast for G1). K first (G6), then the rest.
   - {exp: E8, tier: P1, account: C, model: huatuo7b, groups: [K],
      methods: [full, text_only, random_l2, uniform_l2, fastv, gate_fastv]}
-  - {exp: E8, tier: P2, account: C, model: huatuo7b, groups: [K], methods: [ropefree, gate_ropefree, fastv_bottom]}
+  - {exp: E8, tier: P2, account: C, model: huatuo7b, groups: [K],
+     methods: [full_profile, fastv_text, ropefree, gate_ropefree, fastv_bottom]}  # profile: the 1D-RoPE case (G18)
   - {exp: E8, tier: P2, account: C, model: huatuo7b, groups: [rin_abn_closed],
      methods: [full, text_only, random_l2, fastv, gate_fastv]}

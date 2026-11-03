@@ -25,26 +25,26 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 4b | Gate + coverage selectors (E1g) | ✅ DONE | 2.56 | 0 | Nov 3 | Rule met on Lingshu only (`gate_random` − Random +3.2 [+1.2, +5.2]); Qwen +0.5 [−1.3, +2.3] → **diagnosis-first paper**, gate = partial remedy |
 | 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | 🔄 RUNNING: A v8, B v4 (17:50) | 1.73 | 18.5 running + 1.7 spill | Nov 3–4 | Table 1; E6 decides the mechanism claims (§A9) |
 | 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | 🔄 RUNNING on C: `medprune-gpu-lingshu7b` v1 and `medprune-gpu-qwen3vl8b` v1 (18:10, in parallel); RadImageNet arms in A/B session 2 | 0 | 7.5 running (C) + 2.6 (A/B) | Nov 3–4 | Token count or domain? Position or content? Is attention informative? (G1, G3, G4) |
-| 6 | Modality panel (E4), budget curves (E5) | ⏳ NEXT (A/B session 2) | 0 | 9.3 | Nov 4–5 | Fig. 2, Fig. 4 |
+| 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5) | ⏳ NEXT (A/B session 2, ~03:30; order E10r → E11r (row 5b) → E12 → rest of E3 → E4 → E5 → SLAKE-zh) | 0 | 11.2 | Nov 4–5 | Fig. 2, Fig. 3 (D1), Fig. 4 |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔧 CODE DONE (`6e69839`): HuatuoGPT port (T5) and judge (G9); C runs the HuatuoGPT check (E0, 50 q) and judge pass 1 (2,141 answers) as soon as its two slots free (~22:00) | 0 | 1.0 queued + 11.5 | Nov 3–7 | HuatuoGPT E0 passes → E8 on K; judge κ vs hand labels decides the open-question metric |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
-**Totals (measured rates, §C4):** spent 8.0 GPU-h · running 26.0 (A, B, C) · queued 1.0 (C) · left 25.9 → **≈ 61
-GPU-h for the whole project** (48 before Nov 3 evening; the 13 added hours are the diagnostic controls of §A9: E6 on both
-models before the grid, E10, E11, Random seeds). The judge moved from B to C; the layer profile (§A10, D1) would add
-≈ 1.2. On an A100 (Part E): ≈ 13–15 h.
+**Totals (measured rates, §C4):** spent 8.0 GPU-h · running 26.0 (A, B, C) · queued 1.0 (C) · left 27.8 → **≈ 63
+GPU-h for the whole project** (48 before Nov 3 evening; the added hours are the diagnostic controls of §A9 — E6 on both
+models before the grid, E10, E11, Random seeds — and E12, the layer profile and text readout of §A10, 1.0 + 0.9). The
+judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 **Compute ledger (Kaggle T4×2 hours)**
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 8.9 (spill 1.7, E10r 1.1, E11r 0.4, E4 1.5, E5 4.2) | 6.7 |
-| B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 4.7 (E10r 0.8, E11r 0.3, E4 1.3, E5 2.3) | 13.1 |
+| A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 9.9 (E10r 1.1, E11r 0.4, E12 1.0, spill 1.7, E4 1.5, E5 4.2) | 5.7 |
+| B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 5.6 (E10r 0.8, E11r 0.3, E12 0.9, E4 1.3, E5 2.3) | 12.2 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 0 (bundle builds are CPU) | 7.5 (v1 ×2: E7, E10, E11) + 1.0 queued (HuatuoGPT E0 0.4, judge pass 1 0.4) | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 2.3 |
 
-Slack ≈ 22 GPU-h. Next uses, in order (§A10): the layer profile D1 (all layers, last-token and text-token readouts;
-≈ 0.6 per model, rides on A/B session 2), the FastV text-readout variant (G2, ≈ 0.4 per model), RadImageNet open
-questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks. Restore datasets for the A/B sessions:
+Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
+RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks (incl.
+its layer profile, the 1D-RoPE case). Restore datasets for the A/B sessions:
 `medprune-restore-<model>` (private, one per account; run files + static maps, `RESTORE_FROM = "auto"`).
 
 Deadlines (CVPR 2027 CFP ✓): paper enrollment **Nov 10, 23:59 AoE = Nov 11, 17:29 IST**; submission **Nov 16 AoE =
@@ -105,10 +105,12 @@ layer-1 token ranks: on SLAKE the question explains 0.3% (Lingshu) / 3.1% (Qwen3
 position 94% / 85%, position 5% / 12%; on RadImageNet's 8×8 grid position alone explains 69% / 51%, and RoPE-free
 scores give the same split (69% / 47%) — the positional prior is carried by the visual tokens' keys, not by rotary
 decay. Question dependence appears only by layer 15 and only in Lingshu (23%). (ii) **Evidence grounding** with
-SLAKE's organ masks (356–363 questions that name an annotated structure): FastV keeps the asked-about structure at
-0.78× / 0.59× chance; for large organs (top area tertile, median 5.3% of the image) at **0.23× / 0.22×**, dropping it
-entirely in 56% / 70% of questions (Random 10%); that tertile carries FastV's SLAKE loss (Lingshu −17.5 [−25.7, −8.8]
-vs ≈ −2 on small and medium structures). H4 (small evidence) is therefore reversed: FastV fails on the big organs.
+SLAKE's organ masks (`analysis evidence`; 358 / 364 questions that name an annotated structure): FastV keeps the
+asked-about structure at 0.84× [0.57, 1.11] (Lingshu) / 0.61× [0.43, 0.80] (Qwen3-VL) of chance — **0.20× / 0.23×
+for large organs** (top area tertile, median 5.2% of the image), dropped entirely in 58% / 71% of questions (Random
+13% / 11%), but above chance on small structures for Lingshu (1.46×). The large-organ tertile carries Lingshu's SLAKE
+loss: −16.8 [−25.2, −7.1] vs −5.0 (medium) and −2.5 (small); Gate+FastV − Random there is +1.7 [−5.5, +8.5]. Qwen3-VL's
+large-organ loss is −5.0 [−10.6, +1.7]. H4 (small evidence) is therefore reversed: FastV fails on the big organs.
 
 ## A3. Prior work and our delta
 
@@ -195,7 +197,7 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 | P11 | E6 | Gap shrinks monotonically with K; K=16 ≈ Random | 65% | |
 | P12 | E6 | Inverse gate within 5 of FastV on CT/MRI | 50% | |
 | P13 | E7 | Natural images: FastV ≥ Random − 2 | 50% | |
-| P14 | E6 | Residual largest in smallest evidence tertile | 55% | Preliminary (E1/E1g runs, offline, Nov 3): contradicted. Gate+FastV − Random is flat across SLAKE evidence-area tertiles (Lingshu +1.6, +1.7, −1.7); FastV's own loss sits in the **largest** tertile (−17.5 [−25.7, −8.8] vs −1.6 small), where it keeps the named organ at 0.23× chance. Final reading with `oracle_gate` (E6-P1). |
+| P14 | E6 | Residual largest in smallest evidence tertile | 55% | Preliminary (E1/E1g runs, `analysis evidence`, Nov 3): contradicted. Gate+FastV − Random is flat across SLAKE evidence-area tertiles (Lingshu +3.3 small, −3.4 medium, +1.7 large; all CIs include 0); FastV's own loss sits in the **largest** tertile (−16.8 [−25.2, −7.1] vs −2.5 small), where it keeps the named organ at 0.20× chance. Final reading with `oracle_gate` (E6-P1). |
 
 - **K1 (Stage 4):** GO if standard FastV < Random@L2 on RadImageNet anatomy MC, paired 95% CI excl. 0. If only pre-LLM
   FastV < Random@L0 → reframe as "pre-LLM attention selection fails" (discuss with mentor). Neither → stop.
@@ -262,7 +264,7 @@ Status column as results land; numbers come from the Work log (Nov 3, "Offline d
 | G13 | "Post-hoc analyses" | Predictions frozen Nov 2 (§A6); E10/E11/G-tests added Nov 3 after seeing E1/E1g | Label E10, E11 and the offline diagnostics *exploratory* in the paper; list every deviation (gate revision, scoring, RIN builder) | Writing | P0 |
 | G14 | "How blind is a pruned model?" | FastV's answer equals the text-only answer for 33% of RIN questions (Random 22%); FastV keeps 26% of the image's contribution, Random 86% | Report retained visual gain (acc − text-only) / (Full − text-only) for every cell | Analysis done | P0 |
 | G15 | "Contamination" | Lingshu was trained on SLAKE-style data | Paired comparisons only; limitation paragraph | Writing | P2 |
-| G16 | "Show me FastV misses the evidence, not just 'background'" | SLAKE organ masks, 356–363 questions naming an annotated structure: FastV keeps it at 0.78× / 0.59× chance (Random 0.99 / 1.04; Gate+FastV 2.70 / 1.61); large organs 0.23× / 0.22×, dropped entirely in 56% / 70% of questions (Random 10%); FastV − Random −17.5 [−25.7, −8.8] on large organs vs −1.6 on small (Lingshu) | `oracle_gate` (E6-P1); within-question test of "evidence kept → correct" with Random seeds 0–2 (conditional logit) | Offline done (exploratory) | P0 |
+| G16 | "Show me FastV misses the evidence, not just 'background'" | SLAKE organ masks, 358 / 364 questions naming an annotated structure: FastV keeps it at 0.84× [0.57, 1.11] / 0.61× [0.43, 0.80] chance (Random 1.00 / 1.05; Gate+FastV 2.81 / 1.68); large organs 0.20× / 0.23×, dropped entirely in 58% / 71% of questions (Random 13% / 11%); small structures 1.46× / 0.88×; FastV − Random −16.8 [−25.2, −7.1] on large organs vs −2.5 on small (Lingshu) | `oracle_gate` (E6-P1); within-question test of "evidence kept → correct" with Random seeds 0–2 (conditional logit, D4) | Tested code (`analysis evidence`, D3); exploratory | P0 |
 | G17 | "This is the visual attention sink (Kang et al., ICLR 2025), already known" | Spearman(layer-1 score, layer-1 input norm) 0.32 / 0.44 Lingshu (RIN / SLAKE), ≈ 0 / 0.16 Qwen3-VL; FastV's top-10% overlaps the top-10% by norm at 2.3–3.9× chance; ViT-norm outliers selected 2.6–5.1× (P5) → a partial mechanism for Lingshu, not for Qwen3-VL | `artifact_excl` (E6, running); sink-dimension count per token in the layer profile (D1); cite and contrast | Partial | P1 |
 | G18 | "FEATHER already explained early-layer bias by RoPE" | RoPE-free scores give the same positional variance share as RoPE scores (RIN: 69% vs 69% Lingshu, 47% vs 51% Qwen3-VL) and keep-set overlap 0.94 / 0.77 → in M-RoPE models the positional prior sits in the visual keys | HuatuoGPT (1D RoPE, E8) as the FEATHER-like case; D1 per layer | Analysis done | P0 |
 | G19 | "Only FastV; the title says attention-guided pruning" | — | PDrop ± gate (E6-P2), `fastv_k8/k16`, `fastv_text` (D2); scope the title to early-layer LLM attention unless a ViT-side method (VisionZip-style) is added | Partly queued | P1 |
@@ -302,6 +304,14 @@ New work, in order of decision value per GPU-hour (none is in `configs/runs.yaml
 | D5 | RadImageNet open questions (`rin_open`), judge-scored | MedSTP's strongest column | ≈ 1.0 GPU-h per model | L1 |
 | D6 | Related-work check: question independence of FastV, Random ≥ attention, visual attention sinks | G20 | 1 h | §2 |
 | D7 | Holm correction over P1–P14; every other analysis labelled exploratory with its date | G21 | laptop | §3 |
+
+Status (Nov 3, 22:00): **D1, D2 code done** — methods `full_profile` (logs `lp_last_l{L}`, `lp_text_l{L}` = log
+attention of the last token / of every token after the image over the visual tokens, and `sink_l{L}` = Kang et al.'s
+sink score at the input of layer L, for every layer) and `fastv_text`; scheduled as **E12** in A/B session 2 (K and
+photographs for `full_profile`, K for `fastv_text`), HuatuoGPT's profile in E8 P2; read with `python -m
+medprune.analysis profile --results R --slake-images DIR --labels mask.txt` (table `layer_profile.csv`, figure
+`layer_profile.pdf`). **D3 done** — `python -m medprune.analysis evidence` (tables `evidence_*.csv`; numbers in §A2,
+G16). Tests: 114.
 
 **Depth target.** A CVPR analysis paper is accepted on insight per page, not on method count: four insight figures
 and two tables. Fig. 1 teaser (keep-sets on a CT and an X-ray; FastV skips the organ the question names). Fig. 2
@@ -2049,3 +2059,31 @@ run IDs, counts, accuracies with CIs. Template:
   §A9 rows G2/G5/G6/G9 and new G16–G21, §A10 depth plan (D1–D7) added.
 - [FLAG] D1 (layer profile) is the highest-value missing experiment: one run answers G2, G5, G8, G17 and G18 and gives
   Fig. 3. It needs ≈ 2 h of hook code before A/B session 2 (~03:30) or it moves to C.
+
+### 2026-11-03 — Claude — D1–D3: layer profile, text readout, evidence grounding as tested code
+- **Hook** (`attention_hook.py`): `text_attention` (head- and query-mean causal attention of every token after the
+  image; equals eager attention in the tests), `sink_scores` (Kang et al., ICLR 2025: sink dimensions = where the first
+  token's RMS-normalized state exceeds 20; score = max over them of a visual token's normalized |activation|),
+  `install_profile_hooks` (pre-hooks on every decoder layer, active only under a profile state). Profile states log
+  `lp_last_l{L}`, `lp_text_l{L}` (log-probabilities: deep-layer visual attention underflows float16 probabilities) and
+  `sink_l{L}` for every layer. Adapters (Qwen, HuatuoGPT) pass `text_pos` = every position after the last visual token.
+- **Methods**: `fastv_text` (top-k by the text readout at layer 1, mask from 2; G2) and `full_profile` (no pruning,
+  answers = Full; D1). 29 methods.
+- **Analysis**: `evidence_fractions` / `evidence_retention` / `evidence_report` (D3; SLAKE label masks mapped into each
+  model's view by `masks.label_view`, variants `_s224` / `_vflip` transformed like their images; "left lung" names one
+  side, "lungs" both), `rank_variance_shares` (position / image / question split, exactly additive), `layer_profile` and
+  `plot_layer_profile` (D1), CLI `analysis evidence|profile`. 114 tests.
+- **D3 on the finished runs** (canonical; supersedes the scratch numbers in the previous entry — the tested version
+  maps sides exactly and matches more structures):
+  | | Lingshu (358 q, 84 img) | Qwen3-VL (364 q, 85 img) |
+  |---|---|---|
+  | evidence retention ratio, FastV · Random · Gate+FastV · Gate+Random | 0.84 [0.57, 1.11] · 1.00 · 2.81 · 2.28 | 0.61 [0.43, 0.80] · 1.05 · 1.68 · 2.33 |
+  | FastV by area tertile small · medium · large | 1.46 · 0.84 · **0.20** | 0.88 · 0.72 · **0.23** |
+  | large organs dropped entirely, FastV / Random | 58% / 13% | 71% / 11% |
+  | FastV − Random accuracy, small · medium · large | −2.5 · −5.0 · **−16.8 [−25.2, −7.1]** | −2.5 · +6.6 · −5.0 [−10.6, +1.7] |
+  | Gate+FastV − Random, small · medium · large | +3.3 · −3.4 · +1.7 | +0.8 · +5.0 · −3.3 |
+- **Scheduling**: `runs.yaml` reordered so A/B session 2 runs E10r → E11r → E12 → rest of E3 → E4 → E5 → E3 S2
+  (SLAKE-zh, lowest priority); E12 = `full_profile` on K + photographs and `fastv_text` on K, both models (1.0 / 0.9
+  GPU-h). HuatuoGPT's E8 P2 block gains `full_profile` and `fastv_text`. Notebook 01: E12 needs RadImageNet.
+- [FLAG] Lingshu's overall evidence retention CI includes 1; the claim is the size dependence (0.20× on large organs,
+  1.46× on small ones), not "FastV ignores the evidence" in general.

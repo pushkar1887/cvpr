@@ -108,12 +108,14 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 27
+    assert len(METHODS) == 29
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name
     assert METHODS["fastv"].score_layer == 1 and METHODS["fastv"].mask_from == 2
     assert METHODS["fastv_bottom"].invert and not METHODS["fastv"].invert
+    assert METHODS["fastv_text"].score == "text" and METHODS["fastv_text"].mask_from == 2
+    assert METHODS["full_profile"].profile and METHODS["full_profile"].rule == "none"
 
 
 def test_gated_random_stays_inside_the_gate_and_tops_up():

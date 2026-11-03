@@ -82,10 +82,21 @@ def load_runs(path: Path, exp: str | None = None, model: str | None = None, acco
     return list(merged.values()), cfg["rates_s_per_q"]
 
 
+TWO_PASS_FACTOR = 1.22  # fastv_prellm / fastv, measured on Lingshu (SLAKE 1.30, RIN 1.16; Stage 4)
+
+
+def _rate(model_rates: dict, dataset: str, text_only: bool) -> float:
+    """Seconds per question: a dataset-specific entry if present, else its family's; text-only may be per family."""
+    family = _rate_key(dataset)
+    if text_only:
+        entry = model_rates["text_only"]
+        return float(entry.get(dataset, entry.get(family))) if isinstance(entry, dict) else float(entry)
+    return float(model_rates.get(dataset, model_rates.get(family)))
+
+
 def estimate_hours(spec: RunSpec, n_questions: int, rates: dict) -> float:
-    model_rates = rates[spec.model]
-    rate = model_rates["text_only"] if spec.method == "text_only" else model_rates[_rate_key(spec.dataset)]
-    return n_questions * rate * (1.3 if METHODS[spec.method].two_pass else 1.0) / 3600
+    rate = _rate(rates[spec.model], spec.dataset, spec.method == "text_only")
+    return n_questions * rate * (TWO_PASS_FACTOR if METHODS[spec.method].two_pass else 1.0) / 3600
 
 
 # ----------------------------------------------------------------------------------------------- outputs

@@ -79,14 +79,16 @@ Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and unif
 **[plan.md](plan.md)** is the single plan: stage tracker (Stages 0–8 with checkboxes and exit gates), research,
 protocol, code design and compute backends. Predictions are pre-registered in plan.md §A6 (2026-11-02).
 
-Status (Nov 2): **Stages 0 and 1 done; tasks T1–T3 done** — the `medprune` package, the Stage 3 checks, the Stage 4
-analysis and all three notebooks exist; 69 CPU tests pass, including the proof that masking dropped keys equals
-deleting the tokens. Next: run `notebooks/00_build_data_bundle.ipynb` on Kaggle (Stage 2). No GPU run yet.
+Status (Nov 3): **Stages 0–4 done; Stage 5 started** — live tracker at the top of [plan.md](plan.md#stage-tracker).
+K1 = GO: on RadImageNet anatomy (10% of tokens kept), FastV scores 38.1% vs Random 79.3% on Lingshu-7B and 50.9% vs
+84.6% on Qwen3-VL-8B. FastV's keep-sets are close to image-independent (Lingshu: 38 distinct keep-sets over 1,000
+images). Running: gate + coverage selectors (E1g) on both models. 87 CPU tests pass.
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
 then read the Work log at the end of plan.md and add an entry when you finish.
 
-Compute: 66.2 Kaggle T4-hours (39.4 h must-have) across three accounts, or ≈ 14–17 h on an A100. Storage: ≤ 2 GB
+Compute (measured rates, plan.md §C4): ≈ 48 Kaggle T4-hours in total across three accounts (5.5 spent, 2.5 running,
+40 left), or ≈ 10–12 h on an A100. Storage: ≤ 2 GB
 persistent; one model (~17 GB) temporarily per GPU session.
 
 ## Repository

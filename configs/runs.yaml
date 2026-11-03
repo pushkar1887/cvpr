@@ -2,10 +2,21 @@
 # (model x dataset x method x budget x seed). Run IDs do not include the experiment, so a run listed by several
 # experiments (e.g. E1's runs reused by E3) is computed once. E9 (latency) is not a run_eval run.
 
-rates_s_per_q:  # planning rates, plan.md §C4 — replace with the Stage 3 measurements
-  lingshu7b: {slake: 1.0, omni: 1.1, rin: 0.6, natural: 0.8, text_only: 0.5}
-  qwen3vl8b: {slake: 1.1, omni: 1.2, rin: 0.66, natural: 0.88, text_only: 0.55}
-  huatuo7b: {slake: 1.1, omni: 1.2, rin: 0.7, natural: 0.9, text_only: 0.5}
+rates_s_per_q:  # T4x2 fp16, batch 1. "m" = measured (Stage 3-4 run files), "p" = predicted from the fitted cost model
+  # s/q = 1.6 ms x visual tokens + ~80 ms x generated tokens (R2 0.98-0.99 on 18.5k questions; plan.md §C4)
+  lingshu7b:
+    {slake_en: 1.07, slake_zh: 1.10, rin_anat_mc: 0.35, rin_abn_closed: 0.30, omni_anat: 0.50, omni_panel: 0.80,
+     natural: 0.72, slake: 1.10, rin: 0.35, omni: 0.80,
+     text_only: {slake: 0.66, rin: 0.23, omni: 0.25, natural: 0.30}}
+    # m: slake_en, rin_anat_mc, text_only slake/rin. p: the rest (slake_zh +3% for longer CJK answers).
+  qwen3vl8b:
+    {slake_en: 0.98, slake_zh: 1.00, rin_anat_mc: 0.28, rin_abn_closed: 0.26, omni_anat: 0.43, omni_panel: 0.68,
+     natural: 0.58, slake: 1.00, rin: 0.28, omni: 0.68,
+     text_only: {slake: 0.35, rin: 0.18, omni: 0.20, natural: 0.25}}
+    # m: slake_en, rin_anat_mc, text_only slake/rin. p: the rest.
+  huatuo7b:
+    {slake: 1.15, rin: 1.15, omni: 1.15, natural: 1.15, text_only: 0.30}
+    # p: always 576 tokens (expand2square 336, 1D RoPE); unmeasured until Stage 7.
 
 groups:
   K: [slake_en, rin_anat_mc]

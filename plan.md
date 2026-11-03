@@ -12,20 +12,37 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-| Stage | Work | Where | GPU-h | Dates (IST) | Exit gate |
-|---|---|---|---|---|---|
-| 0 | Accounts, access, repo | Laptop, Hugging Face, Kaggle, GitHub | 0 | Nov 2 | Kaggle accounts ready; HF secret `cvpr`; RadImageNet access — **passed Nov 2** |
-| 1 | Code and tests | Laptop CPU | 0 | Nov 2–3 | **84 tests passed Nov 3**, incl. identity/resume and actual RIN template regressions |
-| 2 | Data bundle | Kaggle CPU (or SSH) | 0 | Nov 2 | **Built and rebuilt with revised masks**; counts in committed manifest and Work log |
-| 3 | Validation and calibration (E0) | Kaggle GPU, A (+0.5 h on B) | 3.0 | Nov 2–3 | 50-item component checks passed on both models; **full SLAKE baseline target unresolved** (77.19%, different published judge) |
-| 4 | Kill test (E1) + diagnostics (E2) | GPU A + CPU | 3.3 + repairs | Nov 3 | **Primary decisions complete: K1 GO; K2 H1 alive**; registered truncation retry verified; causal controls remain |
-| 5 | Main grid (E3) + modality panel (E4) | GPU A, B | 33.1 | Nov 3–5 | **First bounded Qwen E3 block RUNNING (B v2, Nov 3)**; broader grid and scoring-comparability gate remain open |
-| 6 | Curves, ablations, natural control (E5, E6-P1, E7) | GPU A, B | 16.8 | Nov 6–8 | Decisions K3, K4 |
-| 7 | Supplementary runs (E6-P2, E8, E9) | GPU C | 10.0 | Nov 7–12 | — |
-| 8 | Analysis and writing | Laptop | 0 | Nov 9–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
+Updated 2026-11-03 12:40 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
-Totals: 66.2 T4-hours (≈ 79 h with 20% contingency), ≈ 256k question-evaluations. On an A100 (Part E) the same
-work is ≈ 14–17 h.
+| Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
+|---|---|---|---|---|---|---|
+| 0 | Accounts, access, repo | ✅ DONE | 0 | 0 | Nov 2 | Accounts, HF secret `cvpr`, RadImageNet access |
+| 1 | Code and tests | ✅ DONE | 0 | 0 | Nov 2–3 | 87 CPU tests pass (Nov 3) |
+| 2 | Data bundle | ✅ DONE | 0 (CPU) | 0 | Nov 2 | Rebuilt on A and B with the revised gate (git `3188c2f`); manifest committed |
+| 3 | Validation (E0) | ✅ DONE | 0.39 | 0 | Nov 2 | E0b–E0d 50/50 on both models; SLAKE scoring contract moved to the Stage 5 preflight |
+| 4 | Kill test (E1) + diagnostics (E2) | ✅ DONE | 3.35 | 0 | Nov 2–3 | **K1 GO** (FastV − Random −41.2 [−44.9, −37.6], RIN, Lingshu); **K2: H1 alive** (BRR 2.32) |
+| 4b | Gate + coverage selectors (E1g) | 🔄 RUNNING | — | 2.5 (running) | Nov 3 | The gate is a method only if `gate_uniform` or `gate_random` beats Random on RIN with CI > 0 |
+| 5 | Main grid (E3) + modality panel (E4) | 🔄 STARTED | 1.73 | 16.3 | Nov 3–5 | Qwen K-block done (FastV − Random −33.7 on RIN); scoring preflight, then the rest |
+| 6 | Curves, controls, natural (E5, E6-P1, E7) | ⏳ NEXT | 0 | 13.8 | Nov 4–6 | Decisions K3, K4 |
+| 7 | Supplementary (E6-P2, E8, E9) | ⏳ LATER (C, parallel) | 0 | 9.9 | Nov 4–7 | E8 needs the HuatuoGPT port (T4) |
+| 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
+
+**Totals (measured rates, §C4):** spent 5.5 GPU-h · running 2.5 · left 40.0 → **≈ 48 GPU-h for the whole project**
+(the first plan said 66.2: RadImageNet costs 0.35 s/question, not 0.6, because 224² images give only 64 visual
+tokens). With 20% contingency on what is left: ≈ 56 GPU-h. On an A100 (Part E): ≈ 10–12 h.
+
+**Compute ledger (Kaggle T4×2 hours)**
+
+| Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
+|---|---|---|---|---|---|---|
+| A — Lingshu | `pushkararora88` | 30 | 3.55 (E0 0.19, E1 2.92, repairs 0.44) | 1.3 (E1g v7) | 16.3 (E3 7.2, E4 1.5, E5 4.2, E6-P1 3.4) | 8.8 |
+| B — Qwen3-VL | `pushkararora` | 30 | 1.93 (E0 0.20, Qwen K-block 1.73) | 1.2 (E1g v3) | 13.8 (E3 6.3, E4 1.3, E5 2.3, E6 1.9, E7 2.0) | 13.1 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 0 (bundle builds are CPU) | — | 9.9 (E6-P2 3.1, E8 6.3, E9 0.5) | 11.9 |
+
+Slack ≈ 34 GPU-h. Spend it on the open weaknesses, in this order: a semantic open-answer judge for SLAKE (§C1.2,
+Stage 5 preflight), RadImageNet open questions (`rin_open`, MedSTP's strongest column), Random seeds 1–2 on every
+headline cell, and E6 position controls on Qwen.
 
 Deadlines (CVPR 2027 CFP ✓): paper enrollment **Nov 10, 23:59 AoE = Nov 11, 17:29 IST**; submission **Nov 16 AoE =
 Nov 17, 17:29 IST**; supplementary **Nov 23 AoE**. All authors must accept reviewing duties.
@@ -246,17 +263,17 @@ Agents: use commands exactly as written; settings fixed in Part C are never impr
 | `rin_abn_closed` | RadImageNet-VQA abnormality yes/no, same images | ~1,000 | same 1,000 | per session |
 | `natural` | 500 GQA + 500 POPE photographs | 1,000 | ~900 | shared bundle |
 
-| Group | Datasets | Questions | Hours per run: Lingshu / Qwen3-VL |
-|---|---|---|---|
-| K | `slake_en` + `rin_anat_mc` | 2,061 | 0.46 / 0.51 |
-| S1 | K + `rin_abn_closed` | 3,061 | 0.63 / 0.69 |
-| S2 | `slake_zh` | 1,033 | 0.29 / 0.32 |
-| S3 | `omni_anat` | 3,329 | 1.02 / 1.12 |
-| P | `omni_panel` | 1,200 | 0.37 / 0.40 |
-| N | `natural` | 1,000 | 0.22 / 0.24 |
+| Group | Datasets | Questions | Hours per run: Lingshu / Qwen3-VL | Basis |
+|---|---|---|---|---|
+| K | `slake_en` + `rin_anat_mc` | 2,061 | 0.41 / 0.37 | measured |
+| S1 | K + `rin_abn_closed` | 3,061 | 0.50 / 0.44 | K measured, `rin_abn_closed` predicted |
+| S2 | `slake_zh` | 1,033 | 0.32 / 0.29 | predicted |
+| S3 | `omni_anat` | 3,329 | 0.46 / 0.40 | predicted (174 / 164 visual tokens on average) |
+| P | `omni_panel` | 1,200 | 0.27 / 0.23 | predicted (361 / 320 tokens) |
+| N | `natural` | 1,000 | 0.20 / 0.16 | predicted (351 / 268 tokens) |
 
-Hours use the planning rates of §C4 (pruned runs cost as much as `full`, because masking keeps every token in the
-forward pass). Stage 3 replaces them with measured rates.
+Hours use the measured rates and cost model of §C4 (pruned runs cost as much as `full`, because masking keeps every
+token in the forward pass; `fastv_prellm` ×1.22; text-only is cheaper). Add ≈ 0.1 h per Kaggle session for setup.
 
 ### B0.3 Paths, commands and Kaggle sessions
 
@@ -295,18 +312,19 @@ laptop; run IDs are unique, so folders merge without conflicts.
 
 | Exp | Question in plain words | Stage | Models | Data | Run IDs (new) | GPU-h | Role | Feeds |
 |---|---|---|---|---|---|---|---|---|
-| E0 | Is the pipeline correct, and how fast is it? | 3 | Lingshu, Qwen3-VL | `slake_en` | 2 | 3.0 | A (+B) | Stage 3 gate |
-| E1 | Is standard FastV worse than random in our pipeline, and does it prefer background? | 4 | Lingshu | K | 14 (13) | 3.3 | A | K1, K2 |
+| E0 | Is the pipeline correct, and how fast is it? | 3 | Lingshu, Qwen3-VL | `slake_en` | 2 | 0.39 ✅ | A (+B) | Stage 3 gate |
+| E1 | Is standard FastV worse than random in our pipeline, and does it prefer background? | 4 | Lingshu | K | 14 (13) | 3.35 ✅ | A | K1, K2 |
+| E1g | Can a coverage-preserving selector inside the gate beat Random? | 4b | both | K | 6 + 6 | 2.5 🔄 | A, B | method claim |
 | E2 | Why: position, background or artifact tokens? (analysis only) | 4–6 | — | logs | 0 | 0 | laptop | Table 2, Fig. 3 |
-| E3 | Does it hold on both models and all three benchmarks, and does the gate fix it? | 5 | both | S1, S2, S3 | 45 + 45 | 28.9 | A, B | Table 1 |
-| E4 | Does the failure grow with the amount of background? | 5 | both | P | 6 + 6 | 4.2 | A, B | Fig. 2 |
-| E5 | Does it hold at other budgets? | 6 | both | K | 20 + 12 | 7.7 | A, B | Fig. 4 |
-| E6 | Mechanism controls and gate ablations | 6–7 | both | S1, K, `slake_en` | 37 + 10 | 10.4 | A, B, C | Tables 2–3 |
-| E7 | Does FastV fail on ordinary photographs too? | 6 | both | N | 10 | 2.5 | B | specificity |
-| E8 | Does a 1D-RoPE model show the predicted bottom-row bias? | 7 | HuatuoGPT | S1 | 21 | 5.7 | C | Fig. 3, H2 |
+| E3 | Does it hold on both models and all three benchmarks, and does the gate fix it? | 5 | both | S1, S2, S3 | 45 + 45 | 15.2 (1.7 ✅) | A, B | Table 1 |
+| E4 | Does the failure grow with the amount of background? | 5 | both | P | 6 + 6 | 2.8 | A, B | Fig. 2 |
+| E5 | Does it hold at other budgets? | 6 | both | K | 20 + 12 | 6.5 | A, B | Fig. 4 |
+| E6 | Mechanism controls and gate ablations | 6–7 | both | S1, K, `slake_en` | 37 + 10 | 8.4 | A, B, C | Tables 2–3 |
+| E7 | Does FastV fail on ordinary photographs too? | 6 | both | N | 10 | 2.0 | B | specificity |
+| E8 | Does a 1D-RoPE model show the predicted bottom-row bias? | 7 | HuatuoGPT | S1 | 21 | 6.3 | C | Fig. 3, H2 |
 | E9 | How much compute does the gate really save? | 7 | Lingshu | 200 × `slake_en` | — | 0.5 | C | Table 4 |
 
-Total 66.2 GPU-h (≈ 79 h with 20% contingency). After each stage: fill the Outcome column of §A6, tick the boxes, add
+Total ≈ 48 GPU-h with measured rates (first plan: 66.2); ✅ = spent, 🔄 = running. After each stage: fill the Outcome column of §A6, tick the boxes, add
 a Work log entry (Part G).
 
 ---
@@ -323,12 +341,12 @@ the user and not tracked here. More Kaggle accounts are available if quota runs 
 
 | Role | Work | Planned GPU-h | Account | Quota on Nov 2 |
 |---|---|---|---|---|
-| A | Lingshu-7B: E0, E1, E3, E4, E5, E6-P1 | 29.6 | Kaggle-2 | 30 h |
-| B | Qwen3-VL-8B: E3, E4, E5, E6, E7 | 26.6 | Kaggle-3 | 30 h |
-| C | E6-P2, E8, E9, overflow from A/B | 10.0 | Kaggle-1 | 21 h 50 min left |
+| A | Lingshu-7B: E0, E1, E1g, E3, E4, E5, E6-P1 | 29.6 → **21.2** (measured) | `pushkararora88` | 30 h |
+| B | Qwen3-VL-8B: E1g, E3, E4, E5, E6, E7 | 26.6 → **16.9** (measured) | `pushkararora` | 30 h |
+| C | E6-P2, E8, E9, overflow from A/B | 10.0 → **9.9** | `pushkarsiuuarora` | 21 h 50 min left |
 
-A is tight (29.6 of 30 h): anything beyond moves to C (~11.8 h spare). Quotas reset weekly, so Stages 6–7 get a fresh
-allowance.
+Measured rates (§C4) leave slack on every account (A 8.8 h, B 13.1 h, C 11.9 h); see the ledger under the Stage
+tracker. Quotas reset weekly. The `riddhitaneja` key is revoked (401).
 
 **Secrets.** In notebooks: `from kaggle_secrets import UserSecretsClient` then
 `os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")`. The repo is public: clone without a token.
@@ -436,8 +454,8 @@ that used it.
 ## Stage 3 — Validation and calibration (E0)
 
 **In one sentence:** before any experiment, prove the GPU pipeline gives sound numbers and measure how fast it is.
-**Status: COMPONENT CHECKS PASSED; FULL-SET BASELINE TARGET UNRESOLVED.** Claude's 50-question E0 reports passed on
-both models (Work log, Nov 2). The subsequent 1,061-question Lingshu Full run scores 77.19% with normalized exact
+**Status: ✅ DONE (Nov 2); one item moved to the Stage 5 preflight.** E0b–E0d passed 50/50 on both models (Work log,
+Nov 2); sessions took 11.6 / 11.8 min (A / B), 0.39 GPU-h in total. The subsequent 1,061-question Lingshu Full run scores 77.19% with normalized exact
 match, below the registered 81–85% forecast. Published Lingshu/MedSTP results use an LLM judge. The 50-item result
 must not be treated as proof that full-set published-baseline comparability has passed; resolve this scoring
 contract before claiming a reproduction or committing the large Stage 5 grid. E1 has already run and its within-
@@ -456,7 +474,7 @@ pipeline paired comparisons can be reported with this limitation.
 | Why it matters | Three silent failures would invalidate every later number: fp16 overflow (the checkpoints are bf16, the T4 has no bf16), logging or the hook changing outputs, and prompts/scoring that miss the published accuracy. The whole schedule depends on the speed. |
 | Setup | Lingshu-7B on role A (`slake_en`, 1,061 questions); Qwen3-VL-8B on role B (50 questions). |
 | Methods | `full` only (plus fastv at 50% and 10% inside the checks). |
-| Time | A: ~2.5 h (including model download and debugging); B: ~0.5 h. |
+| Time | Planned A ~2.5 h, B ~0.5 h. **Measured: A 0.19 h, B 0.20 h** (11.6 / 11.8-min sessions incl. setup and the 17 GB model download). |
 
 **Commands (role A; role B is the same with `--model qwen3vl8b` and only steps 1–2)**
 ```bash
@@ -504,8 +522,8 @@ python -m medprune.run_eval --exp E0 --model lingshu7b --bundle $DATA --out $RES
 ## Stage 4 — Kill test (E1) and first diagnostics (E2)
 
 **In one sentence:** in one day, find out whether standard FastV really is worse than random in our pipeline (K1) and
-whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **Status: PRIMARY DECISIONS COMPLETE
-(Nov 3); registered text-only truncation retry verified.** K1 is GO and K2 leaves H1 alive in this Lingshu setup.
+whether it prefers background tokens (K2) — before spending ~30 GPU-hours. **Status: ✅ DONE (Nov 3), 3.35 GPU-h.
+Follow-up E1g 🔄 RUNNING (A v7, B v3).** Registered text-only truncation retry verified. K1 is GO and K2 leaves H1 alive in this Lingshu setup.
 This does not prove the cause, validate the gate as a competitive fix, or close the Stage 3 scoring issue.
 
 **Before you start**
@@ -527,7 +545,7 @@ python -m medprune.data masks --bundle /tmp/medprune-rin --datasets rin_anat_mc,
 | Why it matters | MedSTP's FastV numbers come from an undocumented pre-LLM adaptation. If standard FastV is not worse than random here, the paper's premise changes. |
 | Setup | Lingshu-7B, role A; group K (`slake_en` 1,061 + `rin_anat_mc` ~1,000 questions); budget 10%; seed 0. |
 | Runs | 14 run IDs (7 methods × 2 datasets); `full` on `slake_en` already exists from E0, so 13 are new; 13,366 new answers. |
-| Time | 3.3 GPU-h (one session). |
+| Time | Planned 3.3 GPU-h. **Measured: 2.92 h** (one 175-min session; 170 min of questions) **+ 0.44 h repairs** (v4 Random rerun 16 min, v5 truncation retry 10 min). |
 
 **Methods**
 
@@ -603,8 +621,9 @@ the story becomes positional (H2).
 ## Stage 5 — Main grid (E3) and modality panel (E4)
 
 **In one sentence:** produce the paper's two core results — Table 1 (both models, three benchmarks, all main methods)
-and Fig. 2 (failure grows with background) — in time for the Nov 10 enrollment. **Status: FIRST BOUNDED QWEN BLOCK
-RUNNING (B v2, Nov 3, user requested).** This uses ten existing E3 conditions on English SLAKE and RIN anatomy: Full,
+and Fig. 2 (failure grows with background) — in time for the Nov 10 enrollment. **Status: 🔄 STARTED — Qwen K-block
+✅ DONE (B v2, 1.73 GPU-h: RIN FastV − Random −33.7 [−37.3, −30.1]; SLAKE −2.4 [−4.9, +0.2]); E1g running; the rest
+waits for the scoring preflight.** Record of that first block: This uses ten existing E3 conditions on English SLAKE and RIN anatomy: Full,
 text-only, Random@L2 seed 0, FastV, Gate+FastV. Retention 10%; RIN first; five-question smoke for every condition
 before bulk inference. Approximately 2.35 planned inference hours, 3.5-hour scheduling budget, role B/Father T4×2.
 The full Lingshu scoring-comparability issue remains open; this within-Qwen comparison does not require claiming
@@ -613,6 +632,13 @@ equivalence to published LLM-judged scores. The full 45-condition grid, other da
 **Before you start**
 - [x] K1 = GO (corrected Lingshu E1, Nov 3).
 - [ ] RadImageNet built in each session (Stage 4 commands; use `--models qwen3vl8b` on role B).
+- [ ] E1g read (gate + coverage selectors vs Random) — decides whether `gate_uniform`/`gate_random` are the headline
+  method rows of Table 1.
+- [ ] **Scoring preflight (open SLAKE answers).** Normalized exact match under-credits synonyms: Qwen3-VL answers
+  "axial" for "Transverse Plane", "brain" for "Head" (Full 58.2% vs Lingshu 77.2%, which copies SLAKE's wording).
+  Decide before the S1/S2 SLAKE runs are read: (a) a local LLM judge re-scoring the saved responses offline (no new
+  inference; ~0.3 s per open answer on T4, ≈ 3 GPU-h for all SLAKE runs of both models), reported next to (b) closed
+  questions only and (c) normalized EM. RIN and OmniMedVQA are multiple choice and need none of this.
 
 ### E3 — Main grid
 
@@ -622,7 +648,7 @@ equivalence to published LLM-judged scores. The full 45-condition grid, other da
 | Why it matters | Table 1 carries claims C1, C4 and C5; reviewers need two models (medical-tuned Lingshu, general Qwen3-VL), variance across Random seeds and the 2×2 factorial. |
 | Setup | Lingshu-7B on role A, Qwen3-VL-8B on role B, in parallel. Groups S1 (`slake_en`, `rin_anat_mc`, `rin_abn_closed`), S2 (`slake_zh`), S3 (`omni_anat`). Budget 10%. |
 | Runs | 45 run IDs per model (S1: 11 methods × 3 datasets; S2: 5; S3: 7). Lingshu reuses 10 from E1. |
-| Time | Lingshu 12.6 GPU-h (~3 sessions); Qwen3-VL 16.3 GPU-h (~3–4 sessions). |
+| Time | Planned Lingshu 12.6 / Qwen3-VL 16.3 GPU-h. **Measured-rate estimate: Lingshu 7.2 GPU-h left (2 sessions); Qwen3-VL 6.3 left (2 sessions) + 1.73 spent (K-block).** |
 
 **Methods**
 
@@ -674,7 +700,7 @@ cluster CIs; MedSTP's numbers appear in a separate grey block, never mixed in. R
 | Why it matters | Fig. 2 carries claim C2: background fraction *predicts* the failure. Background-free modalities are the negative control — the gate must do nothing there. |
 | Setup | Both models; `omni_panel` (8 modalities × 150); budget 10%. |
 | Methods | `full`, `text_only`, `random_l2`, `fastv`, `gate_fastv`, `gate_uniform`. |
-| Runs, time | 6 run IDs per model; Lingshu 2.0 h (A), Qwen3-VL 2.2 h (B). |
+| Runs, time | 6 run IDs per model; Lingshu 1.5 h (A), Qwen3-VL 1.3 h (B) at measured rates (planned 2.0 / 2.2). |
 
 ```bash
 python -m medprune.run_eval --exp E4 --model lingshu7b --bundle $DATA --out $RES --max-hours 5.5   # role A
@@ -705,7 +731,7 @@ OpenReview by Nov 10, evening IST** (deadline Nov 10 23:59 AoE = Nov 11 17:29 IS
 ## Stage 6 — Budget curves (E5), mechanism controls (E6-P1), natural control (E7)
 
 **In one sentence:** show the effect is not a 10%-only artifact, pin down the mechanism with controls, and test
-whether it is specific to medical images. **Status: LATER.** Decisions K3 and K4 are taken here.
+whether it is specific to medical images. **Status: ⏳ NEXT (after Stage 5; 13.8 GPU-h at measured rates).** Decisions K3 and K4 are taken here.
 
 **Before you start**
 - [ ] Stage 5 done.
@@ -719,7 +745,7 @@ whether it is specific to medical images. **Status: LATER.** Decisions K3 and K4
 | Question | Does the FastV gap widen as the budget shrinks, and does the gate help at every budget? |
 | Why it matters | Pruning papers are judged on curves, not one budget (Fig. 4). The 50% points link to ViToS's mild-pruning result. |
 | Setup | Group K; Lingshu: `random_l2`, `fastv`, `gate_fastv`, `gate_uniform` at 5% and 25%, plus `fastv`, `gate_fastv` at 50%; Qwen3-VL: `random_l2`, `fastv`, `gate_fastv` at 5% and 25%. |
-| Runs, time | Lingshu 20 run IDs, 4.6 h (A); Qwen3-VL 12 run IDs, 3.1 h (B). |
+| Runs, time | Lingshu 20 run IDs, 4.2 h (A); Qwen3-VL 12 run IDs, 2.3 h (B) at measured rates (planned 4.6 / 3.1). |
 
 ```bash
 python -m medprune.run_eval --exp E5 --model lingshu7b --bundle $DATA --bundle $RIN --out $RES --max-hours 5.5
@@ -735,7 +761,7 @@ budget (sanity); the FastV line should sit below Random at small budgets; the ga
 |---|---|
 | Question | Which part of FastV's choice is position, which is background, and how much room is left for a better mask? |
 | Setup | Lingshu on S1 (+ `oracle_gate` on `slake_en`); Qwen3-VL on K for the key controls; budget 10%. |
-| Runs, time | Lingshu 19 run IDs, 4.1 h (A); Qwen3-VL 10 run IDs, 2.5 h (B). |
+| Runs, time | Lingshu 19 run IDs, 3.4 h (A); Qwen3-VL 10 run IDs, 1.9 h (B) at measured rates (planned 4.1 / 2.5). |
 
 | Method | What it isolates | Reading | Prediction |
 |---|---|---|---|
@@ -757,7 +783,7 @@ python -m medprune.run_eval --exp E6 --model qwen3vl8b --account B --bundle $DAT
 | Question | On ordinary photographs, is FastV still worse than random for the same models? |
 | Why it matters | Separates "medical images break FastV" from "FastV is generally weak at 10%". The keep-maps show whether the same positional bias exists but lands on content. |
 | Setup | Both models on role B; group N (500 GQA + 500 POPE); `full`, `random_l2`, `uniform_l2`, `fastv`, `ropefree`; no gate (photos have no acquisition background). |
-| Runs, time | 10 run IDs, 2.5 h. |
+| Runs, time | 10 run IDs, 2.0 h at measured rates (planned 2.5). |
 
 ```bash
 python -m medprune.run_eval --exp E7 --model lingshu7b --bundle $DATA --out $RES --max-hours 5.5
@@ -784,7 +810,7 @@ becomes "background-driven, strongest on medical images", carried by Fig. 2.
 ## Stage 7 — Supplementary runs (E6-P2, E8, E9)
 
 **In one sentence:** strengthen the mechanism and the fix with gate-robustness and artifact controls, a third model
-with 1D RoPE, and a real latency measurement. **Status: LATER** (can overlap Stage 6; results go to the paper if ready
+with 1D RoPE, and a real latency measurement. **Status: ⏳ LATER on C, can start now in parallel (9.9 GPU-h)** (can overlap Stage 6; results go to the paper if ready
 by Nov 14, otherwise to the supplementary, Nov 23).
 
 ### E6-P2 — Gate robustness, artifacts, PDrop
@@ -796,7 +822,7 @@ by Nov 14, otherwise to the supplementary, Nov 23).
 | `gate_tau25`, `gate_tau75` | the gate's single threshold at 0.25 and 0.75 | the gate is not tuned to the test set if results barely move |
 | `pdrop`, `gate_pdrop` | multi-stage attention pruning, token-matched to FastV, ± gate | composability with another attention method |
 
-Setup: Lingshu on S1, role C, 18 run IDs, 3.8 h.
+Setup: Lingshu on S1, role C, 18 run IDs, 3.1 h at measured rates (planned 3.8).
 ```bash
 python -m medprune.run_eval --exp E6 --model lingshu7b --account C --bundle $DATA --bundle $RIN --out $RES --max-hours 5.5
 ```
@@ -809,7 +835,7 @@ python -m medprune.run_eval --exp E6 --model lingshu7b --account C --bundle $DAT
 | Why it matters | A different position encoding with a different predicted bias is the cleanest test that the bias comes from rotary decay (H2). |
 | Before running | Task T5: write `medprune/huatuo_llava.py`. Read `model.safetensors.index.json` first — the authors' loader uses `init_vision_encoder_from_ckpt=True`, so the fine-tuned vision tower may be inside the main checkpoint rather than the stock CLIP in `vit/`. Validate on 50 SLAKE questions: Full within 3 points of the authors' numbers. |
 | Setup | Role C; S1; `full`, `text_only`, `random_l2`, `fastv`, `ropefree`, `gate_fastv`, `gate_ropefree`. |
-| Runs, time | 21 run IDs; 4.7 h + 1.0 h validation. |
+| Runs, time | 21 run IDs; 6.3 h predicted (576 tokens per image at 1.6 ms/token) + 1.0 h validation (planned 4.7 + 1.0). |
 
 ```bash
 python -m medprune.data masks --bundle /tmp/medprune-rin --datasets rin_anat_mc,rin_abn_closed --models huatuo7b
@@ -839,7 +865,7 @@ Qwen models supports H2. Report `expand2square` padding separately in its BRR.
 ## Stage 8 — Analysis and writing
 
 **In one sentence:** every number in the paper is regenerated from the run files, and the paper and supplementary are
-submitted on time. **Status: LATER (Nov 9–23).**
+submitted on time. **Status: ⏳ LATER (writing can start Nov 6, once E3 is in).**
 
 **Steps**
 1. Merge all session outputs into `D:\cvpr\results\`; run `02_analyze_results.ipynb` end to end (task T7). It writes
@@ -961,26 +987,35 @@ Score layer = layer whose attention is read; mask from = first masked layer (0 =
 | `pdrop` / `gate_pdrop` | boundaries {2, 9, 16, 23}, keep {a, a/2, a/4, a/8}·N, a = 26ρ/12.875 (ρ = 10% → 20.2%), token-matched to FastV | 1, 8, 15, 22 | 2, 9, 16, 23 |
 | `gate_input_fastv` | physically drop background before the LLM, then FastV (latency, Lingshu only) | 1 | 2 |
 
-## C4. Planning rates (s/question, T4×2, batch 1)
+## C4. Measured rates and cost model (s/question, T4×2 fp16, batch 1)
 
-| Model | SLAKE | OmniMedVQA | RadImageNet | Natural | Text-only |
-|---|---|---|---|---|---|
-| Lingshu-7B | 1.0 | 1.1 | 0.6 | 0.8 | 0.5 |
-| Qwen3-VL-8B | 1.1 | 1.2 | 0.66 | 0.88 | 0.55 |
-| HuatuoGPT-Vision-7B | 1.1 | — | 0.7 | — | 0.5 |
+Measured 2026-11-03 from 18,549 question records (Stage 4 Lingshu, Stage 5 Qwen K-block; `elapsed_s` per question).
+Bold = measured mean; the rest are predicted with the fitted model below.
 
-Masking keeps every token in the forward pass, so pruned runs cost as much as `full`; speedups are measured in E9.
-Derivation (Lingshu, 512² SLAKE → 324 tokens ✓): prefill ≈ 2 × 6.5 B × ~420 tokens + ViT ≈ 7.2 TFLOP at ~18 TFLOP/s
-≈ 0.4 s; decode ≈ 15.2 GB / ~230 GB/s + overhead ≈ 80 ms × 3–5 tokens; +0.1 s preprocessing. RadImageNet image size is
-not on its card: at 224² Lingshu sees 64 tokens and keeps **6** at 10% — state this regime in the paper.
-`fastv_prellm` ×1.3. Calibrated in Stage 3.
+| Model | `slake_en` | `slake_zh` | `rin_anat_mc` | `rin_abn_closed` | `omni_anat` | `omni_panel` | `natural` | text-only (SLAKE / RIN) |
+|---|---|---|---|---|---|---|---|---|
+| Lingshu-7B | **1.07** | 1.10 | **0.35** | 0.30 | 0.50 | 0.80 | 0.72 | **0.66 / 0.23** |
+| Qwen3-VL-8B | **0.98** | 1.00 | **0.28** | 0.26 | 0.43 | 0.68 | 0.58 | **0.35 / 0.18** |
+| HuatuoGPT-Vision-7B | 1.15 | 1.15 | 1.15 | 1.15 | — | — | — | 0.30 |
+
+**Cost model** (least squares over every non-text-only question; R² 0.98 Lingshu, 0.99 Qwen3-VL):
+s/question ≈ **1.6 ms × visual tokens + 76–86 ms × generated tokens**, with a negligible intercept. Both models share
+the constants because both run a 7–8 B Qwen-family LLM. Visual tokens per question (mean, from the mask grids;
+Lingshu / Qwen3-VL): SLAKE 510 / 476 (median 324 / 256; X-rays reach 1,024), RIN 64 / 64, `omni_anat` 174 / 164,
+`omni_panel` 361 / 320, `natural` 351 / 268; HuatuoGPT is always 576. Generated tokens: multiple choice ≈ 2.4–3.0,
+SLAKE closed ≈ 2.1–2.2, SLAKE open ≈ 3.7–4.7.
+
+Other measured factors: `fastv_prellm` (two forward passes) ×1.22 (SLAKE 1.30, RIN 1.16); pruned runs cost the same as
+`full` (masking keeps every token; FastV 0.93–1.06× Full); session overhead ≈ 6 min (setup, 17 GB model download,
+RadImageNet build). The 224² RadImageNet images give **64 tokens, so 10% keeps 6** — state this regime in the paper.
+These rates are in `configs/runs.yaml`, which `run_eval --list` uses for its hour estimates.
 
 ## C5. Storage
 
 | Item | Size | Where | Kept |
 |---|---|---|---|
 | One model per GPU session | 16.6–17.6 GB | HF cache on session disk, never `/kaggle/working` | No |
-| `medprune-data` bundle | ~0.7 GB | private Kaggle dataset / `$MEDPRUNE_DATA` | Yes |
+| `medprune-data` bundle | printed by notebook 00 (`du -sh`) | each role account's notebook-00 output; `meta.tar.gz` (manifests + masks) for the laptop | Yes |
 | OmniMedVQA zip (build only) | 10.70 GB | scratch | No |
 | RadImageNet benchmark | 0.36 GB | per session, own token | No |
 | Results JSONL + diagnostics NPZ | ~150 + ~200 MB | `results/` | Yes (not in git) |
@@ -1323,6 +1358,11 @@ Any agent picking up this project works from this Part. It says where things are
 
 ## F2. Rules
 
+- **Keep the Stage tracker current.** After every Kaggle session (or any finished stage): update the Stage tracker's
+  Status, *GPU-h spent* and *GPU-h left* columns and the Compute ledger at the top of this file (session hours from the
+  kernel log: the last entry's `time`), set the stage's **Status:** line in Part B to ✅ DONE / 🔄 RUNNING / ⏳, fill
+  the card's measured *Time*, and add a Work log entry. Re-estimate hours with `run_eval --list` (it reads the measured
+  rates in `configs/runs.yaml`, §C4).
 - **Frozen science.** Never edit the predictions in §A6 (fill only Outcome). Never change method definitions (§C3 =
   `selection.METHODS`), prompts (§C1.1 = `data.make_prompt`), scoring (`scoring.py`), fixed settings (§C1) or the run-ID
   format without (a) updating this plan, (b) updating tests, (c) a log entry saying why. After Stage 4 starts, any such
@@ -1734,3 +1774,17 @@ run IDs, counts, accuracies with CIs. Template:
   and the gate is reported as a partial remedy. 87 CPU tests pass.
 - Launched E1g with the standard `notebooks/01_run_gpu.ipynb` (clones `main`): A `medprune-gpu-lingshu7b` v7,
   B `medprune-gpu-qwen3vl8b` v3, T4×2, each on its own `medprune-00-build-data-bundle` output.
+
+### 2026-11-03 — Claude — Plan maintenance — measured rates, stage tracker, compute ledger
+- Stage tracker rewritten with Status (✅/🔄/⏳), GPU-h spent and left per stage; a Compute ledger per account added
+  under it; Part F rule F2 now requires updating both after every Kaggle session. Stage 3 and Stage 4 marked DONE.
+- Rates measured from 18,549 per-question records (§C4). RadImageNet 0.35 / 0.28 s/q (Lingshu / Qwen3-VL; planned
+  0.6 / 0.66), SLAKE-en 1.07 / 0.98 (planned 1.0 / 1.1), `fastv_prellm` ×1.22 (planned ×1.3), session overhead ≈ 6 min.
+  Fitted cost model: 1.6 ms × visual tokens + ~80 ms × generated tokens (R² 0.98–0.99); used to predict the datasets
+  not yet run from their measured token counts (`omni_anat` 0.50 / 0.43, `omni_panel` 0.80 / 0.68, `natural`
+  0.72 / 0.58).
+- `configs/runs.yaml` now holds per-dataset rates (family fallback kept); `run_eval.estimate_hours` reads them and the
+  measured two-pass factor. Test updated (no hard-coded rate).
+- Re-estimated budget: whole project ≈ 48 GPU-h (was 66.2): 5.5 spent, 2.5 running (E1g), 40.0 left (A 16.3, B 13.8,
+  C 9.9). Slack ≈ 34 GPU-h across accounts; proposed uses listed under the ledger. Stage 5 checklist gains the E1g
+  read and the open-answer scoring preflight (Qwen synonyms).

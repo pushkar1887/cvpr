@@ -22,7 +22,10 @@ def test_runs_yaml_expands_like_the_plan():
               and r.budget == 0.10]
     assert len(shared) == 1 and set(shared[0].exps) >= {"E1", "E3"}
     assert all(r.budget == 1.0 for r in everything if r.method in ("full", "text_only"))
-    assert estimate_hours(RunSpec("lingshu7b", "slake_en", "fastv", 0.10), 1061, rates) == 1061 * 1.0 / 3600
+    assert estimate_hours(RunSpec("lingshu7b", "slake_en", "fastv", 0.10), 1061, rates) ==         pytest.approx(1061 * rates["lingshu7b"]["slake_en"] / 3600)
+    flat = {"m": {"rin": 0.5, "text_only": 0.2}}  # family fallback and a scalar text-only rate still work
+    assert estimate_hours(RunSpec("m", "rin_abn_closed", "full", 1.0), 3600, flat) == pytest.approx(0.5)
+    assert estimate_hours(RunSpec("m", "rin_abn_closed", "text_only", 1.0), 3600, flat) == pytest.approx(0.2)
 
 
 def test_run_id_has_no_experiment_and_encodes_budget():

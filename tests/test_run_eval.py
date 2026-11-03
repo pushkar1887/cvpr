@@ -64,7 +64,7 @@ def test_dry_run_writes_one_line_per_question_and_resumes(tmp_path):
     _tiny_bundle(bundle)
     rates = {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}
     specs = [RunSpec("lingshu7b", "slake_en", m, 0.25 if m != "full" else 1.0) for m in
-             ("full", "random_l2", "fastv", "gate_uniform", "fastv_prellm", "divprune", "pdrop")]
+             ("full", "random_l2", "fastv", "gate_uniform", "fastv_prellm", "divprune", "pdrop", "fastv_bottom")]
     run_many(specs, bundle, out, rates, limit=4, dry_run=True)
     for spec in specs:
         path = out / "runs" / f"{spec.run_id('dryrun')}.jsonl"
@@ -72,6 +72,10 @@ def test_dry_run_writes_one_line_per_question_and_resumes(tmp_path):
         assert [r["qid"] for r in rows] == [f"toy/{i}" for i in range(4)]
         if spec.method not in ("full", "pdrop"):
             assert all(r["k_keep"] == 4 for r in rows)  # 25% of 16 tokens
+    keep = {m: [json.loads(line)["keep_idx"] for line in
+                (out / "runs" / f"{RunSpec('lingshu7b', 'slake_en', m, 0.25).run_id('dryrun')}.jsonl").read_text().splitlines()]
+            for m in ("fastv", "fastv_bottom")}
+    assert all(not set(a) & set(b) for a, b in zip(keep["fastv"], keep["fastv_bottom"]))  # lowest attention only
     run_many(specs, bundle, out, rates, limit=6, dry_run=True)  # resumes: only the 2 new questions are added
     rows = (out / "runs" / f"{specs[1].run_id('dryrun')}.jsonl").read_text().splitlines()
     assert len(rows) == 6

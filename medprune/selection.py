@@ -34,6 +34,7 @@ class MethodSpec:
     image: bool = True
     exclude_outliers: bool = False
     physical_gate: bool = False
+    invert: bool = False  # keep the lowest scores instead (attention-informativeness control)
 
 
 def _spec(name: str, rule: str, **kw) -> tuple[str, MethodSpec]:
@@ -69,6 +70,7 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_pdrop", "pdrop", score="attn", score_layer=1, mask_from=2, gate="foreground"),
         _spec("gate_input_fastv", "topk", score="attn", score_layer=1, mask_from=2, gate="foreground",
               physical_gate=True),
+        _spec("fastv_bottom", "topk", score="attn", score_layer=1, mask_from=2, invert=True),
     ]
 )
 

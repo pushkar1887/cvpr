@@ -201,8 +201,10 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
         state.apply_keep(select_divprune(adapter.visual_embeddings(inputs), k, allowed), method.mask_from)
     elif rule == "topk":
         k_bg = keep_count(n, method.bg_quota) if method.bg_quota > 0 else 0
+        sign = -1.0 if method.invert else 1.0
 
         def select(scores: np.ndarray, survivors: np.ndarray) -> np.ndarray:
+            scores = sign * np.asarray(scores, dtype=np.float64)
             candidates = survivors if allowed is None else survivors & allowed
             if not k_bg:
                 return select_topk(scores, k, candidates)

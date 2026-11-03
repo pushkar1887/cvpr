@@ -40,19 +40,32 @@ blocks:
   - {exp: E1g, tier: P0, account: A, model: lingshu7b, groups: [K], methods: [gate_uniform, gate_random, uniform_l2]}
   - {exp: E1g, tier: P0, account: B, model: qwen3vl8b, groups: [K], methods: [gate_uniform, gate_random, uniform_l2]}
 
-  # Stage 5 — E3: main grid at 10%
+  # Stage 5 — E6 (P0, pulled forward 2026-11-03 after E1g made the paper diagnosis-first): mechanism controls on K,
+  # scheduled before the grid (launch with EXP="E6,E3"; runs follow block order). Position: static_map (cross-dataset
+  # layer-1 rank map), ropefree, fastv_k8/k16. Background: inverse_gate. Coverage: divprune +- gate. Sinks:
+  # artifact_excl. Random seeds 1-2 give selector-seed variance for the headline cells.
+  - {exp: E6, tier: P0, account: A, model: lingshu7b, groups: [K],
+     methods: [static_map, inverse_gate, divprune, gate_divprune, ropefree, gate_ropefree, fastv_k8, fastv_k16,
+               artifact_excl]}
+  - {exp: E6, tier: P0, account: A, model: lingshu7b, groups: [K], methods: [random_l2], seeds: [1, 2]}
+  - {exp: E6, tier: P0, account: B, model: qwen3vl8b, groups: [K],
+     methods: [static_map, inverse_gate, divprune, gate_divprune, ropefree, gate_ropefree, fastv_k8, fastv_k16,
+               artifact_excl]}
+  - {exp: E6, tier: P0, account: B, model: qwen3vl8b, groups: [K], methods: [random_l2], seeds: [1, 2]}
+
+  # Stage 5 — E3: main grid at 10% (S3 before S2: a third benchmark matters more than the Chinese split)
   - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1],
      methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
   - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
-  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
   - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S3],
-     methods: [full, text_only, random_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+     methods: [full, text_only, random_l2, uniform_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+  - {exp: E3, tier: P0, account: A, model: lingshu7b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
   - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1],
      methods: [full, text_only, uniform_l2, fastv, ropefree, gate_fastv, gate_ropefree, gate_uniform]}
   - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S1], methods: [random_l2], seeds: [0, 1, 2]}
-  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
   - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S3],
-     methods: [full, text_only, random_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+     methods: [full, text_only, random_l2, uniform_l2, fastv, ropefree, gate_fastv, gate_uniform]}
+  - {exp: E3, tier: P0, account: B, model: qwen3vl8b, groups: [S2], methods: [full, text_only, random_l2, fastv, gate_fastv]}
 
   # Stage 5 — E4: modality panel
   - {exp: E4, tier: P0, account: A, model: lingshu7b, groups: [P],

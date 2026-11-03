@@ -137,3 +137,20 @@ def test_image_dependence_flags_a_fixed_keep_set():
     varied = image_dependence(df, "m", "random_l2").iloc[0]
     assert fixed["distinct_keepsets"] == 1 and fixed["top_share"] == 1.0 and fixed["cross_image_jaccard"] == 1.0
     assert varied["distinct_keepsets"] == 6 and varied["cross_image_jaccard"] == 0.0
+
+
+def test_static_map_comes_from_the_other_dataset(tmp_path):
+    from medprune.analysis import build_static_maps
+
+    run_id = "m__slake_en__full__r100__s0__t4x2"
+    (tmp_path / "runs").mkdir()
+    (tmp_path / "runs" / f"{run_id}.jsonl").write_text(
+        "\n".join(json.dumps({"qid": f"q{i}", "grid_hw": [2, 2]}) for i in range(3)), encoding="utf-8")
+    writer = DiagWriter(tmp_path / "diag" / run_id)
+    for i in range(3):
+        writer.add(f"q{i}", {"scores_l1": np.array([0.0, 0.0, 0.0, 9.0])})  # bottom-right always ranks first
+    writer.flush()
+    written = {p.name for p in build_static_maps(tmp_path, "m")}
+    assert written == {"m__for_rin_anat_mc.npy", "m__for_rin_abn_closed.npy"}  # no RadImageNet run: no SLAKE map
+    smap = np.load(tmp_path / "static_maps" / "m__for_rin_anat_mc.npy")
+    assert smap[-1, -1] == smap.max() and smap[0, 0] == smap.min()

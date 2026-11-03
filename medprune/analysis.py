@@ -20,7 +20,7 @@ import pandas as pd
 from .masks import MaskStore
 from .scoring import judge_open
 from .stats import (background_retention_ratio, cluster_bootstrap_ci, jaccard, keep_map, mcnemar_exact,
-                    paired_delta_ci, quadrant_concentration)
+                    paired_delta_ci, quadrant_concentration, static_map_from_scores)
 
 TAU = 0.5  # background threshold on the per-token foreground fraction (plan.md §A5)
 
@@ -243,6 +243,34 @@ def image_dependence(df: pd.DataFrame, model: str, method: str, budget: int = 10
                                        "cross_image_jaccard"])
 
 
+# target dataset -> anchor dataset whose `full` run supplies the map (never the target itself: no leakage)
+STATIC_SOURCES = {"rin_anat_mc": "slake_en", "rin_abn_closed": "slake_en", "slake_en": "rin_anat_mc",
+                  "slake_zh": "rin_anat_mc"}
+
+
+def build_static_maps(results: Path, model: str, profile: str = "t4x2") -> list[Path]:
+    """Position-only rankings for the `static_map` method (plan.md T4): the mean rank map of layer-1 attention
+    (`scores_l1`) over the other anchor dataset's `full` run, saved as static_maps/<model>__for_<dataset>.npy."""
+    results, written = Path(results), []
+    for target, source in STATIC_SOURCES.items():
+        run_id = f"{model}__{source}__full__r100__s0__{profile}"
+        runs_file = results / "runs" / f"{run_id}.jsonl"
+        diag = load_diag(results, run_id)
+        if not diag or not runs_file.exists():
+            continue
+        grids = {}
+        for line in runs_file.read_text(encoding="utf-8").splitlines():
+            record = json.loads(line)
+            grids[record["qid"]] = tuple(record["grid_hw"])
+        qids = [q for q in diag if q in grids and "scores_l1" in diag[q]]
+        smap = static_map_from_scores([diag[q]["scores_l1"] for q in qids], [grids[q] for q in qids])
+        path = results / "static_maps" / f"{model}__for_{target}.npy"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(path, smap.astype(np.float32))
+        written.append(path)
+    return written
+
+
 def high_norm_rates(df: pd.DataFrame, results: Path, model: str, method: str = "fastv", budget: int = 10,
                     z_threshold: float = 5.0) -> pd.DataFrame:
     """How often high-norm (artifact) visual tokens are kept, relative to the budget, and where they sit."""
@@ -377,3 +405,21 @@ def _write_stage4(report: dict, results: Path) -> None:
     fig.tight_layout()
     fig.savefig(figures / "stage4_keepmaps.pdf")
     plt.close(fig)
+
+
+def main() -> None:
+    import argparse
+
+    p = argparse.ArgumentParser(description="Laptop-side analysis commands.")
+    p.add_argument("command", choices=["static-maps"])
+    p.add_argument("--results", type=Path, required=True)
+    p.add_argument("--models", default="lingshu7b,qwen3vl8b")
+    p.add_argument("--profile", default="t4x2")
+    args = p.parse_args()
+    for model in args.models.split(","):
+        for path in build_static_maps(args.results, model, args.profile):
+            print("wrote", path)
+
+
+if __name__ == "__main__":
+    main()

@@ -63,8 +63,9 @@ def load_runs(path: Path, exp: str | None = None, model: str | None = None, acco
     """Expand configs/runs.yaml (matrix form) into unique runs, optionally filtered. Returns (runs, rates)."""
     cfg = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     groups, merged = cfg["groups"], {}
+    exps = set(exp.split(",")) if exp else None  # "E6,E3": several experiments, in configs/runs.yaml block order
     for block in cfg["blocks"]:
-        if (exp and block["exp"] != exp) or (model and block["model"] != model) or \
+        if (exps and block["exp"] not in exps) or (model and block["model"] != model) or \
                 (account and block.get("account") != account):
             continue
         datasets = [d for g in block["groups"] for d in groups.get(g, [g])]

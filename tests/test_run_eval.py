@@ -21,6 +21,10 @@ def test_runs_yaml_expands_like_the_plan():
     shared = [r for r in everything if r.model == "lingshu7b" and r.dataset == "slake_en" and r.method == "fastv"
               and r.budget == 0.10]
     assert len(shared) == 1 and set(shared[0].exps) >= {"E1", "E3"}
+    both, _ = load_runs(RUNS, exp="E6,E3", model="lingshu7b", account="A")  # several experiments, block order
+    assert {r.exps for r in both} >= {("E6",), ("E3",)} and both[0].exps == ("E6",) and both[0].dataset == "slake_en"
+    seeds = [r for r in both if r.method == "random_l2" and r.dataset == "rin_anat_mc"]
+    assert sorted(r.seed for r in seeds) == [0, 1, 2] and next(r for r in seeds if r.seed == 1).exps == ("E3", "E6")
     assert all(r.budget == 1.0 for r in everything if r.method in ("full", "text_only"))
     assert estimate_hours(RunSpec("lingshu7b", "slake_en", "fastv", 0.10), 1061, rates) ==         pytest.approx(1061 * rates["lingshu7b"]["slake_en"] / 3600)
     flat = {"m": {"rin": 0.5, "text_only": 0.2}}  # family fallback and a scalar text-only rate still work

@@ -671,11 +671,17 @@ def rank_variance_shares(scores: dict[str, np.ndarray], meta: pd.DataFrame, bins
 
 
 def layer_profile(df: pd.DataFrame, results: Path, model: str, dataset: str, budget: float = 0.10,
-                  evidence: dict[tuple, dict] | None = None, profile: str = "t4x2", sink_tau: float = 20.0) -> pd.DataFrame:
+                  evidence: dict[tuple, dict] | None = None, profile: str = "t4x2",
+                  sink_tau: float | None = None, sink_z: float = 5.0) -> pd.DataFrame:
     """Per readout ("last" prompt token = FastV; "text" = every token after the image) and decoder layer, from a
     `full_profile` run: the position / image / question variance split of the token ranking, and what top-k by that
     layer would keep — background retention ratio, evidence retention ratio (SLAKE), share of visual-sink tokens
-    (Kang et al.) — plus the attention mass on visual tokens and Spearman(score, sink score)."""
+    (Kang et al.) — plus the attention mass on visual tokens and Spearman(score, sink score).
+
+    Sink tokens: by default a per-image robust outlier rule, score > median + sink_z x 1.4826 x MAD of that image's
+    visual tokens at that layer. Kang et al.'s absolute threshold (`sink_tau=20`) is not used by default: on HuatuoGPT
+    SLAKE the score is unimodal and its scale grows with depth (median 0.8 at layer 0, 22 at 6, 43 at 27), so a fixed
+    20 flags 61-99% of tokens from layer 6 on while no image has a single robust outlier (Nov 4)."""
     import scipy.stats as sps
 
     diag = load_diag(results, f"{model}__{dataset}__full_profile__r100__s0__{profile}")
@@ -706,8 +712,10 @@ def layer_profile(df: pd.DataFrame, results: Path, model: str, dataset: str, bud
                     stats["hit"].append(float(ev[top].any()))
                 sink = diag[qid].get(sink_key)
                 if sink is not None:
-                    stats["sink_top"].append(float(np.mean(sink[top] > sink_tau)))
-                    stats["sink_all"].append(float(np.mean(sink > sink_tau)))
+                    med = np.median(sink)
+                    cut = sink_tau if sink_tau is not None else med + sink_z * 1.4826 * np.median(np.abs(sink - med))
+                    stats["sink_top"].append(float(np.mean(sink[top] > cut)))
+                    stats["sink_all"].append(float(np.mean(sink > cut)))
                     if np.std(sink) > 0:
                         stats["rho"].append(sps.spearmanr(s, sink)[0])
             mean = {k: (float(np.nanmean(v)) if v else np.nan) for k, v in stats.items()}

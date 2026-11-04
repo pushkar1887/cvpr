@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -132,9 +133,37 @@ def load_verdicts(path: Path, prompt: str | None = PROMPT_VERSION) -> dict[str, 
     return out
 
 
-def apply_judge(df: pd.DataFrame, verdicts: dict[str, float], threshold: float = 0.5) -> pd.DataFrame:
+# Rubric guard (Nov 4, after the first label audit): the judge ignores the rubric's "less specific" clause for
+# locations — of the answers it rescued, 17 of 90 were "Left Lung" for "Lower Left Lung" and alike — and rejects the
+# one plane synonym SLAKE uses ("axial" for "Transverse Plane", 4 of 90 rejected items). Both are applied
+# deterministically, so the scorer is: rule OR synonym OR (judge AND NOT less-specific-location).
+LOCATION_WORDS = {"upper": "upper", "top": "upper", "apical": "upper", "superior": "upper",
+                  "lower": "lower", "bottom": "lower", "basal": "lower", "inferior": "lower",
+                  "left": "left", "right": "right", "center": "center", "central": "center", "middle": "center"}
+SYNONYMS = (("transverse", "axial"),)
+SCORER_VERSION = "rule|synonym|judge-v3&!less-specific-location"
+
+
+def location_qualifiers(text: str) -> set[str]:
+    return {LOCATION_WORDS[w] for w in re.findall(r"[a-z]+", str(text).lower()) if w in LOCATION_WORDS}
+
+
+def less_specific_location(reference: str, response: str) -> bool:
+    """True if the response's location qualifiers are a strict subset of the reference's ("left lung" for "Lower
+    Left Lung"); more specific answers ("right lower lobe" for "Right Lung") pass."""
+    ref = location_qualifiers(reference)
+    return bool(ref) and location_qualifiers(response) < ref
+
+
+def is_synonym(reference: str, response: str) -> bool:
+    ref, resp = str(reference).lower(), clean_response(response).lower()
+    return any((a in ref and b in resp) or (b in ref and a in resp) for a, b in SYNONYMS)
+
+
+def apply_judge(df: pd.DataFrame, verdicts: dict[str, float], threshold: float = 0.5, guard: bool = True) -> pd.DataFrame:
     """Open rows' `correct` = rule OR judge (P(correct) >= threshold): a normalized exact match is always correct, the
-    judge rescues the rest; `correct_rule` keeps the rule verdict.
+    judge rescues the rest; `correct_rule` keeps the rule verdict. With `guard` (default; SCORER_VERSION), the plane
+    synonym counts as correct and the judge cannot rescue a less specific location.
 
     Raises if an open row has no verdict: a table must never mix judged and rule-scored open questions.
     """
@@ -148,7 +177,15 @@ def apply_judge(df: pd.DataFrame, verdicts: dict[str, float], threshold: float =
         raise ValueError(f"{len(missing)} open rows have no judge verdict (first key {missing[0]}); "
                          "export and judge them first")
     df.loc[is_open, "p_judge"] = [verdicts[k] for k in keys]
-    df.loc[is_open, "correct"] = df.loc[is_open, "correct_rule"].astype(bool) | (df.loc[is_open, "p_judge"] >= threshold)
+    judge_yes = df.loc[is_open, "p_judge"] >= threshold
+    rule = df.loc[is_open, "correct_rule"].astype(bool)
+    if guard:
+        ref, resp = df.loc[is_open, "answer"], df.loc[is_open, "response"].fillna("")
+        less = pd.Series([less_specific_location(a, r) for a, r in zip(ref, resp)], index=ref.index)
+        syn = pd.Series([is_synonym(a, r) for a, r in zip(ref, resp)], index=ref.index)
+        df.loc[is_open, "correct"] = rule | syn | (judge_yes & ~less)
+    else:
+        df.loc[is_open, "correct"] = rule | judge_yes
     df["correct"] = df["correct"].astype(bool)
     return df
 
@@ -262,11 +299,17 @@ def kappa_report(labels_csv: Path, B: int = 2000, seed: int = 0) -> dict:
     d = d[d["label"].astype(str).str.strip().isin(["0", "1", "0.0", "1.0"])].copy()
     d["human"] = d["label"].astype(float) >= 0.5
     d["w"] = d["stratum_rows"] / d.groupby("stratum")["item"].transform("count")
+    d["judge"], d["rule"] = d["judge"].astype(bool), d["rule"].astype(bool)
+    less = np.array([less_specific_location(a, r) for a, r in zip(d["reference"].fillna(""), d["response"].fillna(""))])
+    syn = np.array([is_synonym(a, r) for a, r in zip(d["reference"].fillna(""), d["response"].fillna(""))])
+    d["guarded"] = d["rule"] | syn | (d["judge"] & ~less)
 
     def stats(x: pd.DataFrame) -> dict:
         return {"kappa_judge": weighted_kappa(x["judge"], x["human"], x["w"]),
+                "kappa_guarded": weighted_kappa(x["guarded"], x["human"], x["w"]),
                 "kappa_rule": weighted_kappa(x["rule"], x["human"], x["w"]),
                 "acc_judge": float(np.average(x["judge"] == x["human"], weights=x["w"])),
+                "acc_guarded": float(np.average(x["guarded"] == x["human"], weights=x["w"])),
                 "acc_rule": float(np.average(x["rule"] == x["human"], weights=x["w"]))}
 
     point = stats(d)

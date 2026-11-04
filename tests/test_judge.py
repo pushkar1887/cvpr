@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from medprune.judge import (PROMPT_VERSION, apply_judge, clean_response, export_items, item_key, judge_prompt,
-                            kappa_report, label_sheet, load_verdicts, open_rows, weighted_kappa)
+                            kappa_report, label_sheet, less_specific_location, load_verdicts, open_rows,
+                            weighted_kappa)
 
 
 def _write_run(results, run_id, rows):
@@ -57,6 +58,20 @@ def test_apply_judge_scores_open_rows_only_and_refuses_gaps():
     assert judged.loc[2, "correct"]  # an exact match stays correct whatever the judge says
     with pytest.raises(ValueError, match="no judge verdict"):
         apply_judge(df, {})
+
+
+def test_guard_blocks_less_specific_locations_and_accepts_the_plane_synonym():
+    assert less_specific_location("Lower Left Lung", "Left Lung.") and less_specific_location("Upper Left", "left side")
+    assert not less_specific_location("Right Lung", "right lower lobe")  # more specific passes
+    assert not less_specific_location("Upper Right Lung", "right apical lung")  # apical = upper
+    assert not less_specific_location("Liver", "liver")
+    df = pd.DataFrame([_row("i1/q1", "Where is the effusion?", "Lower Left Lung", "Left Lung."),
+                       _row("i1/q2", "What plane?", "Transverse  Plane", "axial")])
+    keys = [item_key(*df.loc[i, ["question", "answer", "response"]]) for i in range(2)]
+    v = {keys[0]: 0.9, keys[1]: 0.1}  # the judge accepts the vague location and rejects the synonym
+    guarded, plain = apply_judge(df, v), apply_judge(df, v, guard=False)
+    assert not guarded.loc[0, "correct"] and guarded.loc[1, "correct"]
+    assert plain.loc[0, "correct"] and not plain.loc[1, "correct"]
 
 
 def test_weighted_kappa():

@@ -12,24 +12,24 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-04 01:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-04 18:30 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
 |---|---|---|---|---|---|---|
 | 0 | Accounts, access, repo | ✅ DONE | 0 | 0 | Nov 2 | Accounts, HF secret `cvpr`, RadImageNet access |
-| 1 | Code and tests | ✅ DONE | 0 | 0 | Nov 2–3 | 104 CPU tests pass (Nov 3 night: + open-answer judge, HuatuoGPT port) |
+| 1 | Code and tests | ✅ DONE | 0 | 0 | Nov 2–3 | 116 CPU tests pass (Nov 4: + judge rubric guard) |
 | 2 | Data bundle | ✅ DONE | 0 (CPU) | 0 | Nov 2–3 | A, B and C rebuilt with the revised gate; C (v3, git `1c4fef2`) has the same manifest hashes and mask summaries as A |
 | 3 | Validation (E0) | ✅ DONE | 0.39 | 0 | Nov 2 | E0b–E0d 50/50 on both models; SLAKE scoring contract moved to the Stage 5 preflight |
 | 4 | Kill test (E1) + diagnostics (E2) | ✅ DONE | 3.35 | 0 | Nov 2–3 | **K1 GO** (FastV − Random −41.2 [−44.9, −37.6], RIN, Lingshu); **K2: H1 alive** (BRR 2.32) |
 | 4b | Gate + coverage selectors (E1g) | ✅ DONE | 2.56 | 0 | Nov 3 | Rule met on Lingshu only (`gate_random` − Random +3.2 [+1.2, +5.2]); Qwen +0.5 [−1.3, +2.3] → **diagnosis-first paper**, gate = partial remedy |
-| 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | 🔄 RUNNING: A v8, B v4 (17:50) | 1.73 | 18.5 running + 1.7 spill | Nov 3–4 | Table 1; E6 decides the mechanism claims (§A9) |
+| 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | ✅ DONE (A v8 9.46 h, B v4 9.76 h; 85 runs, all complete; merged Nov 4 17:30) | 20.95 | 0 (rest of E3 in session 2) | Nov 3–4 | **H3 dead** (`artifact_excl` = FastV); **P12 contradicted** (background-only beats FastV); **K16 beats Random** (P11); static map ≈ FastV on Lingshu SLAKE; OmniMedVQA anatomy −29.4 / −4.3 |
 | 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | ✅ C half DONE (Qwen3-VL 21:14, Lingshu 21:18; 38 runs, all complete); RadImageNet arms (E10r, E11r) in A/B session 2 | 6.14 | 2.6 (A/B) | Nov 3–4 | **P13 contradicted**: FastV < Random on photographs (−8.7 / −4.9). **G1**: token count is a modest amplifier; RadImageNet's collapse is dataset-specific. **G3**: Lingshu's keep-set is positional (flip). **G4**: Lingshu's least-attended tokens beat its most-attended (+6.2) |
-| 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5) | ⏳ NEXT (A/B session 2, ~03:30; order E10r → E11r (row 5b) → E12 → rest of E3 → E4 → E5 → SLAKE-zh) | 0 | 11.2 | Nov 4–5 | Fig. 2, Fig. 3 (D1), Fig. 4 |
-| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔄 HuatuoGPT validated; **E8 SLAKE DONE** (11 runs, 00:50): FastV ≈ Random (−0.6), RoPE-free +3.1, bottom-row keep-set (77% in the lowest quarter) — the FEATHER case; E8r (RadImageNet) waits for C's `cvpr` secret. Judge v3 DONE on every open answer (4,024 unique, all 85 runs); **label sheet written** (`results/all/judge/label_sheet.csv`, 200 items) — waits for Pushkar's labels | 3.99 | 7.5 | Nov 3–7 | G6 answered on SLAKE; judge κ vs hand labels decides the open-question metric |
+| 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | 🔄 RUNNING: A v9, B v5 (17:45, MAX_HOURS 9.5; order E10r → E11r → E12 → rest of E3 → E4 → E5 → SLAKE-zh) | 0 | 15.1 running | Nov 4–5 | Fig. 2, Fig. 3 (D1), Fig. 4 |
+| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔄 RUNNING on C (17:44): HuatuoGPT **E8r** (RadImageNet, `cvpr` secret attached by Pushkar) and Lingshu **E6-P2** (gate variants, PDrop); judge pass 4 (1,145 answers) launches when a C slot frees. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 3.99 | 6.6 running + 4.3 | Nov 3–7 | G6 answered on SLAKE; RIN arm running |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
-**Totals (measured rates, §C4):** spent 14.1 GPU-h · running 18.5 (A, B) + 1.0 (C) · left 27.8 → **≈ 61
+**Totals (measured rates, §C4):** spent 33.3 GPU-h · running 15.1 (A, B) + 6.6 (C) · left 4.3 → **≈ 61
 GPU-h for the whole project** (48 before Nov 3 evening; the added hours are the diagnostic controls of §A9 — E6 on both
 models before the grid, E10, E11, Random seeds — and E12, the layer profile and text readout of §A10, 1.0 + 0.9). The
 judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
@@ -38,9 +38,9 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | 4.87 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32) | 9.5 (v8: E6 K + E3) | 9.9 (E10r 1.1, E11r 0.4, E12 1.0, spill 1.7, E4 1.5, E5 4.2) | 5.7 |
-| B — Qwen3-VL | `pushkararora` | 30 | 3.17 (E0 0.20, Qwen K-block 1.73, E1g 1.24) | 9.0 (v4: E6 K + E3) | 5.6 (E10r 0.8, E11r 0.3, E12 0.9, E4 1.3, E5 2.3) | 12.2 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 10.13 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34; judge 0.10 + 0.21 + 0.11) | — | 11.0 (E8 K 3.5 then P2 3.4, E6-P2 3.1, E9 0.5, judge pass 2 0.5) | 3.7 |
+| A — Lingshu | `pushkararora88` | 30 | 14.33 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46) | 9.5 (v9: E10r, E11r, E12, rest of E3, E4, E5) | 0.4 (spill) | 5.8 |
+| B — Qwen3-VL | `pushkararora` | 30 | 12.93 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76) | ≈ 5.6 (v5: same blocks; MAX_HOURS 9.5) | 0 | 11.5 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 10.13 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34; judge 0.10 + 0.21 + 0.11) | 6.6 (E8r 3.5, E6-P2 3.1) | 4.3 (HuatuoGPT P2 3.4, E9 0.5, judge pass 4 0.1, slack for reruns 0.3) | 0.8 |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks (incl.
@@ -194,14 +194,14 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 | P2 | E1, SLAKE-en | Full 81–85; FastV − Random ≤ −4 on CT+MRI (66 images), ≥ 0 on X-ray (30) | 55% | Mixed: Full 77.19 misses target; CT/MRI Δ −18.14 [−22.41, −14.00] supports forecast; X-ray Δ −1.94 [−4.93, +0.87] has the wrong point-estimate sign but no significant difference. |
 | P3 | E2 | BRR(FastV) ≥ 1.3 on CT/MRI | 65% | Supported for heuristic-mask background: RIN 2.32 [2.25, 2.39], coverage 874/1,000; SLAKE 1.67 [1.57, 1.76], 700/700 CT/MRI questions. Association, not causal proof. |
 | P4 | E2 | Keep-mass ≥ 1.5× uniform in bottom-right (Lingshu/Qwen3-VL), bottom rows (HuatuoGPT) | 60% | Contradicted on Lingshu: bottom-right concentration 0.018× uniform (RIN), 0.427× (SLAKE CT/MRI); strongest RIN concentration is top-left (2.52×). **Supported for HuatuoGPT** (Nov 4, E8 SLAKE): 77% of FastV's keep mass in the bottom quarter of rows = 3.1× uniform. |
-| P5 | E2/E6 | High-norm artifacts over-selected ≥ 2× | 35% | Norm-threshold proxy supports over-selection: 2.62× RIN and 5.07× SLAKE. These tokens are not independently annotated artifacts; E6 ablation and causal interpretation remain open. |
-| P6 | E3 | Gate+FastV − FastV ≥ +8 on CT/MRI; \|Δ\| ≤ 1 on dermoscopy/microscopy | 55% | |
-| P7 | E3 | Gate+Uniform within 3 of Gate+FastV on CT/MRI | 50% | |
-| P8 | E3/E6 | Gate adds ≥ 3 on top of RoPE-free on CT/MRI | 50% | |
+| P5 | E2/E6 | High-norm artifacts over-selected ≥ 2× | 35% | Norm-threshold proxy supports over-selection: 2.62× RIN and 5.07× SLAKE. **Not causal** (E6, Nov 4): excluding them (`artifact_excl`) leaves FastV unchanged — Lingshu −42.0 vs −41.7 (RIN), −12.3 vs −12.4 (SLAKE); Qwen3-VL identical. H3 dead as a cause. |
+| P6 | E3 | Gate+FastV − FastV ≥ +8 on CT/MRI; \|Δ\| ≤ 1 on dermoscopy/microscopy | 55% | CT/MRI half (Nov 4): **supported on Lingshu** (SLAKE CT/MRI +19.3 [+15.4, +23.3]; RIN +13.2) and on Qwen3-VL RIN (+15.0); Qwen3-VL SLAKE CT/MRI +2.4 (n.s.). Dermoscopy/microscopy half waits for E4. |
+| P7 | E3 | Gate+Uniform within 3 of Gate+FastV on CT/MRI | 50% | SLAKE CT/MRI: supported (+2.4 both models). RIN: contradicted — Gate+Uniform beats Gate+FastV by 30.3 (Lingshu) / 20.0 (Qwen3-VL); the gate leaves FastV's RIN collapse mostly in place. |
+| P8 | E3/E6 | Gate adds ≥ 3 on top of RoPE-free on CT/MRI | 50% | Lingshu supported (SLAKE CT/MRI +16.7, RIN +15.0); Qwen3-VL RIN +15.5, SLAKE CT/MRI +0.4 (n.s.). |
 | P9 | E4 | Modality-level Spearman ρ ≥ 0.7; per-image ρ > 0 (CI excl. 0) | 55% | |
-| P10 | E3 | Qwen3-VL same sign as Lingshu on CT/MRI, smaller magnitude | 60% | |
-| P11 | E6 | Gap shrinks monotonically with K; K=16 ≈ Random | 65% | |
-| P12 | E6 | Inverse gate within 5 of FastV on CT/MRI | 50% | |
+| P10 | E3 | Qwen3-VL same sign as Lingshu on CT/MRI, smaller magnitude | 60% | Supported: FastV − Random on SLAKE CT/MRI −4.7 vs −18.0, RIN anatomy −33.7 vs −41.7, RIN abnormality −2.2 vs −14.2, OmniMedVQA anatomy −4.3 vs −29.4. |
+| P11 | E6 | Gap shrinks monotonically with K; K=16 ≈ Random | 65% | Contradicted in form: not monotonic — K=8 is as bad as K=2 (Lingshu RIN −43.9 vs −41.7; SLAKE −12.4 both), then K=16 **beats** Random (Lingshu +8.5 RIN, +6.9 SLAKE; Qwen3-VL +5.6 RIN, +0.9 SLAKE). The failure belongs to the early layers (≤ 8); E12's layer profile locates the switch. |
+| P12 | E6 | Inverse gate within 5 of FastV on CT/MRI | 50% | **Contradicted**: background-only tokens beat FastV — SLAKE CT/MRI −7.5 vs −18.0 (Lingshu), +2.0 vs −4.7 (Qwen3-VL); RIN −23.9 vs −41.7 / −7.6 vs −33.7. FastV is worse than background. |
 | P13 | E7 | Natural images: FastV ≥ Random − 2 | 50% | **Contradicted** (Nov 3): FastV − Random on 1,000 photographs (500 GQA + 500 POPE) = −8.7 [−11.7, −5.8] Lingshu, −4.9 [−7.8, −2.1] Qwen3-VL; RoPE-free the same (−8.5 / −4.7). The failure is not medical-only; medical scans amplify it (§A2). |
 | P14 | E6 | Residual largest in smallest evidence tertile | 55% | Preliminary (E1/E1g runs, `analysis evidence`, Nov 3): contradicted. Gate+FastV − Random is flat across SLAKE evidence-area tertiles (Lingshu +3.3 small, −3.4 medium, +1.7 large; all CIs include 0); FastV's own loss sits in the **largest** tertile (−16.8 [−25.2, −7.1] vs −2.5 small), where it keeps the named organ at 0.20× chance. Final reading with `oracle_gate` (E6-P1). |
 
@@ -291,6 +291,18 @@ thesis is general mechanism + medical amplification: early-layer attention pruni
 positional prior that loses to random selection everywhere at 10%; medical scans amplify it — background capture and
 large-organ avoidance on CT/MRI (gate fixes SLAKE), and a dataset-specific collapse on RadImageNet (G22). Title and
 abstract need this framing before enrollment (Nov 10); decision with Pushkar and the mentor.
+*Decision (Pushkar, Nov 4): the paper is about medical MLLMs only; no general-domain claim or section.* Consequences
+for the writing: (i) never claim the failure is medical-*specific* — the photograph control (E7) contradicts that, so
+the claims are "FastV fails on medical VQA, and here is why", with the medical-only mechanisms (background capture on
+CT/MRI, large-organ avoidance, RadImageNet's collapse) as the contribution; (ii) E7 stays in the supplementary as a
+one-paragraph scope note (a reviewer will ask; prior work — Wang et al. 2512.07580, VTC-Bench — already reports weak
+attention pruning on natural images at small budgets, so the note costs nothing); (iii) the main text uses only
+medical datasets.
+*Nov 4 (E6 read, session 1):* the gate is not "remove background and FastV works". FastV loses more than a keep-set
+of evenly spaced **background** tokens (`inverse_gate`; Lingshu SLAKE CT/MRI −18.0 vs −7.5; Qwen3-VL −4.7 vs +2.0),
+so FastV's failure is not that it picks background; it is that it concentrates the budget on a fixed region. Background
+tokens are not empty for the LLM (consistent with register-like global tokens, Darcet et al.). Coverage (Random,
+Uniform, DivPrune) is the property that matters; the gate helps where it restores coverage of the body.
 
 ## A10. Depth plan — what the diagnosis still needs (Nov 3 night)
 
@@ -2218,3 +2230,63 @@ run IDs, counts, accuracies with CIs. Template:
   RoPE-free +3.6 [+1.5, +5.7], Gate+FastV +2.7 [+0.7, +4.9]. Full accuracy under the judge: Lingshu 82.4, Qwen3-VL
   64.8, HuatuoGPT 56.6 (exact match 77.2 / 58.2 / 44.7). If κ holds, C1 on SLAKE holds for both Qwen-family models
   and the gate closes both gaps.
+
+### 2026-11-04 — Claude — Session 1 merged; session 2 and C launched; label audit; rubric guard; sink fix
+- **A/B session 1** COMPLETE: `medprune-gpu-lingshu7b` v8 9.46 GPU-h, `medprune-gpu-qwen3vl8b` v4 9.76 GPU-h (both
+  stopped at the 9.5 h budget). 41 + 44 new run files, all complete (no partial runs); merged into `results/all`
+  (170 runs) with their diag parts. Restore datasets re-versioned (126 / 124 files). The A/B watcher had died overnight
+  (fork limit), so A and B sat idle from ~03:30 to 17:45.
+- **Launched 17:44–17:46**: A v9 and B v5 (EXP `E10r,E11r,E12,E3,E4,E5`, RESTORE_FROM auto, MAX_HOURS 9.5; pending 46
+  / 35 runs); C `medprune-gpu-huatuo7b` v3 (E8r, 16 runs, MAX_HOURS 5) and C `medprune-gpu-lingshu7b` v2 (E6-P2, 18
+  runs, MAX_HOURS 4). [FLAG] Kaggle shows no live log, so whether C's Lingshu notebook also has the `cvpr` secret is
+  known only when it ends; without it the RadImageNet half of E6-P2 fails. Judge pass 4 (1,145 answers: 863 SLAKE-zh,
+  282 SLAKE-en; dataset version 4) is pushed by a watcher when a C slot frees.
+- **Session 1 read** (FastV-family − Random@L2, 10% kept, paired, image-clustered 95% CI; rule scoring):
+  | | Lingshu RIN anat | Lingshu SLAKE | Qwen3-VL RIN anat | Qwen3-VL SLAKE |
+  |---|---|---|---|---|
+  | FastV (K=2) | −41.7 | −12.4 | −33.7 | −2.4 |
+  | FastV K=8 / K=16 | −43.9 / **+8.5** | −12.4 / **+6.9** | −27.1 / **+5.6** | −0.3 / +0.9 |
+  | RoPE-free | −42.3 | −12.5 | −31.9 | −1.4 |
+  | static map (position only) | −50.9 | −13.0 | −27.8 | +2.0 |
+  | inverse gate (background only) | −23.9 | −4.8 | −7.6 | +1.7 |
+  | artifact exclusion | −42.0 | −12.3 | −33.7 | −2.4 |
+  | DivPrune / Gate+DivPrune | −11.3 / −1.7 | +0.6 / +3.2 | +1.5 / +3.0 | +0.3 / +0.9 |
+  | Gate+FastV | −28.5 | +0.3 | −18.7 | −0.8 |
+  New datasets: OmniMedVQA anatomy (3,329 Q) FastV −29.4 (Lingshu) / −4.3 (Qwen3-VL); RIN abnormality −14.2 / −2.2.
+  Random seeds 0–2 agree within 1.5 points. SLAKE CT/MRI: FastV −18.0 / −4.7, inverse gate −7.5 / +2.0, static map
+  −15.5 / +1.0, K=16 +8.0 / +3.9.
+- **Reading.** (1) The failure is early-layer: K=8 is as bad as K=2, K=16 beats Random on both models. (2) It is not
+  background selection: background-only tokens beat FastV everywhere (P12 contradicted) — background tokens carry
+  usable information and FastV's concentrated keep-set is worse than any spread-out one. (3) For Lingshu on SLAKE a
+  position-only map from another dataset reproduces FastV's loss (−13.0 vs −12.4) — positional prior, matching the flip
+  test; for Qwen3-VL it does not. (4) High-norm tokens are over-selected but irrelevant (P5 not causal, H3 dead).
+  (5) RoPE is not the cause in the Qwen family (RoPE-free = FastV), unlike HuatuoGPT. (6) Coverage-preserving
+  selectors (Random, Uniform, DivPrune) are the bar; Gate+DivPrune is the best training-free selector on RIN.
+- **Framing decision (Pushkar)**: medical only, no general-domain section; consequences recorded in §A9 (no
+  "medical-specific" claim; E7 as a supplementary scope note).
+- **Label audit.** Codex filled all 200 cells (`label_sheet_provenance.txt`: AI labels, blinded to the judge). Audit:
+  rubric applied faithfully on less-specific locations ("Left Lung" for "Lower Left Lung" → 0, 17 items) and partial
+  lists; two inconsistencies — organ-system questions ("brain" for "Head" accepted, "respiratory" for "Chest" and
+  "gastrointestinal" for "Abdomen" rejected; SLAKE answers organ-system questions with body regions) and extra
+  consistent items (accepted for symptoms, rejected for "medical, supportive, surgical treatment"). Adjudicated copy
+  `label_sheet_adjudicated.csv` flips those 12 items to 1. κ (population-weighted, stratified bootstrap):
+  | scorer | Codex labels | adjudicated |
+  |---|---|---|
+  | exact match | 0.806 [0.744, 0.859] | 0.763 |
+  | rule OR judge (pre-registered) | 0.813 [0.748, 0.872] | 0.816 |
+  | **rule OR synonym OR (judge AND NOT less-specific location)** | **0.898 [0.847, 0.939]** | **0.902** |
+  The pre-registered gate (κ ≥ 0.8 and > rule) passes by 0.007 — not a meaningful win. Of the answers the judge
+  rescues, only 52% are correct (Codex) / 63% (adjudicated): it ignores the rubric's less-specific clause on locations
+  and rejects "axial" for "Transverse Plane" (4 of 90 rejected items). `judge.apply_judge` now applies both
+  deterministically (`SCORER_VERSION`, default on; `guard=False` gives the pre-registered scorer); `kappa` reports all
+  three. [FLAG] The guard was written after reading these labels, and the labels are AI labels: the κ of 0.90 is
+  in-sample and AI-to-AI. Before the paper reports it, a held-out sheet (100 new items) needs human labels.
+- **SLAKE FastV − Random by scorer** (rule / rule|judge / guarded; runs with full verdict coverage): Lingshu −12.6 /
+  −13.9 / −13.5; **Qwen3-VL −2.4 [−4.9, +0.2] / −5.0 / −4.8 [−7.6, −1.9]**; HuatuoGPT −0.6 / −1.6 / −1.6. The Qwen3-VL
+  SLAKE loss is significant under both judge scorers and not under exact match — report both.
+- **Sink score fix (D1).** HuatuoGPT's per-layer sink scores are unimodal, with a scale that grows with depth (median
+  0.8 at layer 0, 22 at layer 6, 43 at layer 27), and no image has a token above median + 5·MAD. The fixed τ = 20 was
+  measuring scale. `analysis.layer_profile` now uses the per-image robust rule (`sink_z = 5`; `sink_tau` keeps the
+  absolute option). Reading: no visual-sink tokens in HuatuoGPT by Kang et al.'s criterion; G17 rests on
+  `artifact_excl` (no effect) instead.
+- 116 CPU tests pass.

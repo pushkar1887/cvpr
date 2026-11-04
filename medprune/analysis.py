@@ -21,7 +21,7 @@ from PIL import Image
 
 from .masks import MODEL_VIEWS, MaskStore, label_view, token_foreground_fraction
 from .scoring import judge_open, normalize_answer, parse_response
-from .stats import (background_retention_ratio, cluster_bootstrap_ci, jaccard, keep_map, mcnemar_exact,
+from .stats import (background_retention_ratio, cluster_bootstrap_ci, cluster_signflip_p, jaccard, keep_map,
                     paired_delta_ci, quadrant_concentration, static_map_from_scores)
 
 TAU = 0.5  # background threshold on the per-token foreground fraction (plan.md §A5)
@@ -157,7 +157,9 @@ def accuracy_table(df: pd.DataFrame, by: tuple[str, ...] = ("model", "dataset", 
 
 def paired_delta(df: pd.DataFrame, model: str, dataset: str, method_a: str, method_b: str, budget_a: int = 10,
                  budget_b: int | None = None, modality_group_: str | None = None) -> dict:
-    """Accuracy of A minus B (points) on the same questions, image-clustered CI and exact McNemar p."""
+    """Accuracy of A minus B (points) on the same questions: image-clustered bootstrap CI and image-level sign-flip
+    permutation p (questions about one image are not independent, and Random is a seed mean; see
+    `cluster_signflip_p`)."""
     d = collapse_seeds(df)
     d = d[(d["model"] == model) & (d["dataset"] == dataset)]
     a = d[(d["method"] == method_a) & (d["budget_pct"] == budget_a)].set_index("qid")
@@ -168,11 +170,12 @@ def paired_delta(df: pd.DataFrame, model: str, dataset: str, method_a: str, meth
     row = {"model": model, "dataset": dataset, "modality_group": modality_group_ or "all",
            "comparison": f"{method_a} - {method_b}", "budget_pct": budget_a, "n": len(common)}
     if len(common) == 0:
-        return {**row, "delta": np.nan, "ci_low": np.nan, "ci_high": np.nan, "p_mcnemar": np.nan}
-    delta, low, high = paired_delta_ci(a.loc[common, "correct"].to_numpy(float), b.loc[common, "correct"].to_numpy(float),
-                                       a.loc[common, "image_id"].to_numpy())
-    p = mcnemar_exact(a.loc[common, "correct"].to_numpy() >= 0.5, b.loc[common, "correct"].to_numpy() >= 0.5)
-    return {**row, "delta": 100 * delta, "ci_low": 100 * low, "ci_high": 100 * high, "p_mcnemar": p}
+        return {**row, "delta": np.nan, "ci_low": np.nan, "ci_high": np.nan, "p_value": np.nan}
+    ca, cb = a.loc[common, "correct"].to_numpy(float), b.loc[common, "correct"].to_numpy(float)
+    images = a.loc[common, "image_id"].to_numpy()
+    delta, low, high = paired_delta_ci(ca, cb, images)
+    return {**row, "delta": 100 * delta, "ci_low": 100 * low, "ci_high": 100 * high,
+            "p_value": cluster_signflip_p(ca, cb, images)}
 
 
 # ----------------------------------------------------------------------------------------- mechanism
@@ -930,7 +933,7 @@ def baseline_table(df: pd.DataFrame, results: Path, models: tuple[str, ...],
                              "n": int(cell["qid"].nunique()),
                              "accuracy": 100 * collapse_seeds(cell)["correct"].mean(),
                              "delta_vs_random": d["delta"], "ci_low": d["ci_low"], "ci_high": d["ci_high"],
-                             "p_mcnemar": d["p_mcnemar"], "brr_ct_mri": float(np.nanmean(brr)) if brr else np.nan})
+                             "p_value": d["p_value"], "brr_ct_mri": float(np.nanmean(brr)) if brr else np.nan})
     return pd.DataFrame(rows)
 
 

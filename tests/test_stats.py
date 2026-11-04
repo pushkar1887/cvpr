@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from medprune.stats import (background_retention_ratio, cluster_bootstrap_ci, jaccard, keep_map, mcnemar_exact,
+from medprune.stats import (background_retention_ratio, cluster_bootstrap_ci, cluster_signflip_p, jaccard, keep_map,
+                            mcnemar_exact,
                             paired_delta_ci, quadrant_concentration, static_map_from_scores)
 
 
@@ -27,6 +28,24 @@ def test_mcnemar():
     assert mcnemar_exact(a, a) == 1.0
     assert mcnemar_exact(a, ~a) == pytest.approx(7.85e-5, rel=1e-2)  # 30 vs 70 discordant pairs, exact binomial
     assert mcnemar_exact(a, ~a) == mcnemar_exact(~a, a)
+
+
+def test_cluster_signflip_p():
+    rng = np.random.default_rng(0)
+    clusters = np.repeat(np.arange(50), 20)
+    a = rng.integers(0, 2, clusters.size).astype(float)
+    assert cluster_signflip_p(a, a, clusters) == 1.0
+    assert cluster_signflip_p(np.ones(1000), np.zeros(1000), clusters, B=999) == pytest.approx(1e-3)
+    # Random as a seed mean: a method equal to seed 0 of three seeds is not different from Random, although
+    # thresholding the seed mean at 0.5 (a majority vote) would make it look worse.
+    seeds = rng.integers(0, 2, (3, clusters.size)).astype(float)
+    p = cluster_signflip_p(seeds[0], seeds.mean(0), clusters, B=2000)
+    assert p > 0.05
+    # Clustering: the same per-question difference concentrated in a few images is weaker evidence.
+    spread = np.zeros(clusters.size); spread[::20] = 1
+    packed = np.zeros(clusters.size); packed[:50] = 1
+    zeros = np.zeros(clusters.size)
+    assert cluster_signflip_p(packed, zeros, clusters, B=2000) > cluster_signflip_p(spread, zeros, clusters, B=2000)
 
 
 def test_random_keep_sets_have_retention_ratio_one():

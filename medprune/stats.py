@@ -32,6 +32,28 @@ def paired_delta_ci(correct_a: np.ndarray, correct_b: np.ndarray, clusters: np.n
     return cluster_bootstrap_ci(diff, clusters, B=B, seed=seed)
 
 
+def cluster_signflip_p(correct_a: np.ndarray, correct_b: np.ndarray, clusters: np.ndarray, B: int = 10000,
+                       seed: int = 0) -> float:
+    """Two-sided paired permutation p-value for mean(A - B) = 0, flipping the sign of whole clusters (images).
+
+    Takes fractional correctness (Random averaged over seeds), where McNemar would need a 0/1 threshold — at 0.5
+    that turns three Random seeds into a majority vote, a stronger reference than Random. Resolution 1 / (B + 1)."""
+    diff = np.asarray(correct_a, dtype=np.float64) - np.asarray(correct_b, dtype=np.float64)
+    _, cluster_index = np.unique(np.asarray(clusters), return_inverse=True)
+    sums = np.bincount(cluster_index, weights=diff)
+    observed = abs(sums.sum())
+    if observed == 0:
+        return 1.0
+    rng = np.random.default_rng(seed)
+    hits, done = 0, 0
+    while done < B:
+        n = min(1000, B - done)
+        signs = rng.integers(0, 2, size=(n, sums.size), dtype=np.int8) * 2 - 1
+        hits += int(np.sum(np.abs(signs @ sums) >= observed - 1e-9))
+        done += n
+    return (hits + 1) / (B + 1)
+
+
 def mcnemar_exact(correct_a: np.ndarray, correct_b: np.ndarray) -> float:
     """Two-sided exact McNemar p-value on discordant pairs."""
     a, b = np.asarray(correct_a, dtype=bool), np.asarray(correct_b, dtype=bool)

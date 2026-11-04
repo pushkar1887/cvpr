@@ -25,7 +25,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 4b | Gate + coverage selectors (E1g) | ✅ DONE | 2.56 | 0 | Nov 3 | Rule met on Lingshu only (`gate_random` − Random +3.2 [+1.2, +5.2]); Qwen +0.5 [−1.3, +2.3] → **diagnosis-first paper**, gate = partial remedy |
 | 5 | Main grid (E3) + mechanism controls on K (E6, pulled forward) | ✅ DONE (A v8 9.46 h, B v4 9.76 h; 85 runs, all complete; merged Nov 4 17:30) | 20.95 | 0 (rest of E3 in session 2) | Nov 3–4 | **H3 dead** (`artifact_excl` = FastV); **P12 contradicted** (background-only beats FastV); **K16 beats Random** (P11); static map ≈ FastV on Lingshu SLAKE; OmniMedVQA anatomy −29.4 / −4.3 |
 | 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | ✅ C half DONE (Qwen3-VL 21:14, Lingshu 21:18; 38 runs, all complete); RadImageNet arms (E10r, E11r) in A/B session 2 | 6.14 | 2.6 (A/B) | Nov 3–4 | **P13 contradicted**: FastV < Random on photographs (−8.7 / −4.9). **G1**: token count is a modest amplifier; RadImageNet's collapse is dataset-specific. **G3**: Lingshu's keep-set is positional (flip). **G4**: Lingshu's least-attended tokens beat its most-attended (+6.2) |
-| 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | 🔄 RUNNING: A v9, B v5 (17:45, MAX_HOURS 9.5; order E10r → E11r → E12 → rest of E3 → E4 → E5 → SLAKE-zh) | 0 | 15.1 running | Nov 4–5 | Fig. 2, Fig. 3 (D1), Fig. 4 |
+| 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | 🔄 B v5 ✅ DONE (6.30 h; 79 runs, 35 new, all complete; merged Nov 5 00:30). A v9 RUNNING (ends ≈ 03:15) | 6.30 | 9.5 (A) | Nov 4–5 | Qwen3-VL: **E10r** FastV − Random −29.2 at 256 tokens (−33.7 at 64) → not token count; **`fastv_text` fails too** (−27.8 RIN); least-attended +29.9 over FastV |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | ✅ DONE (A 4.74 h, B 4.34 h; 32 runs, all complete; merged Nov 5 00:10). SLAKE judge-scored (pass 5 merged) | 9.23 | 0 | Nov 4–5 | **Only LLM-attention scoring collapses**: SparseVLM fails like FastV on Lingshu (−44.8 RIN anatomy), not on Qwen3-VL (+0.1); VisPruner / PruneSID ≈ Random. Gate+Uniform ≥ all published on Lingshu RIN; on SLAKE (judge) no non-attention method separates from another. P15 ✗, P16 ✗, P17 ✗, P18 ✓ |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ E8r, E6-P2 (both halves) and judge pass 4 DONE and merged (Nov 4 22:40). Judge pass 5 (E13 SLAKE + 33 E6-P2 answers) waits for E13. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 10.02 | 0 | Nov 3–7 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
@@ -40,7 +40,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 19.15 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08) | 9.5 (v9: E10r, E11r, E12, rest of E3, E4, E5) | 0.4 (spill) | 1.0 |
-| B — Qwen3-VL | `pushkararora` | 30 | 17.34 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07) | ≈ 5.6 (v5: same blocks; MAX_HOURS 9.5) | 0 | 7.1 |
+| B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30) | 0 | 0 | 6.4 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 16.16 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge 0.10 + 0.21 + 0.11 + 0.11) | 0 | 0.7 (E9 0.5 after task T6, judge pass 5 0.2; HuatuoGPT P2 done inside E8 / E8r) | 4.9 |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
@@ -2431,3 +2431,31 @@ run IDs, counts, accuracies with CIs. Template:
   FastV's loss (−2.4). Gate+Uniform − PruneSID on Qwen3-VL SLAKE: −1.2 [−3.4, +0.9]; vs VisPruner +1.5; on Lingshu
   −0.9 vs VisPruner, +0.8 vs PruneSID — on SLAKE the non-attention methods are statistically indistinguishable.
   Ledger C: 16.22 spent.
+
+### 2026-11-05 — Claude — B session 2 (Qwen3-VL) read: E10r, E11r, D2, E5, E4
+- B `medprune-gpu-qwen3vl8b` v5 COMPLETE 00:10, 6.30 h: 79 runs (44 restored from session 1, 35 new), all complete;
+  merged (269 run files, no conflicts). Judge pass 6 (420 open answers: 331 SLAKE-zh, 89 SLAKE-en) pushed to C v6.
+  SLAKE cells below are rule-scored until it is merged.
+- **E10r (G1, G22) — token count is not the explanation.** RadImageNet anatomy at 448² (256 tokens, Full 90.7,
+  Random 89.2): FastV − Random **−29.2** [−32.6, −25.8] vs −33.7 at 64 tokens; Gate+FastV −11.5 vs −18.7;
+  Uniform +0.7, Gate+Uniform +0.4. Quadrupling the tokens removes 13% of FastV's loss. With HuatuoGPT's tie on the
+  same images (E8r), RadImageNet's collapse is a property of the Qwen-family models on these images, not of 64
+  tokens and not of the dataset alone. Lingshu's E10r arrives with A v9.
+- **D2 `fastv_text` (G2) — the readout is not the cause.** Text-token readout, FastV's schedule: RIN anatomy
+  −27.8 [−30.8, −24.7] (FastV −33.7); SLAKE +1.3 [−1.0, +3.4] (rule; FastV −2.4). The FastV paper's wording
+  (mean attention of the text tokens) fails like the official last-token code on RadImageNet. Consequence for E13:
+  SparseVLM − `fastv_text` = **+27.9** on RIN anatomy, so SparseVLM's robustness on Qwen3-VL does not come from
+  reading text tokens; it comes from its rater subset (text tokens above the mean relevance) or its schedule (12 of 64
+  tokens in layers 3–6, 5 in 7–15, 3 after; FastV keeps 6 from layer 2). `fastv_k8` (6 tokens from layer 8) is as bad
+  as FastV, so "more layers with all tokens" is not it. [FLAG] Untested between rater subset and early budget: one
+  ablation (SparseVLM's raters with FastV's single stage, 10% from layer 3; ≈ 0.4 GPU-h on RIN) separates them before
+  the paper says why SparseVLM survives on Qwen3-VL.
+- **E11r.** Least-attended (`fastv_bottom`) − Random −3.8 [−5.9, −1.7]; − FastV **+29.9** [+26.2, +33.7]: Qwen3-VL's
+  most-attended RIN tokens are far worse than its least-attended (Lingshu showed the same on SLAKE, +6.2). Vertical
+  flip: Full 82.6 (−7.1 vs upright), FastV − Random −28.3 [−31.7, −24.9] — the collapse survives the flip.
+- **E5 budget curve, FastV − Random (Gate+FastV − Random).** RIN anatomy: 5% −32.2 (−22.0), 10% −33.7 (−18.7), 25%
+  −15.9 (−7.7). SLAKE (rule): 5% +1.2 (+1.3), 10% −2.4 (−0.8), 25% −0.2 (−0.6). On RIN the loss halves only at 25%.
+- **E4 modality panel (OmniMedVQA, 1,200 questions).** FastV − Random +0.2 [−1.8, +2.3], Gate+FastV −1.2, Gate+Uniform
+  −0.8 (Full 83.0, Random 79.8, text-only 55.1): no collapse on the panel for Qwen3-VL. Per-modality reading (P9)
+  waits for Lingshu's panel.
+- Ledger B: 23.64 spent, 6.4 left this week. Restore datasets not refreshed (no further B session planned).

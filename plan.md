@@ -27,11 +27,11 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | ✅ DONE. C half Nov 3 (38 runs); RadImageNet arms (E10r, E11r) ran in A/B session 2 (stage 6) | 6.14 | 0 | Nov 3–4 | **P13 contradicted**: FastV < Random on photographs (−8.7 / −4.9). **G1**: token count is a modest amplifier; RadImageNet's collapse is dataset-specific. **G3**: Lingshu's keep-set is positional (flip). **G4**: Lingshu's least-attended tokens beat its most-attended (+6.2) |
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | ✅ DONE. B v5 6.30 h (79 runs; merged Nov 5 00:30); A v9 9.43 h (87 runs, 86 complete; merged Nov 5 03:40; judge pass 7 merged). Missing: Lingshu SLAKE-zh `gate_fastv` (0.32 h, did not fit) | 15.73 | 0.32 (A) | Nov 4–5 | **E10r**: more tokens do not help (Lingshu −48.9 at 256 tokens vs −41.7; Qwen3-VL −29.2 vs −33.7). **`fastv_text` = FastV** (Lingshu +0.5 / +0.2). **E5**: Lingshu RIN loss flat 5→25% (−39.8 / −41.7 / −43.9). **P9 ✗**: no background dose-response across modalities. **E12**: question dependence starts at layer 14 (Lingshu) / 17 (Qwen3-VL) |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | ✅ DONE (A 4.74 h, B 4.34 h; 32 runs, all complete; merged Nov 5 00:10). SLAKE judge-scored (pass 5 merged) | 9.23 | 0 | Nov 4–5 | **Only LLM-attention scoring collapses**: SparseVLM fails like FastV on Lingshu (−44.8 RIN anatomy), not on Qwen3-VL (+0.1); VisPruner / PruneSID ≈ Random. Gate+Uniform ≥ all published on Lingshu RIN; on SLAKE (judge) no non-attention method separates from another. P15 ✗, P16 ✗, P17 ✗, P18 ✓ |
-| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ E8r, E6-P2 (both halves) and judge pass 4 DONE and merged (Nov 4 22:40). Judge pass 5 (E13 SLAKE + 33 E6-P2 answers) waits for E13. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 10.02 | 0 | Nov 3–7 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most |
+| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ E8r, E6-P2 (both halves), judge passes 4–7 DONE and merged. 🔄 **Nov 5, 04:30: C v4 RUNNING** — the 8 registered Lingshu runs A did not reach, Lingshu DivPrune on OmniMedVQA anatomy, then **E9** (task T6 done, `medprune/latency.py`); **B v6 RUNNING** — Qwen3-VL DivPrune on RIN abnormality + OmniMedVQA anatomy. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 10.02 | 0 | Nov 3–7 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
-**Totals (Nov 5, 03:40):** spent 68.6 GPU-h (A 28.58, B 23.64, C 16.40) · running 0 · left in plan 0.8 (A 0.32,
-C 0.5) · free this week ≈ 12.4 (A 1.1, B 6.4, C 4.9). Earlier estimate (measured rates, §C4): **≈ 61
+**Totals (Nov 5, 04:30):** spent 68.6 GPU-h (A 28.58, B 23.64, C 16.40) · running ≈ 4.4 (C ≈ 2.9, B ≈ 1.5) · free
+this week after them ≈ 8.0 (A 1.1, B 4.9, C 2.0) + D 30 (bundle building on CPU; GPU unused). Earlier estimate (measured rates, §C4): **≈ 61
 GPU-h for the whole project** (48 before Nov 3 evening; the added hours are the diagnostic controls of §A9 — E6 on both
 models before the grid, E10, E11, Random seeds — and E12, the layer profile and text readout of §A10, 1.0 + 0.9). The
 judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
@@ -40,9 +40,10 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | 28.58 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43) | 0 | 0.32 (SLAKE-zh `gate_fastv`) | 1.1 |
-| B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30) | 0 | 0 | 6.4 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 16.40 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–7 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10) | 0 | 0.5 (E9 after task T6; HuatuoGPT P2 done inside E8 / E8r) | 4.9 |
+| A — Lingshu | `pushkararora88` | 30 | 28.58 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43) | 0 | 0 (its last run moved to C) | 1.4 |
+| B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30) | ≈ 1.5 (v6: Qwen3-VL DivPrune ± gate, RIN abnormality + OmniMedVQA anatomy) | 0 | 4.9 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 16.40 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–7 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10) | ≈ 2.9 (Lingshu v4: 8 missing runs, DivPrune OmniMedVQA, E9) | 0.3 (judge pass 8) | 2.2 |
+| D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle build on CPU, v1 running) | 0 | — | 30; needs the `cvpr` secret added on D before any RadImageNet run |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge). HuatuoGPT P2 blocks (incl.
@@ -1578,9 +1579,9 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 | T1 | 2 | `notebooks/00_build_data_bundle.ipynb` | done — executed/rebuilt on Kaggle; manifest committed Nov 2 | — |
 | T2 | 3 | `medprune/checks.py` (E0 checks) + `notebooks/01_run_gpu.ipynb` | done — real E0 component checks on both models; full-set scoring issue recorded | — |
 | T3 | 4 | `medprune/analysis.py` + `notebooks/02_analyze_results.ipynb`, Stage 4 section | done — notebook dry-run Nov 2; module executed on recovered real E1 Nov 3 | — |
-| T4 | 6 | static-map builder | open | T3 |
-| T5 | 7 | `medprune/huatuo_llava.py` + validation | open | Stage 5 done |
-| T6 | 7 | E9 latency measurement | open | T2 |
+| T4 | 6 | static-map builder | done (Nov 3, `analysis.build_static_maps`) | T3 |
+| T5 | 7 | `medprune/huatuo_llava.py` + validation | done (Nov 3–4; E8, E8r) | Stage 5 done |
+| T6 | 7 | E9 latency measurement | done (`59c141c`, `medprune/latency.py` + `tests/test_latency.py`); runs in C v4 | T2 |
 | T7 | 8 | table and figure builders (Tables 1–4, Figs 1–5) | open | T3 |
 | T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | done (Codex, Nov 3) — independent CIs and registered 43-item retry verified | original and corrected receipts preserved |
 | T9 | 5 preflight | Resolve full SLAKE scoring comparability before broad grid; report abnormality class-prior baseline | next — real abnormality build/image pairing passed on CPU | T8 done; first Qwen block running; remaining grid held |
@@ -2511,3 +2512,26 @@ run IDs, counts, accuracies with CIs. Template:
   L* must come from a held-out split (SLAKE validation, a held-out RadImageNet slice) or from a rule fixed before
   looking at test accuracy (e.g. the first layer with question share ≥ 0.2 on held-out data).
 - Ledger: A 28.58 spent (1.1 free this week); C 16.40. Free this week ≈ 12.4 GPU-h (A 1.1, B 6.4, C 4.9).
+
+### 2026-11-05 — Claude — Missing runs, DivPrune completion and E9 launched; account D added
+- `run_eval --list` against `results/all`: 314 of 322 registered runs complete; the 8 missing are Lingshu —
+  SLAKE-zh `gate_fastv` (E3), `oracle_gate` on SLAKE and the six E6-P1 arms on RIN abnormality (`fastv_k8`,
+  `fastv_k16`, `static_map`, `inverse_gate`, `divprune`, `gate_divprune`); A's session 1 ran out of budget first.
+- **Task T6 done** (`59c141c`): `medprune/latency.py`. `measure` runs Lingshu's decoder layer by layer and removes
+  visual tokens physically at a switch layer (cos/sin and positions sliced, original M-RoPE positions kept), timing
+  full, `gate_input` (background removed before layer 0), `prellm_10`, `fastv_10` and `k16_10` on 200 SLAKE questions
+  after 10 warm-up, in shuffled order, wall time between device-wide syncs (the model spans two T4s); the first
+  question asserts the loop equals the model's forward. `prompt-tokens` counts text tokens per question (processor
+  only); `flops` computes FastV-formula prefill FLOPs from every run's own keep schedule (`keep_stages` for PDrop,
+  SparseVLM, BTP). CPU test: the loop matches a tiny Qwen2.5-VL decoder's forward to 1e-5 with and without removal.
+  Scoring overhead is not timed (stated in the module).
+- `configs/runs.yaml`: DivPrune ± gate on OmniMedVQA anatomy (Lingshu, role C; Qwen3-VL, role B) and Qwen3-VL RIN
+  abnormality (role B), so the baseline table's DivPrune column has every cell.
+- Launched: **C v4** `medprune-gpu-lingshu7b` (static maps from the new private dataset `medprune-restore-c`; jobs =
+  the 8 missing runs, Lingshu DivPrune OmniMedVQA, E9 measure, prompt tokens; ≈ 2.9 h); **B v6**
+  `medprune-gpu-qwen3vl8b` (Qwen3-VL DivPrune, filtered by method so B's finished E13 runs are not repeated; prompt
+  tokens; ≈ 1.5 h). The Qwen3-VL block moved from C to B (B had 6.4 h free).
+- **Account D** (4th Kaggle account, 30 GPU-h this week): writes verified; the CPU bundle build
+  (`medprune-00-build-data-bundle`, public data only) is running so D can take the method kill test. Before any
+  RadImageNet run on D, the `cvpr` secret must be added to D's Kaggle account (UI only). D's bundle is accepted only
+  if its manifest hashes equal C's.

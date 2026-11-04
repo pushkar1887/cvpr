@@ -2355,8 +2355,8 @@ run IDs, counts, accuracies with CIs. Template:
   filter, `gate_frac >= τ`, helps: −32.8 → −28.5 → −25.6), while SLAKE was flat (−1.0 / +0.3 / +0.9); giving 3% back
   to the background hurts (−36.1). So at 64 tokens the deficit is not missing context: it is attention picking the
   wrong foreground tokens, and the gate helps only by removing the edge tokens with mixed foreground. (3) PDrop is far
-  worse than FastV at 64 tokens (−61.2): its late stages hold ~0–2 visual tokens, and token matching by the mean
-  does not protect it when the start count is this small. (4) H3 stays dead on RadImageNet (`artifact_excl` =
+  worse than FastV at 64 tokens (−61.2): its stages keep 13 → 6 → 3 → 2 of 64 tokens (from layers 2 / 9 / 16 / 23),
+  so matching the mean token count front-loads the budget and starves the late layers when the start count is small. (4) H3 stays dead on RadImageNet (`artifact_excl` =
   FastV). [FLAG] τ was chosen on SLAKE; reporting τ 0.75 as the RadImageNet number would be test-set tuning — the
   paper reports τ 0.5 everywhere and the τ sweep as robustness.
 - Ledger C: 16.16 spent (E8r 2.70, E6-P2 v2 1.93, judge pass 4 0.11, v3 1.29); ≈ 5.6 h left this week.

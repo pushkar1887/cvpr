@@ -2295,3 +2295,25 @@ run IDs, counts, accuracies with CIs. Template:
   absolute option). Reading: no visual-sink tokens in HuatuoGPT by Kang et al.'s criterion; G17 rests on
   `artifact_excl` (no effect) instead.
 - 116 CPU tests pass.
+
+### 2026-11-04 — Claude — E13 ported and launched; C E6-P2 SLAKE half read
+- **E13** (commits `ec9133c`, `d6fd1fa`): SparseVLM, VisPruner, PruneSID, BTP in `medprune/baselines/` — selection
+  code from pinned official commits, medprune prompts and scoring; `tests/test_baselines.py` checks the kept indices
+  against the official functions from the clones in third_party/ (all four pass; 128 tests). Deviations, each in
+  its module docstring: multi-stage methods token-matched to FastV (mean visual tokens per layer), SparseVLM without
+  recycling and with original position ids (the authors' v2.0 choices), VisPruner's [CLS] score replaced by the
+  attention each patch receives in the last vision block (no [CLS] in Qwen towers) plus a guard where the official
+  loop crashes on odd residual counts, PruneSID without its 16-token floor, BTP's stage layers scaled by depth on
+  Qwen3-VL. Smoke v1 (3 SLAKE questions per method, both models) passed: keep counts Lingshu 324 tokens → PruneSID /
+  VisPruner 32, BTP 56/28/14/0 at layers 3/6/15/22, SparseVLM 46/21/12 at 3/7/16 (mean 53.2 visual tokens per layer
+  vs FastV's 52.9); VisPruner's alignment check (merger of the captured block output = the tower's output) passed
+  on both towers. Full runs v2 launched 19:07 on the second slot of A and B (`medprune-baselines-<model>`).
+  Predictions P15–P18 added to §A6 before any result.
+- **C `medprune-gpu-lingshu7b` v2** (E6-P2, no `cvpr` secret then): the 6 SLAKE runs COMPLETE 19:40; the 12
+  RadImageNet runs relaunch when both C sessions stop (secret now attached). Lingshu SLAKE, − Random (all / CT/MRI):
+  PDrop −13.8 [−16.8, −10.7] / −20.0; **Gate+PDrop −0.6 / −0.0**; Gate τ 0.25 −1.0, τ 0.5 (Gate+FastV) +0.3, τ 0.75
+  +0.9; background quota 3% −2.5. Reading: multi-stage attention pruning token-matched to FastV fails exactly like
+  FastV, so the failure is not specific to single-shot pruning (D5 revised: PDrop's published 80%-kept robustness
+  does not survive 10%); the gate repairs both and is insensitive to τ. Cross-account determinism: C's
+  `artifact_excl` rerun equals A's on all 1,061 questions (keep-sets and responses).
+- Judge pass 4 (1,145 answers) running on C since 19:40.

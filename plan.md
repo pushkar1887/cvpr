@@ -204,6 +204,10 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 | P12 | E6 | Inverse gate within 5 of FastV on CT/MRI | 50% | **Contradicted**: background-only tokens beat FastV — SLAKE CT/MRI −7.5 vs −18.0 (Lingshu), +2.0 vs −4.7 (Qwen3-VL); RIN −23.9 vs −41.7 / −7.6 vs −33.7. FastV is worse than background. |
 | P13 | E7 | Natural images: FastV ≥ Random − 2 | 50% | **Contradicted** (Nov 3): FastV − Random on 1,000 photographs (500 GQA + 500 POPE) = −8.7 [−11.7, −5.8] Lingshu, −4.9 [−7.8, −2.1] Qwen3-VL; RoPE-free the same (−8.5 / −4.7). The failure is not medical-only; medical scans amplify it (§A2). |
 | P14 | E6 | Residual largest in smallest evidence tertile | 55% | Preliminary (E1/E1g runs, `analysis evidence`, Nov 3): contradicted. Gate+FastV − Random is flat across SLAKE evidence-area tertiles (Lingshu +3.3 small, −3.4 medium, +1.7 large; all CIs include 0); FastV's own loss sits in the **largest** tertile (−16.8 [−25.2, −7.1] vs −2.5 small), where it keeps the named organ at 0.20× chance. Final reading with `oracle_gate` (E6-P1). |
+| P15 | E13 | SparseVLM (text raters, from layer 2) − Random ≤ −10 on Lingshu RIN anatomy; ≤ 0 on Qwen3-VL RIN anatomy. *Added Nov 4, 20:10, before any E13 result.* | 60% | |
+| P16 | E13 | VisPruner within 3 of Random on SLAKE; its background retention ratio > 1 on CT/MRI (vision-tower attention favours flat background tokens) | 50% | |
+| P17 | E13 | PruneSID within 3 of Random on all four datasets, both models (coverage family) | 60% | |
+| P18 | E13 | BTP ≥ FastV + 10 on Lingshu RIN anatomy (diversity in its first two stages) and within 3 of Random on SLAKE | 55% | |
 
 - **K1 (Stage 4):** GO if standard FastV < Random@L2 on RadImageNet anatomy MC, paired 95% CI excl. 0. If only pre-LLM
   FastV < Random@L0 → reframe as "pre-LLM attention selection fails" (discuss with mentor). Neither → stop.

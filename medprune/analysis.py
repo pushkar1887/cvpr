@@ -890,11 +890,55 @@ def _write_stage4(report: dict, results: Path) -> None:
     plt.close(fig)
 
 
+BASELINE_DATASETS = ("slake_en", "rin_anat_mc", "rin_abn_closed", "omni_anat")
+BASELINE_METHODS = (("full", 100), ("text_only", 100), ("random_l2", 10), ("uniform_l2", 10), ("gate_uniform", 10),
+                    ("fastv", 10), ("divprune", 10), ("sparsevlm", 10), ("btp", 10), ("vispruner", 10),
+                    ("prunesid", 10))
+
+
+def _first_keep(row: pd.Series) -> np.ndarray | None:
+    """The tokens a method keeps at its first selection (multi-stage methods prune further later)."""
+    stages = row.get("keep_stages")
+    if isinstance(stages, list) and stages:
+        return np.asarray(stages[0][1], dtype=np.int64)
+    keep = row.get("keep_idx")
+    return np.asarray(keep, dtype=np.int64) if isinstance(keep, list) else None
+
+
+def baseline_table(df: pd.DataFrame, results: Path, models: tuple[str, ...],
+                   datasets: tuple[str, ...] = BASELINE_DATASETS) -> pd.DataFrame:
+    """E13 comparison: every method's accuracy and paired difference from Random (95% CI, image-clustered) per
+    model x dataset, with the background retention ratio of its first keep-set (CT/MRI questions with 5-95% background;
+    Random ~ 1, > 1 = prefers background)."""
+    rows = []
+    for model in models:
+        for dataset in datasets:
+            sub = df[(df["model"] == model) & (df["dataset"] == dataset)]
+            gates = load_gates(results, model, dataset)
+            for method, budget in BASELINE_METHODS:
+                cell = sub[(sub["method"] == method) & (sub["budget_pct"] == budget)]
+                if cell.empty:
+                    continue
+                d = paired_delta(df, model, dataset, method, "random_l2", budget_a=budget, budget_b=10)
+                brr = []
+                for _, r in cell[cell["modality_group"] == "CT/MRI"].drop_duplicates("qid").iterrows():
+                    keep, bg = _first_keep(r), _background(gates, r["image_id"])
+                    if keep is not None and keep.size and bg is not None and 0.05 <= bg.mean() <= 0.95 and \
+                            keep.max() < bg.size:
+                        brr.append(background_retention_ratio(keep, bg))
+                rows.append({"model": model, "dataset": dataset, "method": method,
+                             "n": int(cell["qid"].nunique()),
+                             "accuracy": 100 * collapse_seeds(cell)["correct"].mean(),
+                             "delta_vs_random": d["delta"], "ci_low": d["ci_low"], "ci_high": d["ci_high"],
+                             "p_mcnemar": d["p_mcnemar"], "brr_ct_mri": float(np.nanmean(brr)) if brr else np.nan})
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
     import argparse
 
     p = argparse.ArgumentParser(description="Laptop-side analysis commands.")
-    p.add_argument("command", choices=["static-maps", "diagnosis", "evidence", "profile"])
+    p.add_argument("command", choices=["static-maps", "diagnosis", "evidence", "profile", "baselines"])
     p.add_argument("--results", type=Path, required=True)
     p.add_argument("--models", default="lingshu7b,qwen3vl8b")
     p.add_argument("--profile", default="t4x2")
@@ -904,6 +948,13 @@ def main() -> None:
     p.add_argument("--datasets", default="slake_en,rin_anat_mc,natural", help="profile: datasets with full_profile runs")
     args = p.parse_args()
     tables = args.results / "tables"
+    if args.command == "baselines":
+        df = load_runs(args.results, args.profile, open_scoring=args.open_scoring)
+        table = baseline_table(df, args.results, tuple(args.models.split(",")))
+        tables.mkdir(parents=True, exist_ok=True)
+        table.to_csv(tables / f"baselines_{args.open_scoring}.csv", index=False)
+        print(table.round(2).to_string(index=False))
+        return
     if args.command == "diagnosis":
         for name, table in diagnosis_report(args.results, tuple(args.models.split(",")),
                                             open_scoring=args.open_scoring).items():

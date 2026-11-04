@@ -68,6 +68,7 @@ class QwenVLAdapter:
         q_mod, k_mod = (attn.q_norm, attn.k_norm) if hasattr(attn, "q_norm") else (attn.q_proj, attn.k_proj)
         hook.install_pre_rope_capture(q_mod, k_mod, layer=1)  # RoPE-free scores (Qwen3: q/k norms precede RoPE)
         hook.install_profile_hooks(self.layers)  # visual-sink scores per layer, only under a profile state
+        hook.install_layer_hooks(self.layers)  # raters (SparseVLM) and deferred stages (BTP)
         self._visual_out: torch.Tensor | None = None
         self.base.visual.register_forward_hook(self._record_visual)
         self.layers[1].register_forward_pre_hook(self._record_layer1_norms, with_kwargs=True)
@@ -148,6 +149,61 @@ class QwenVLAdapter:
             out = out[0]
         emb = out[0] if isinstance(out, (list, tuple)) else out
         return emb.float().cpu().numpy()
+
+    @torch.inference_mode()
+    def vision_cues(self, inputs: PreparedInputs) -> tuple[np.ndarray, np.ndarray]:
+        """VisPruner's visual cues per LLM visual token (medprune/baselines/vispruner.py): the attention each token's
+        patches receive in the vision tower's last block (head and query mean, averaged over the merge unit) [N],
+        and that block's output concatenated over the merge unit [N, unit x C] (pre-projector features)."""
+        visual = self.base.visual
+        block = visual.blocks[-1]
+        if hasattr(visual, "fullatt_block_indexes") and len(visual.blocks) - 1 not in visual.fullatt_block_indexes:
+            raise RuntimeError("the last vision block uses window attention; VisPruner's cue needs full attention")
+        captured: dict = {}
+
+        def take_input(_module, args, kwargs):
+            captured["x"] = kwargs.get("hidden_states", args[0] if args else None)
+            captured["pe"] = kwargs.get("position_embeddings")
+
+        def take_output(_module, _args, output):
+            captured["out"] = output[0] if isinstance(output, tuple) else output
+
+        handles = [block.attn.register_forward_pre_hook(take_input, with_kwargs=True),
+                   block.register_forward_hook(take_output)]
+        try:
+            kw = inputs.model_kwargs
+            grid_thw = kw["image_grid_thw"]
+            tower_out = visual(kw["pixel_values"].type(visual.dtype), grid_thw=grid_thw)
+        finally:
+            for h in handles:
+                h.remove()
+        attn, x = block.attn, captured["x"]
+        p = x.shape[0]
+        q, k, _ = attn.qkv(x).reshape(p, 3, attn.num_heads, -1).permute(1, 0, 2, 3).unbind(0)
+        cos, sin = captured["pe"]
+        rope = __import__(type(attn).__module__, fromlist=["apply_rotary_pos_emb_vision"]).apply_rotary_pos_emb_vision
+        q, k = rope(q, k, cos, sin)
+        received = torch.zeros(p, dtype=torch.float32, device=x.device)
+        for h in range(attn.num_heads):  # one head at a time: P x P in float32 stays ~100 MB
+            weights = (q[:, h].float() @ k[:, h].float().T * attn.scaling).softmax(dim=-1)
+            received += weights.mean(dim=0)
+        received /= attn.num_heads
+        unit = self.merge ** 2
+        scores = received.reshape(p // unit, unit).mean(dim=1)
+        feats = captured["out"].float().reshape(p // unit, -1)
+        if hasattr(visual, "get_window_index"):  # Qwen2.5-VL: blocks run in window order; tokens come out reversed
+            window_index, _ = visual.get_window_index(grid_thw)
+            order = torch.argsort(window_index.to(scores.device))
+            scores, feats = scores[order], feats[order]
+        else:
+            order = torch.arange(scores.shape[0], device=scores.device)
+        tower_out = tower_out[0] if isinstance(tower_out, tuple) else tower_out
+        if not torch.allclose(visual.merger(captured["out"])[order].float(), tower_out.float(), atol=1e-2, rtol=1e-2):
+            raise RuntimeError("vision cues are not aligned with the LLM's visual tokens")
+        n = len(inputs.vis_pos)
+        if scores.shape[0] != n:
+            raise RuntimeError(f"vision cues for {scores.shape[0]} tokens, prompt has {n}")
+        return scores.cpu().numpy(), feats.cpu().numpy()
 
 
 def load_adapter(model: str, profile: Profile, vision_fp32: bool = False):

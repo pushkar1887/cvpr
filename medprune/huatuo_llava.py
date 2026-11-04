@@ -128,6 +128,7 @@ class HuatuoAdapter:
         attn = self.layers[1].self_attn
         hook.install_pre_rope_capture(attn.q_proj, attn.k_proj, layer=1)  # 1D RoPE: q_proj/k_proj precede it
         hook.install_profile_hooks(self.layers)
+        hook.install_layer_hooks(self.layers)  # raters (SparseVLM) and deferred stages (BTP)
         self._visual_out: torch.Tensor | None = None
         self.layers[1].register_forward_pre_hook(self._record_layer1_norms, with_kwargs=True)
 

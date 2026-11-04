@@ -37,9 +37,13 @@ class StopForward(Exception):
 class Stage:
     score_layer: int  # layer whose attention is read
     mask_from: int  # first layer at which this stage's dropped tokens are masked
-    select: Selector
-    score_kind: str = "attn"  # "attn" | "ropefree" | "text"
+    select: Selector  # (scores, survivors) -> kept; with needs_hidden: (scores, survivors, hidden [N, d]) -> kept
+    score_kind: str = "attn"  # "attn" | "ropefree" | "text" | "raters" (SparseVLM's text raters)
     done: bool = False
+    # Deferred stages (BTP) also need the hidden states entering layer `mask_from`: their scores are cached at
+    # `score_layer` and the selection runs at the input of `mask_from`. Masks start there, so this is exact.
+    needs_hidden: bool = False
+    pending: np.ndarray | None = None
 
 
 @dataclass
@@ -52,9 +56,12 @@ class PruneState:
     log_ropefree: bool = False  # also log RoPE-free scores at the pre-RoPE capture layer
     text_pos: torch.Tensor | None = None  # sequence positions of the tokens after the image ("text" readout)
     profile: bool = False  # log log-attention of both readouts and visual-sink scores at every layer (plan.md D1)
+    need_raters: bool = False  # SparseVLM: choose text raters from the decoder input embeddings (layer-0 pre-hook)
+    rater_pos: torch.Tensor | None = None  # sequence positions of the raters
     stop_after_scoring: bool = False
     logs: dict[str, np.ndarray] = field(default_factory=dict)
     keep: np.ndarray | None = None  # kept indices into 0..N-1 after the latest selection
+    history: list[tuple[int, np.ndarray]] = field(default_factory=list)  # (mask_from, kept) per selection
     pre_rope: dict = field(default_factory=dict)  # {"layer": int, "q": tensor, "k": tensor}, filled by capture hooks
     _survivors: np.ndarray | None = None
     _drops: list[tuple[int, torch.Tensor]] = field(default_factory=list)
@@ -78,6 +85,7 @@ class PruneState:
         if newly_dropped.size:
             self._drops.append((mask_from, self.vis_pos[torch.from_numpy(newly_dropped)]))
         self._survivors, self.keep = survivors, kept
+        self.history.append((int(mask_from), kept))
 
     def dropped_at(self, layer: int) -> torch.Tensor | None:
         parts = [pos for start, pos in self._drops if start <= layer]
@@ -196,6 +204,42 @@ def install_profile_hooks(layers) -> list:
     return [layer.register_forward_pre_hook(recorder(i), with_kwargs=True) for i, layer in enumerate(layers)]
 
 
+def layer_input_step(state: PruneState, layer: int, hidden: torch.Tensor) -> None:
+    """Work done on the hidden states entering decoder layer `layer` (prefill): SparseVLM's raters at layer 0, and
+    the deferred stages whose masks start at this layer. hidden: [T, d]."""
+    vis = state.vis_pos.to(hidden.device)
+    if layer == 0 and state.need_raters and state.rater_pos is None:
+        from .baselines.sparsevlm import select_raters
+
+        start = int(state.vis_pos[-1]) + 1  # official text_token_start: first token after the image
+        raters = select_raters(hidden[vis], hidden[start:])
+        state.rater_pos = torch.as_tensor(raters, dtype=torch.long) + start
+        state.logs["sparsevlm_raters"] = raters.astype(np.int32)
+    for stage in state.stages:
+        if stage.needs_hidden and not stage.done and stage.mask_from == layer:
+            if stage.pending is None:
+                raise RuntimeError(f"stage masking from layer {layer} has no scores from layer {stage.score_layer}")
+            feats = hidden[vis].float().cpu().numpy()
+            state.apply_keep(stage.select(stage.pending, state.survivors(), feats), stage.mask_from)
+            stage.done = True
+
+
+def install_layer_hooks(layers) -> list:
+    """Pre-hooks on every decoder layer running layer_input_step under an active state, on prefill only."""
+
+    def recorder(index: int):
+        def hook(_module, args, kwargs):
+            state = ACTIVE
+            hidden = kwargs.get("hidden_states", args[0] if args else None)
+            if state is not None and hidden is not None and hidden.shape[1] > 1 and \
+                    (state.need_raters or any(s.needs_hidden for s in state.stages)):
+                layer_input_step(state, index, hidden[0])
+
+        return hook
+
+    return [layer.register_forward_pre_hook(recorder(i), with_kwargs=True) for i, layer in enumerate(layers)]
+
+
 def allow_mask(attention_mask: torch.Tensor | None, query: torch.Tensor, key: torch.Tensor,
                dropped: torch.Tensor) -> torch.Tensor:
     """Boolean [1, 1, Tq, Tk] mask (True = attend): causal on prefill, dropped visual keys removed.
@@ -240,6 +284,14 @@ def _prefill_step(state: PruneState, module, layer: int, query: torch.Tensor, ke
             cache["text"] = text_attention(query, key, scaling, state.text_pos, state.dropped_at(layer))[vis].cpu().numpy()
         return cache["text"]
 
+    def rater_scores() -> np.ndarray:
+        if state.rater_pos is None or state.rater_pos.numel() == 0:
+            raise RuntimeError("rater scores need state.rater_pos (set by the layer-0 hook when need_raters is on)")
+        if "raters" not in cache:
+            cache["raters"] = text_attention(query, key, scaling, state.rater_pos, state.dropped_at(layer))[vis] \
+                .cpu().numpy()
+        return cache["raters"]
+
     if layer in state.log_layers:
         state.logs[f"scores_l{layer}"] = attention_scores()
     if state.log_ropefree and state.pre_rope.get("layer") == layer:
@@ -251,8 +303,12 @@ def _prefill_step(state: PruneState, module, layer: int, query: torch.Tensor, ke
     for stage in state.stages:
         if stage.done or stage.score_layer != layer:
             continue
-        scores = {"ropefree": ropefree_scores, "text": text_scores}.get(stage.score_kind, attention_scores)()
+        readouts = {"ropefree": ropefree_scores, "text": text_scores, "raters": rater_scores}
+        scores = readouts.get(stage.score_kind, attention_scores)()
         state.logs.setdefault(f"scores_{stage.score_kind}_l{layer}", scores)
+        if stage.needs_hidden:
+            stage.pending = scores
+            continue
         state.apply_keep(stage.select(scores, state.survivors()), stage.mask_from)
         stage.done = True
     if state.stop_after_scoring and state.stages and all(s.done for s in state.stages):

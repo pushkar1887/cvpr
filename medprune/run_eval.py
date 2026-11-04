@@ -224,9 +224,67 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
                 return select_topk(scores, k_stage, survivors if allowed is None else survivors & allowed)
 
             state.stages.append(Stage(boundary - 1, boundary, select, score_kind="attn"))
+    elif rule in BASELINES:
+        if allowed is not None:
+            raise ValueError(f"{method.name}: the published pruners run without the gate")
+        BASELINES[rule](state, spec, sample, inputs, adapter, n, k)
     else:
         raise ValueError(f"unknown rule {rule!r}")
     return state
+
+
+# --------------------------------------------------------------------------------------- published pruners
+
+def _sparsevlm(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .attention_hook import Stage
+    from .baselines.sparsevlm import sparsevlm_schedule, stage_keep
+
+    state.need_raters = True
+    for score_layer, mask_from, fraction in sparsevlm_schedule(spec.budget, adapter.num_layers):
+        count = keep_count(n, fraction)
+        state.stages.append(Stage(score_layer, mask_from, lambda s, surv, count=count: stage_keep(s, surv, count),
+                                  score_kind="raters"))
+
+
+def _vispruner(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .baselines.vispruner import select_vispruner
+
+    importance, feats = adapter.vision_cues(inputs)
+    state.apply_keep(select_vispruner(importance, feats, k), 0)
+
+
+def _prunesid(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .baselines.prunesid import select_prunesid
+
+    seed = int(rng_for(spec.seed, sample.qid).integers(2**31))
+    state.apply_keep(select_prunesid(adapter.visual_embeddings(inputs), k, seed), 0)
+
+
+def _btp(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .attention_hook import Stage
+    from .baselines.btp import btp_first_fraction, btp_layers, stage_attention, stage_balanced
+
+    l1, l2, l3, l4 = btp_layers(adapter.num_layers)
+    k1 = keep_count(n, btp_first_fraction(spec.budget, adapter.num_layers))
+    counts = (k1, k1 // 2, k1 // 4)
+
+    def on_survivors(fn):  # BTP indexes the surviving image tokens in raster order; map back to 0..N-1
+        def select(scores, survivors, hidden):
+            alive = np.flatnonzero(survivors)
+            return alive[fn(scores[alive], hidden[alive])]
+        return select
+
+    stages = [
+        (l1, on_survivors(lambda a, h: stage_balanced(a, h, counts[0], attn_share=0.1, extend=1.2))),
+        (l2, on_survivors(lambda a, h: stage_balanced(a, h, counts[1], attn_share=0.4, extend=1.0))),
+        (l3, on_survivors(lambda a, h: stage_attention(a, counts[2]))),
+        (l4, lambda scores, survivors, hidden: np.empty(0, dtype=np.int64)),  # every visual token leaves
+    ]
+    for mask_from, select in stages:
+        state.stages.append(Stage(mask_from - 1, mask_from, select, score_kind="attn", needs_hidden=True))
+
+
+BASELINES = {"sparsevlm": _sparsevlm, "vispruner": _vispruner, "prunesid": _prunesid, "btp": _btp}
 
 
 # ----------------------------------------------------------------------------------------------- running
@@ -322,6 +380,8 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
                 "k_keep": None if state is None or state.keep is None else int(len(state.keep)),
                 "grid_hw": list(inputs.grid_hw),
                 "keep_idx": None if state is None or state.keep is None else state.keep.tolist(),
+                "keep_stages": [[layer, kept.tolist()] for layer, kept in state.history]
+                if state is not None and len(state.history) > 1 else None,  # multi-stage methods (PDrop, SparseVLM, BTP)
                 "bg_frac": bg_frac, "elapsed_s": round(dt, 3), "n_new_tokens": n_new,
                 "truncated": n_new >= max_new_tokens,
             }
@@ -380,12 +440,18 @@ class FakeAdapter:
                 state.logs[f"lp_last_l{layer}"] = np.log(self._scores(qid, layer, state.n))
                 state.logs[f"lp_text_l{layer}"] = np.log(self._scores(qid, f"text{layer}", state.n))
                 state.logs[f"sink_l{layer}"] = 40 * self._scores(qid, f"sink{layer}", state.n)
-        for stage in state.stages:
+        if state.need_raters:  # SparseVLM: every other token after the image rates
+            state.rater_pos = state.text_pos[::2].clone()
+        for stage in sorted(state.stages, key=lambda s: s.mask_from):
             if not stage.done:
-                key = f"text{stage.score_layer}" if stage.score_kind == "text" else stage.score_layer
+                key = f"{stage.score_kind}{stage.score_layer}" if stage.score_kind != "attn" else stage.score_layer
                 scores = self._scores(qid, key, state.n)
                 state.logs.setdefault(f"scores_{stage.score_kind}_l{stage.score_layer}", scores)
-                state.apply_keep(stage.select(scores, state.survivors()), stage.mask_from)
+                if stage.needs_hidden:
+                    hidden = np.random.default_rng(stage.mask_from).normal(size=(state.n, 8))
+                    state.apply_keep(stage.select(scores, state.survivors(), hidden), stage.mask_from)
+                else:
+                    state.apply_keep(stage.select(scores, state.survivors()), stage.mask_from)
                 stage.done = True
         if state.stop_after_scoring and state.stages and all(s.done for s in state.stages):
             raise StopForward
@@ -411,6 +477,10 @@ class FakeAdapter:
 
     def visual_embeddings(self, inputs) -> np.ndarray:
         return np.random.default_rng(0).normal(size=(len(inputs.vis_pos), 8))
+
+    def vision_cues(self, inputs) -> tuple[np.ndarray, np.ndarray]:
+        n = len(inputs.vis_pos)
+        return self._scores(inputs.model_kwargs.get("qid", ""), "vit", n), np.random.default_rng(1).normal(size=(n, 8))
 
 
 def bundle_for(bundles: Path | list[Path], dataset: str) -> Path:

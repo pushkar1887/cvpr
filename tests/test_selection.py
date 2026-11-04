@@ -108,7 +108,7 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 29
+    assert len(METHODS) == 33  # + sparsevlm, vispruner, prunesid, btp (E13)
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name

@@ -23,8 +23,10 @@ class MethodSpec:
     """
 
     name: str
-    rule: str  # "none" | "random" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop"
-    score: str | None = None  # None | "attn" (last prompt token) | "ropefree" | "text" (every token after the image)
+    rule: str  # "none" | "random" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop" |
+    #            "sparsevlm" | "vispruner" | "prunesid" | "btp" (medprune/baselines/)
+    score: str | None = None  # None | "attn" (last prompt token) | "ropefree" | "text" (every token after the
+    #                           image) | "raters" (SparseVLM text raters)
     score_layer: int | None = None
     mask_from: int | None = None
     gate: str | None = None  # None | "foreground" | "oracle"
@@ -74,6 +76,12 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("fastv_bottom", "topk", score="attn", score_layer=1, mask_from=2, invert=True),
         _spec("fastv_text", "topk", score="text", score_layer=1, mask_from=2),
         _spec("full_profile", "none", profile=True),
+        # Published pruners, official selection code (medprune/baselines/, plan.md E13). Stage layers and budgets
+        # come from the method's schedule at run time; mask_from here is the first layer any token is masked.
+        _spec("sparsevlm", "sparsevlm", score="raters", score_layer=2, mask_from=3),
+        _spec("vispruner", "vispruner", mask_from=0),
+        _spec("prunesid", "prunesid", mask_from=0),
+        _spec("btp", "btp", score="attn", mask_from=3),
     ]
 )
 

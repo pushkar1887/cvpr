@@ -153,3 +153,11 @@ blocks:
      methods: [full_profile, fastv_text, ropefree, gate_ropefree, fastv_bottom]}
   - {exp: E8r, tier: P2, account: C, model: huatuo7b, groups: [rin_abn_closed],
      methods: [full, text_only, random_l2, fastv, gate_fastv]}
+
+  # Stage 6 — E13: published training-free pruners on the main grid (added 2026-11-04). Official selection code,
+  # medprune prompts and scoring (medprune/baselines/): text-guided attention inside the LLM (SparseVLM), vision-tower
+  # attention + diversity (VisPruner), semantic groups + NMS (PruneSID), balanced attention/diversity stages (BTP).
+  # 10% kept; multi-stage methods token-matched to FastV. Second Kaggle slot of A and B (notebooks
+  # medprune-baselines-<model>), in parallel with session 2. Pre-LLM methods first (cheapest), SparseVLM last.
+  - {exp: E13, tier: P0, account: A, model: lingshu7b, groups: [S1, S3], methods: [prunesid, vispruner, btp, sparsevlm]}
+  - {exp: E13, tier: P0, account: B, model: qwen3vl8b, groups: [S1, S3], methods: [prunesid, vispruner, btp, sparsevlm]}

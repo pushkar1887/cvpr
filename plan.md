@@ -41,11 +41,11 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 14.33 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46) | 9.5 (v9: E10r, E11r, E12, rest of E3, E4, E5) | 0.4 (spill) | 5.8 |
 | B — Qwen3-VL | `pushkararora` | 30 | 12.93 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76) | ≈ 5.6 (v5: same blocks; MAX_HOURS 9.5) | 0 | 11.5 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 16.16 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge 0.10 + 0.21 + 0.11 + 0.11) | 0 | 4.1 (HuatuoGPT P2 3.4, E9 0.5, judge pass 5 0.2) | 1.5 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 16.16 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge 0.10 + 0.21 + 0.11 + 0.11) | 0 | 0.7 (E9 0.5 after task T6, judge pass 5 0.2; HuatuoGPT P2 done inside E8 / E8r) | 4.9 |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
-RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks (incl.
-its layer profile, the 1D-RoPE case). Restore datasets for the A/B sessions:
+RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge). HuatuoGPT P2 blocks (incl.
+its layer profile, the 1D-RoPE case) are done. Restore datasets for the A/B sessions:
 `medprune-restore-<model>` (private, one per account; run files + static maps, `RESTORE_FROM = "auto"`).
 
 Deadlines (CVPR 2027 CFP ✓): paper enrollment **Nov 10, 23:59 AoE = Nov 11, 17:29 IST**; submission **Nov 16 AoE =

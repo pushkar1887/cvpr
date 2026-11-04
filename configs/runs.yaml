@@ -161,3 +161,7 @@ blocks:
   # medprune-baselines-<model>), in parallel with session 2. Pre-LLM methods first (cheapest), SparseVLM last.
   - {exp: E13, tier: P0, account: A, model: lingshu7b, groups: [S1, S3], methods: [prunesid, vispruner, btp, sparsevlm]}
   - {exp: E13, tier: P0, account: B, model: qwen3vl8b, groups: [S1, S3], methods: [prunesid, vispruner, btp, sparsevlm]}
+  # DivPrune ± gate on the baseline-table cells E6 did not cover (added 2026-11-05), so DivPrune has every cell:
+  # OmniMedVQA anatomy for both models, RadImageNet abnormality for Qwen3-VL (Lingshu's is in E6, account A). Role C.
+  - {exp: E13, tier: P1, account: C, model: lingshu7b, groups: [S3], methods: [divprune, gate_divprune]}
+  - {exp: E13, tier: P1, account: C, model: qwen3vl8b, groups: [rin_abn_closed, S3], methods: [divprune, gate_divprune]}

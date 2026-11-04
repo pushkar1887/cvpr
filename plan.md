@@ -2317,3 +2317,25 @@ run IDs, counts, accuracies with CIs. Template:
   does not survive 10%); the gate repairs both and is insensitive to τ. Cross-account determinism: C's
   `artifact_excl` rerun equals A's on all 1,061 questions (keep-sets and responses).
 - Judge pass 4 (1,145 answers) running on C since 19:40.
+
+### 2026-11-04 — Claude — HuatuoGPT E8r (RadImageNet) read; judge pass 4 merged
+- C `medprune-gpu-huatuo7b` v3 (E8r, `cvpr` secret attached) COMPLETE ~20:25: 16 runs × 1,000, all complete, merged
+  (191 run files). Judge pass 4: 1,145 v3 verdicts merged (7,310 lines); 33 answers from C's E6-P2 SLAKE runs remain
+  for pass 5 (with E13's SLAKE answers). C `medprune-gpu-lingshu7b` v3 (E6-P2, RadImageNet half only) launched 20:28.
+- **RadImageNet anatomy, − Random (10% kept):**
+  | | HuatuoGPT | Lingshu | Qwen3-VL |
+  |---|---|---|---|
+  | Full / Random / text-only | 88.6 / 84.5 / 26.9 | 89.0 / 79.8 / 20.1 | 89.7 / 84.6 / 30.1 |
+  | FastV | **−0.1 [−1.9, +1.7]** | −41.7 | −33.7 |
+  | RoPE-free / Gate+FastV | +2.5 / +2.0 | −42.3 / −28.5 | −31.9 / −18.7 |
+  | `fastv_text` | −6.5 | — | — |
+  | least-attended (`fastv_bottom`) | **−33.1** | (SLAKE: Lingshu's least-attended beat its most-attended) | — |
+  FastV's keep mass by row quarter (top → bottom) 0.16 / 0.06 / 0.21 / 0.57 (1D-RoPE bottom-row prior, as on SLAKE).
+- **Reading (G22).** RadImageNet's collapse is **not a property of the dataset**: HuatuoGPT's FastV ties Random there,
+  and its attention is strongly informative (most-attended beat least-attended by 33 points). [FLAG] Confound:
+  HuatuoGPT always sees 576 tokens (RadImageNet's 224² images padded to 336²), the Qwen-family models 64. The
+  session-2 run E10r (RadImageNet at 448², 256 tokens for Lingshu / Qwen3-VL) separates token count from
+  architecture; until then the claim is "Qwen-family models at 64 tokens", not "RadImageNet".
+- [FLAG] RadImageNet abnormality is not image-dependent for Qwen3-VL: text-only 71.4 vs Full 71.8 (Lingshu 27.7 vs
+  46.8; HuatuoGPT 30.5 vs 41.3, with Full below Random 42.2). Pruning deltas on that cell measure nothing for Qwen3-VL;
+  report it only with this caveat, or drop it from Table 1 for Qwen3-VL.

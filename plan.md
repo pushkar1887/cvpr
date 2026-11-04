@@ -27,7 +27,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 5b | Confound controls: natural (E7), resolution (E10, E10r), flip + bottom-k (E11, E11r) | ✅ C half DONE (Qwen3-VL 21:14, Lingshu 21:18; 38 runs, all complete); RadImageNet arms (E10r, E11r) in A/B session 2 | 6.14 | 2.6 (A/B) | Nov 3–4 | **P13 contradicted**: FastV < Random on photographs (−8.7 / −4.9). **G1**: token count is a modest amplifier; RadImageNet's collapse is dataset-specific. **G3**: Lingshu's keep-set is positional (flip). **G4**: Lingshu's least-attended tokens beat its most-attended (+6.2) |
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | 🔄 RUNNING: A v9, B v5 (17:45, MAX_HOURS 9.5; order E10r → E11r → E12 → rest of E3 → E4 → E5 → SLAKE-zh) | 0 | 15.1 running | Nov 4–5 | Fig. 2, Fig. 3 (D1), Fig. 4 |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | 🔄 RUNNING on the second slot of A and B (19:07; notebooks `medprune-baselines-<model>` v2, MAX_HOURS 6). Smoke v1 passed (3 SLAKE questions per method, budgets as designed) | 0.15 (smoke) | ≈ 3.1 + 2.8 | Nov 4 | Baselines table; P15–P18 |
-| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | 🔄 RUNNING on C (17:44): HuatuoGPT **E8r** (RadImageNet, `cvpr` secret attached by Pushkar) and Lingshu **E6-P2** (gate variants, PDrop); judge pass 4 (1,145 answers) launches when a C slot frees. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 3.99 | 6.6 running + 4.3 | Nov 3–7 | G6 answered on SLAKE; RIN arm running |
+| 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ E8r, E6-P2 (both halves) and judge pass 4 DONE and merged (Nov 4 22:40). Judge pass 5 (E13 SLAKE + 33 E6-P2 answers) waits for E13. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 10.02 | 0 | Nov 3–7 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Totals (measured rates, §C4):** spent 33.3 GPU-h · running 15.1 (A, B) + 6.6 (C) · left 4.3 → **≈ 61
@@ -41,7 +41,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 14.33 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46) | 9.5 (v9: E10r, E11r, E12, rest of E3, E4, E5) | 0.4 (spill) | 5.8 |
 | B — Qwen3-VL | `pushkararora` | 30 | 12.93 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76) | ≈ 5.6 (v5: same blocks; MAX_HOURS 9.5) | 0 | 11.5 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 10.13 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34; judge 0.10 + 0.21 + 0.11) | 6.6 (E8r 3.5, E6-P2 3.1) | 4.3 (HuatuoGPT P2 3.4, E9 0.5, judge pass 4 0.1, slack for reruns 0.3) | 0.8 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 16.16 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge 0.10 + 0.21 + 0.11 + 0.11) | 0 | 4.1 (HuatuoGPT P2 3.4, E9 0.5, judge pass 5 0.2) | 1.5 |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge), HuatuoGPT P2 blocks (incl.
@@ -996,7 +996,9 @@ by Nov 14, otherwise to the supplementary, Nov 23).
 | `gate_tau25`, `gate_tau75` | the gate's single threshold at 0.25 and 0.75 | the gate is not tuned to the test set if results barely move |
 | `pdrop`, `gate_pdrop` | multi-stage attention pruning, token-matched to FastV, ± gate | composability with another attention method |
 
-Setup: Lingshu on S1, role C, 18 run IDs, 3.1 h at measured rates (planned 3.8).
+Setup: Lingshu on S1, role C, 18 run IDs, 3.1 h at measured rates (planned 3.8). **Result (Nov 4, 3.22 h):** SLAKE —
+the gate repairs FastV and PDrop and is flat in τ; RadImageNet (64 tokens) — it repairs a third at most and τ matters
+(work log, Nov 4 22:40).
 ```bash
 python -m medprune.run_eval --exp E6 --model lingshu7b --account C --bundle $DATA --bundle $RIN --out $RES --max-hours 5.5
 ```
@@ -2339,3 +2341,23 @@ run IDs, counts, accuracies with CIs. Template:
 - [FLAG] RadImageNet abnormality is not image-dependent for Qwen3-VL: text-only 71.4 vs Full 71.8 (Lingshu 27.7 vs
   46.8; HuatuoGPT 30.5 vs 41.3, with Full below Random 42.2). Pruning deltas on that cell measure nothing for Qwen3-VL;
   report it only with this caveat, or drop it from Table 1 for Qwen3-VL.
+
+### 2026-11-04 — Claude — C E6-P2 RadImageNet half read (22:40)
+- C `medprune-gpu-lingshu7b` v3 (E6-P2, RadImageNet only, `cvpr` secret loaded) COMPLETE, 1.29 h: 12 runs × 1,000,
+  all complete, merged (202 run files). The `artifact_excl` rin_anat rerun equals A's session-1 file on every
+  question once timing and the new `keep_stages: null` field are dropped (torch cu130 vs cu128): determinism holds
+  across accounts on RadImageNet too; A's copy kept.
+- **Lingshu, − Random (10% kept), RIN anatomy / RIN abnormality:** FastV −41.7 / −14.2; PDrop **−61.2** / −17.5;
+  Gate+FastV (τ 0.5) −28.5 / −10.1; Gate+PDrop −31.4 / −14.0; Gate τ 0.25 −32.8 / −12.6; Gate τ 0.75 **−25.6** /
+  −8.9; background quota 3% −36.1 / −13.5; `artifact_excl` −42.0 / −15.3. All CIs exclude 0 (p < 1e-5).
+- **Reading.** (1) On RadImageNet the gate is a partial remedy only: it removes 32–39% of FastV's deficit on anatomy
+  (−41.7 → −28.5 / −25.6), versus all of it on SLAKE. (2) τ matters here and is monotone (a stricter foreground
+  filter, `gate_frac >= τ`, helps: −32.8 → −28.5 → −25.6), while SLAKE was flat (−1.0 / +0.3 / +0.9); giving 3% back
+  to the background hurts (−36.1). So at 64 tokens the deficit is not missing context: it is attention picking the
+  wrong foreground tokens, and the gate helps only by removing the edge tokens with mixed foreground. (3) PDrop is far
+  worse than FastV at 64 tokens (−61.2): its late stages hold ~0–2 visual tokens, and token matching by the mean
+  does not protect it when the start count is this small. (4) H3 stays dead on RadImageNet (`artifact_excl` =
+  FastV). [FLAG] τ was chosen on SLAKE; reporting τ 0.75 as the RadImageNet number would be test-set tuning — the
+  paper reports τ 0.5 everywhere and the τ sweep as robustness.
+- Ledger C: 16.16 spent (E8r 2.70, E6-P2 v2 1.93, judge pass 4 0.11, v3 1.29); ≈ 5.6 h left this week.
+- Still running: E13 on the second slot of A and B (19:07, MAX_HOURS 6); session 2 on A (v9) and B (v5).

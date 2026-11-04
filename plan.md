@@ -2434,8 +2434,8 @@ run IDs, counts, accuracies with CIs. Template:
 
 ### 2026-11-05 — Claude — B session 2 (Qwen3-VL) read: E10r, E11r, D2, E5, E4
 - B `medprune-gpu-qwen3vl8b` v5 COMPLETE 00:10, 6.30 h: 79 runs (44 restored from session 1, 35 new), all complete;
-  merged (269 run files, no conflicts). Judge pass 6 (420 open answers: 331 SLAKE-zh, 89 SLAKE-en) pushed to C v6.
-  SLAKE cells below are rule-scored until it is merged.
+  merged (269 run files, no conflicts). Judge pass 6 (420 open answers: 331 SLAKE-zh, 89 SLAKE-en) merged; SLAKE
+  cells below are rule-scored, the judge-scored ones are in the next bullet list.
 - **E10r (G1, G22) — token count is not the explanation.** RadImageNet anatomy at 448² (256 tokens, Full 90.7,
   Random 89.2): FastV − Random **−29.2** [−32.6, −25.8] vs −33.7 at 64 tokens; Gate+FastV −11.5 vs −18.7;
   Uniform +0.7, Gate+Uniform +0.4. Quadrupling the tokens removes 13% of FastV's loss. With HuatuoGPT's tie on the
@@ -2459,3 +2459,10 @@ run IDs, counts, accuracies with CIs. Template:
   −0.8 (Full 83.0, Random 79.8, text-only 55.1): no collapse on the panel for Qwen3-VL. Per-modality reading (P9)
   waits for Lingshu's panel.
 - Ledger B: 23.64 spent, 6.4 left this week. Restore datasets not refreshed (no further B session planned).
+- **Judge pass 6 merged** (C v6, 0.08 h; 420 verdicts; 5,723 v3 keys; 0 of 62,405 open rows without a verdict).
+  Qwen3-VL under the guarded judge: SLAKE `fastv_text` − Random −1.2 [−3.5, +1.1] (rule +1.3), − FastV +3.8;
+  SparseVLM − `fastv_text` +2.0 [+0.1, +3.9]. Budget curve SLAKE, FastV − Random (Gate+FastV): 5% −0.7 (+2.6), 10%
+  −5.0 (−0.2), 25% −2.8 (−0.1) — the gate is at Random at every budget. **SLAKE-zh** (Full / Random / text-only
+  51.4 / 50.4 / 23.0): FastV −7.6 [−10.5, −4.8], Gate+FastV −2.9 [−5.0, −0.7] (+4.7 over FastV). [FLAG] The rule
+  scorer is unusable on Chinese answers (Full 35.8 rule vs 51.4 judge; FastV −3.4 rule vs −7.6 judge): every
+  SLAKE-zh number in the paper must be judge-scored. Ledger C: 16.30 spent.

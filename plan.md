@@ -43,7 +43,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 | A — Lingshu | `pushkararora88` | 30 | 28.58 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43) | 0 | 0 (its last run moved to C) | 1.4 |
 | B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38) = 25.02 | 0 | 0 | 5.0 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9) | 0 | 0 | 2.6 |
-| D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | 0 | — | 30; needs the `cvpr` secret added on D before any RadImageNet run |
+| D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | 0 | — | 30; `cvpr` secret added by the user (Nov 5) → RadImageNet allowed; first D session verifies it in its setup cell |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge). HuatuoGPT P2 blocks (incl.
@@ -2595,3 +2595,5 @@ run IDs, counts, accuracies with CIs. Template:
   Tests: 134.
 - SLAKE masks for `analysis evidence` re-fetched from C's bundle output (180 `mask.png` + `slake_mask_labels.txt`,
   scratchpad only, not committed).
+- The user added the `cvpr` secret (HF token) on account D. D can now build RadImageNet in-session; the first D
+  notebook's setup cell confirms the secret resolves before any GPU work.

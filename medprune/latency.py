@@ -71,32 +71,43 @@ def prefill_flops(n_text: int, vis_counts: np.ndarray, d: int, m: int) -> float:
     return float(layer_flops(n_text + np.asarray(vis_counts), d, m).sum())
 
 
+def _read_rows(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
 def flops_table(results: Path, prompt_tokens: dict[str, dict[str, int]], profile: str = "t4x2"):
     """Mean prefill FLOPs relative to Full on the same questions, per model x dataset x method x budget."""
     import pandas as pd
 
     from .selection import METHODS
 
-    rows = []
+    paths = []
     for path in sorted((results / "runs").glob(f"*__{profile}.jsonl")):
         model, dataset, method, budget = path.name.split("__")[:4]
-        if method not in METHODS or model not in MODEL_DIMS or dataset not in prompt_tokens.get(model, {}):
-            continue
+        if method in METHODS and model in MODEL_DIMS and dataset in prompt_tokens.get(model, {}):
+            paths.append((path, model, dataset, method, budget, _read_rows(path)))
+    # The Full reference is the image's visual-token count, taken from any run that saw the image: a text-only row
+    # records none, and using its own count would make text-only cost as much as Full.
+    n_vis = {}
+    for _, model, dataset, _, _, run in paths:
+        for r in run:
+            if r.get("n_vis"):
+                n_vis[(model, dataset, r["qid"])] = int(r["n_vis"])
+    rows = []
+    for path, model, dataset, method, budget, run in paths:
         d, m, n_layers = MODEL_DIMS[model]
         spec = METHODS[method]
         text = prompt_tokens[model][dataset]
         flops, full, vis_mean = [], [], []
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            r = json.loads(line)
-            if r["qid"] not in text:
+        for r in run:
+            ref = n_vis.get((model, dataset, r["qid"]))
+            if r["qid"] not in text or ref is None:
                 continue
             counts = visual_tokens_per_layer(r, spec.mask_from, spec.rule, n_layers)
             if not spec.image:
                 counts = np.zeros(n_layers, dtype=np.int64)
             flops.append(prefill_flops(text[r["qid"]], counts, d, m))
-            full.append(prefill_flops(text[r["qid"]], np.full(n_layers, int(r.get("n_vis") or 0)), d, m))
+            full.append(prefill_flops(text[r["qid"]], np.full(n_layers, ref), d, m))
             vis_mean.append(counts.mean())
         if flops:
             rows.append({"model": model, "dataset": dataset, "method": method, "budget_pct": int(budget[1:]),

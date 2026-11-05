@@ -21,6 +21,22 @@ def test_prefill_flops():
     assert fastv < full and prefill_flops(20, np.full(4, 10), d, m) < fastv
 
 
+def test_flops_table_text_only_uses_the_image_token_count_as_reference(tmp_path):
+    import json
+
+    from medprune.latency import flops_table
+
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    rows = {"full__r100": {"n_vis": 100, "keep_idx": None}, "text_only__r100": {"n_vis": None, "keep_idx": None},
+            "fastv__r010": {"n_vis": 100, "k_keep": 10, "keep_idx": list(range(10))}}
+    for name, row in rows.items():
+        (runs / f"lingshu7b__slake_en__{name}__s0__t4x2.jsonl").write_text(json.dumps({"qid": "q1", **row}) + "\n")
+    t = flops_table(tmp_path, {"lingshu7b": {"slake_en": {"q1": 30}}}).set_index("method")["rel_flops"]
+    assert t["full"] == 1.0
+    assert 0 < t["text_only"] < t["fastv"] < 1.0
+
+
 def test_kept_sequence():
     vis = np.arange(3, 9)  # 6 visual tokens at positions 3..8 of a 12-token sequence
     assert kept_sequence(12, vis, np.array([0, 5])).tolist() == [0, 1, 2, 3, 8, 9, 10, 11]

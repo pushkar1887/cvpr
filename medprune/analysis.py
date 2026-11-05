@@ -570,8 +570,8 @@ def evidence_retention(df: pd.DataFrame, evidence: dict[tuple, dict], budget: in
         e = evidence.get((r.model, r.dataset, r.qid))
         if e is None:
             continue
-        ev, keep = e["frac"] > 0, np.asarray(r.keep_idx)
-        if not ev.any():
+        ev, keep = e["frac"] > 0, np.asarray(r.keep_idx, dtype=np.int64)
+        if not ev.any() or keep.size == 0:  # staged pruners (BTP) log their sets in keep_stages, not one keep_idx
             continue
         recall = ev[keep].sum() / ev.sum()
         rows.append({"model": r.model, "dataset": r.dataset, "method": r.method, "seed": r.seed, "qid": r.qid,

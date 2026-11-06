@@ -135,6 +135,17 @@ def test_cdpruner_matches_the_official_encode_images(n, k):
     assert np.array_equal(select_cdpruner(visual.numpy(), text.numpy(), k), official)
 
 
+def test_cdpruner_neg_matches_the_official_llava_sign():
+    encode = _function(ROOT / "CDPruner" / "llava" / "model" / "llava_arch.py", "encode_images", "LlavaMetaForCausalLM")
+    g = torch.Generator().manual_seed(7)
+    visual, text = torch.randn(200, 64, generator=g), torch.randn(9, 64, generator=g)
+    tower = lambda images, texts=None: (visual[None], visual[None], text.mean(0, keepdim=True))  # noqa: E731
+    model = SimpleNamespace(get_vision_tower=lambda: tower, mm_projector=lambda x: x)
+    _, masks = encode(SimpleNamespace(get_model=lambda: model, visual_token_num=20), None, texts=["question"])
+    assert np.array_equal(select_cdpruner(visual.numpy(), text.numpy(), 20, negate=True),
+                          np.flatnonzero(masks[0].numpy()))
+
+
 def test_cdpruner_greedy_map_maximizes_the_log_determinant_step_by_step():
     rng = np.random.default_rng(1)
     visual, text = rng.normal(size=(30, 6)), rng.normal(size=(4, 6))

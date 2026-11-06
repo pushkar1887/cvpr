@@ -196,9 +196,11 @@ blocks:
   # Nov 7 — E17: where along the first layers is the FastV ranking broken? FastV scored at layers 2-5 (K = 3-6) on RIN
   # anatomy, both models, plus Lingshu's `sparsevlm_single` (did not fit A v10). The E12 profile's per-layer position
   # share is the prediction (plan.md E14-E16 card, P24-P25). Account A after the weekly reset.
-  - {exp: E17, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc], methods: [fastv_k3, fastv_k4, fastv_k5, fastv_k6]}
+  # + `cdpruner_neg` (the released code's relevance sign; Nov 7 05:00, after CDPruner kept background at 2.5x chance).
+  - {exp: E17, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc],
+     methods: [fastv_k3, fastv_k4, fastv_k5, fastv_k6, cdpruner_neg]}
   - {exp: E17, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc],
-     methods: [fastv_k3, fastv_k4, fastv_k5, fastv_k6, sparsevlm_single]}
+     methods: [fastv_k3, fastv_k4, fastv_k5, fastv_k6, sparsevlm_single, cdpruner_neg]}
 
   # Nov 7 — E15b: RadImageNet open questions for Qwen3-VL (E15's second model, after the weekly reset), judged in-session.
   - {exp: E15b, tier: P0, account: A, model: qwen3vl8b, groups: [rin_open],

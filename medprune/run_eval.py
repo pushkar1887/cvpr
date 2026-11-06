@@ -308,7 +308,8 @@ def _hiprune(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
 def _cdpruner(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .baselines.cdpruner import select_cdpruner
 
-    kept = select_cdpruner(adapter.visual_embeddings(inputs), adapter.instruction_embeddings(inputs), k, allowed)
+    kept = select_cdpruner(adapter.visual_embeddings(inputs), adapter.instruction_embeddings(inputs), k, allowed,
+                           negate=METHODS[spec.method].invert)
     state.apply_keep(kept, 0)
 
 

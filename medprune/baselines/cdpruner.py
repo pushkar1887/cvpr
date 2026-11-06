@@ -9,7 +9,9 @@ Relevance for models without a CLIP text tower (paper §3.3, used for Qwen2.5-VL
 only): visual embeddings = the multimodal projector's outputs, text embedding = the mean of the LLM's input
 embeddings of the instruction tokens, r_i = cos(H_v^i, mean H_q) (Eq. 5), then min-max normalization (Eq. 6). The
 LLaVA code negates the CLIP image-text similarity before normalizing; Eq. 5 has no negation, and the paper gives no
-negation for the projector-embedding variant, so none is applied here. Instruction tokens = the user turn's text
+negation for the projector-embedding variant, so `cdpruner` applies none. `cdpruner_neg` (Nov 7 sensitivity run) uses
+the released code's sign, r_i = -cos(H_v^i, mean H_q): on Qwen3-VL RadImageNet anatomy the unnegated relevance keeps
+background tokens at 2.5x chance. Instruction tokens = the user turn's text
 after the image (question and answer-format line), without the chat template.
 With a foreground gate (gate_cdpruner), the DPP runs on the gate's foreground tokens only.
 """
@@ -64,13 +66,16 @@ def instruction_relevance(visual: np.ndarray, text: np.ndarray) -> np.ndarray:
     return (v @ q.T)[:, 0].numpy()
 
 
-def select_cdpruner(visual: np.ndarray, text: np.ndarray, k: int, allowed: np.ndarray | None = None) -> np.ndarray:
-    """k kept tokens (sorted indices) from projected visual tokens [N, d] and instruction embeddings [M, d]."""
+def select_cdpruner(visual: np.ndarray, text: np.ndarray, k: int, allowed: np.ndarray | None = None,
+                    negate: bool = False) -> np.ndarray:
+    """k kept tokens (sorted indices) from projected visual tokens [N, d] and instruction embeddings [M, d].
+    `negate`: the released LLaVA code's sign (relevance = -cosine)."""
     n = visual.shape[0]
     if k >= n:
         return np.arange(n, dtype=np.int64)
     pool = np.arange(n) if allowed is None else np.flatnonzero(allowed)
     rel = instruction_relevance(visual, text)
+    rel = -rel if negate else rel
     if pool.size <= k:  # gate too tight: keep the pool, top up by relevance outside it
         order = np.argsort(-rel, kind="stable")
         rest = order[~np.isin(order, pool)][: k - pool.size]

@@ -100,6 +100,7 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("hiprune", "hiprune", mask_from=0),
         _spec("cdpruner", "cdpruner", mask_from=0),
         _spec("gate_cdpruner", "cdpruner", mask_from=0, gate="foreground"),
+        _spec("cdpruner_neg", "cdpruner", mask_from=0, invert=True),  # the released LLaVA code's relevance sign
         _spec("feather", "feather", score="ropefree", mask_from=8),
         _spec("vscan", "vscan", mask_from=0),
         _spec("transprune", "transprune", score="text", mask_from=7),

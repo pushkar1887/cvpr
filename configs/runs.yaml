@@ -201,6 +201,6 @@ blocks:
      methods: [fastv_k3, fastv_k4, fastv_k5, fastv_k6, sparsevlm_single]}
 
   # Nov 7 — E15b: RadImageNet open questions for Qwen3-VL (E15's second model, after the weekly reset), judged in-session.
-  - {exp: E15b, tier: P0, account: B, model: qwen3vl8b, groups: [rin_open],
+  - {exp: E15b, tier: P0, account: A, model: qwen3vl8b, groups: [rin_open],
      methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform, uniform_l2, prunesid]}
-  - {exp: E15b, tier: P1, account: B, model: qwen3vl8b, groups: [rin_open], methods: [random_l2], seeds: [1, 2]}
+  - {exp: E15b, tier: P1, account: A, model: qwen3vl8b, groups: [rin_open], methods: [random_l2], seeds: [1, 2]}

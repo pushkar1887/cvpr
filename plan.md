@@ -44,7 +44,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12) | 0 | 0 | ≈ 0.3 |
 | B — Qwen3-VL | `pushkararora` | 30 | 26.52 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50) | `medprune-gpu-qwen3vl8b` v7 (E14 Lingshu RIN) | 0 | weekly reset ≈ 05:30 IST Nov 7 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9) | v5 E15 (Nov 7 03:14, ≈ 2.4 h; the user counted 2 h 47 min left) | 0 | ≈ 0.4 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9; v5 E15 1.80) = 21.01 | 0 | E14o after the reset | reset ≈ 05:30 IST Nov 7 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
@@ -2751,3 +2751,9 @@ run IDs, counts, accuracies with CIs. Template:
   (BRR, distinct sets) in the E14-E16 card: merging or late pruning survives a biased selection; early hard drops do
   not. CDPruner's sign is now a sensitivity run (`cdpruner_neg`, `263da31`, in E17).
 - The user: every Kaggle account's GPU quota resets ≈ 05:30 IST; all accounts and slots may be used after it.
+- 05:04 **C v5 COMPLETE** (≈ 1.80 h; `HF token loaded`; RadImageNet: open 2,000, closed 5,000, MC 2,000 → `rin_open`
+  500 + 500; masks 761 images; 10 / 10 runs; 1,965 in-session verdicts appended to `judge/verdicts.jsonl` — keys and
+  probabilities only, no RadImageNet text). Result in the E14-E16 card (FastV −12.4 judge-scored; anatomy −25.1).
+- Queued for 05:40-05:41 (after the reset): A `medprune-gpu-lingshu7b` v11 (E17 + `cdpruner_neg`), A
+  `medprune-baselines-lingshu7b` (E15b, Qwen3-VL `rin_open`), B `medprune-baselines-qwen3vl8b` v4 (E18 merge ablation,
+  both models), C `medprune-gpu-lingshu7b` v6 (E14o). Predictions P24-P27 written before any of them.

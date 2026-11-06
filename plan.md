@@ -42,7 +42,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | 28.58 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43) | v10 E16 (Nov 7 03:14, ≈ 1.2 h) | 0 | 0.2 |
+| A — Lingshu | `pushkararora88` | 30 | 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12) | 0 | 0 | ≈ 0.3 |
 | B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38) = 25.02 | 0 | E14 RadImageNet cells, both models (≈ 3.3 h, after D's smoke) | 1.7 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9) | v5 E15 (Nov 7 03:14, ≈ 2.4 h; the user counted 2 h 47 min left) | 0 | ≈ 0.4 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
@@ -1086,8 +1086,29 @@ PruneSID. E16: `fastv_raters` (SparseVLM's raters, layer 1 → 2, 10%: the FastV
 - P21 (E14): FEATHER stays above Random − 5 on Lingshu RIN anatomy — its K = 16 stage rescues it, not the RoPE removal
   (RoPE-free = FastV on these models, G18). 50%.
 - P22 (E16): on Qwen3-VL RIN anatomy, `fastv_raters` − Random ≤ −15 (the raters alone do not rescue SparseVLM; its
-  schedule does). 55%.
+  schedule does). 55%. **Supported (Nov 7): −25.9 [−28.9, −22.7]** — but the larger share of the rescue is the scoring
+  layer (1 → 2), not the schedule (E16 result below).
 - P23 (E15): on `rin_open` (Lingshu, judge), FastV − Random ≤ −8 and Gate+Uniform ≥ Random − 3. 55%.
+
+**E16 result (A v10, Nov 7 04:20; 5 of 6 runs; Lingshu `sparsevlm_single` did not fit the 1.0 h cap, queued on B).**
+Where SparseVLM's 33.8-point lead over FastV on Qwen3-VL RIN anatomy comes from, each step paired on the same 1,000
+questions (X − Random; Random = mean of seeds 0–2):
+
+| Qwen3-VL, RIN anatomy | readout | scored at → masked from | stages | − Random | step |
+|---|---|---|---|---|---|
+| `fastv` | last token | 1 → 2 | 1 | −33.7 [−36.8, −30.5] | |
+| `fastv_text` | every token after the image | 1 → 2 | 1 | −27.8 | +5.9 |
+| `fastv_raters` | SparseVLM's raters | 1 → 2 | 1 | −25.9 [−28.9, −22.7] | +1.9 [+0.6, +3.3] vs `fastv_text` (p 0.010) |
+| `sparsevlm_single` | raters | 2 → 3 | 1 | −8.7 [−11.1, −6.0] | **+17.2 [+14.2, +20.3]** (one layer later) |
+| `sparsevlm` | raters | 2/6/15 → 3/7/16 | 3, token-matched | +0.1 [−1.8, +2.1] | +8.8 [+6.6, +11.0] |
+
+Qwen3-VL SLAKE (judge; 4 new open answers rule-scored): FastV −5.0, `fastv_raters` −0.8 (+4.2 vs FastV), `sparsevlm_single`
+−1.0, SparseVLM +0.8 — the readout matters there, the layer does not. Lingshu RIN anatomy: `fastv_raters` −41.3 = FastV
+(+0.4, n.s.), as `fastv_text` was: on Lingshu no readout change helps. **Reading:** on Qwen3-VL the layer-1 ranking is
+the broken object (the E12 profile already shows Qwen3-VL's question share is ~0 at layer 1); one more layer removes half
+of FastV's RadImageNet loss. [FLAG] A candidate mechanism is Qwen3-VL's DeepStack, which adds vision-encoder features
+to the visual hidden states after decoder layers 0–2 — the layer-2 scores are the first to see two injections. This is
+a hypothesis, not tested; the E12 per-layer logs (`lp_last_l1` vs `lp_last_l2`, position share) can check it offline.
 
 **Accounts.** D's two GPU notebooks were created by API on Nov 7 and have no `cvpr` secret, so D runs SLAKE and
 OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run the RadImageNet cells (both models).
@@ -2667,3 +2688,8 @@ run IDs, counts, accuracies with CIs. Template:
   v3 (Qwen3-VL RadImageNet, 2.0) and `medprune-gpu-qwen3vl8b` v7 (Lingshu RadImageNet, 2.2).
 - [FLAG] The two-stage method idea (coverage early, text-guided attention late) is published (STS 2606.03569, VScan,
   LearnPruner, STAR-Pro): the paper stays diagnosis-first; VScan and TransPrune now represent that family in E14.
+- 04:20 **A v10 COMPLETE** (≈ 1.12 h): 5 runs × 1,000 / 1,061, merged (37 new files, no conflicts; the log did not
+  download — the CLI's cp1252 writer fails on a progress-bar character). E16 table in the E14–E16 card: on Qwen3-VL RIN
+  anatomy SparseVLM's rescue is +7.8 readout (raters vs last token), **+17.2 for scoring one layer later**, +8.8 for
+  its three-stage schedule; on Lingshu the raters change nothing. P22 supported. Lingshu `sparsevlm_single` (0.1 h)
+  did not fit A's 1.0 h cap → B after its E14 sessions.

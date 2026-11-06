@@ -293,7 +293,7 @@ def _visionzip(state, spec, sample, inputs, adapter, n: int, k: int, allowed=Non
 
     cues = adapter.vision_attention(inputs)
     kept, merge = select_visionzip(cues["attn"][max(cues["attn"])], cues["keys"], k, allowed)
-    state.merge = merge
+    state.merge = None if METHODS[spec.method].merge == "off" else merge
     state.apply_keep(kept, 0)
 
 
@@ -335,7 +335,7 @@ def _vscan(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
     local = LOCAL_BLOCK[adapter.name]
     cues = adapter.vision_attention(inputs, (local,))
     kept, merge = stage1(cues["attn"][local], cues["attn"][max(cues["attn"])], cues["embeds"], inputs.grid_hw, k1)
-    state.merge = merge
+    state.merge = None if METHODS[spec.method].merge == "off" else merge
     state.apply_keep(kept, 0)
     state.stages.append(Stage(layer, layer, lambda s, surv: stage2_keep(s, surv, k2), score_kind="ropefree"))
 
@@ -439,6 +439,13 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
                 state = PruneState(vis_pos=inputs.vis_pos)
                 state.apply_keep(scored.keep, method.mask_from)
                 state.logs = scored.logs
+                if method.merge == "nearest":  # E18: the dropped tokens merge into the kept ones (VScan's rule)
+                    from .baselines.vscan import merge_weights
+
+                    import torch
+
+                    emb = torch.as_tensor(adapter.visual_embeddings(inputs))
+                    state.merge = (state.keep, merge_weights(emb, torch.as_tensor(state.keep)))
             calls_before = hook.CALLS["decoder"]
             with pruning(state):
                 response, n_new = adapter.generate(inputs, max_new_tokens)

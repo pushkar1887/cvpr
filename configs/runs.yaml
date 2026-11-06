@@ -206,3 +206,16 @@ blocks:
   - {exp: E15b, tier: P0, account: A, model: qwen3vl8b, groups: [rin_open],
      methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform, uniform_l2, prunesid]}
   - {exp: E15b, tier: P1, account: A, model: qwen3vl8b, groups: [rin_open], methods: [random_l2], seeds: [1, 2]}
+
+  # Nov 7 05:15 — E18: merge ablation. On Qwen3-VL RIN anatomy VisionZip / VScan beat Random with keep-sets as biased as
+  # those of the collapsing methods: is it the merge? Same selection without the merge (`visionzip_nomerge`,
+  # `vscan_nomerge`) and FastV's pre-LLM keep-set with VScan's merge (`fastv_merge` vs `fastv_prellm`). Account B, slot 1.
+  - {exp: E18, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, slake_en],
+     methods: [fastv_merge, fastv_prellm, visionzip_nomerge, vscan_nomerge]}
+  - {exp: E18, tier: P0, account: B, model: lingshu7b, groups: [rin_anat_mc, slake_en],
+     methods: [fastv_merge, visionzip_nomerge, vscan_nomerge]}
+
+  # Nov 7 05:15 — E14o: the E14 pruners on RadImageNet open questions (Lingshu; E15's reference runs), judged in-session.
+  - {exp: E14o, tier: P1, account: C, model: lingshu7b, groups: [rin_open],
+     methods: [feather, cdpruner, cdpruner_neg, hiprune, visionzip, vscan, transprune, gate_visionzip]}
+

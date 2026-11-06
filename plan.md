@@ -1147,6 +1147,21 @@ last-token ranking is the prediction: Qwen3-VL RIN 51 / 36 / 46 / 52 / 33% at la
   ≤ −0.6. 45%.
 - P25 (E17): on Lingshu RIN anatomy every K in 3-6 stays ≥ 30 points below Random (its prior is flat at 65-73%). 75%.
 
+**E15 result (C v5, Nov 7 05:04, ≈ 1.8 h, 10 runs × 1,000, judge-scored in-session: 1,965 verdicts merged).**
+`rin_open`, Lingshu, X − Random (seeds 0-2; Random 24.1, Full 33.2, text-only 4.0): FastV **−12.4** [−14.7, −10.0],
+Gate+FastV −9.0 (+3.4 vs FastV), Uniform +0.5, Gate+Uniform −1.0 [−2.6, +0.7], PruneSID −0.3. By template: anatomy
+(Random 46.1, Full 56.6) FastV −25.1, Gate+FastV −20.5, Uniform +0.7, Gate+Uniform −2.5; pathology is at the floor (Full
+9.8, Random 2.5) and separates nothing. Rule scoring gives the same order (FastV −5.6). FastV keeps 27% of the image's
+contribution ((acc − text-only) / (Full − text-only)), Random 69%. **P23 supported.** The open-answer column shows the
+collapse that the multiple-choice column shows (MedSTP's strongest column is no exception).
+
+**E18 / E14o (added Nov 7 05:15, after the Qwen3-VL E14 read, before any E18 / E14o result).**
+- P26 (E18): on Qwen3-VL RIN anatomy, dropping the merge costs VisionZip ≥ 8 points and VScan ≥ 8 points
+  (`*_nomerge` − merged), and FastV's own pre-LLM keep-set gains ≥ 15 points from VScan's merge (`fastv_merge` −
+  `fastv_prellm`). 50%.
+- P27 (E14o): on `rin_open` anatomy questions (Lingshu, judge), VScan and FEATHER are within 3 points of Random, and
+  CDPruner (either sign) and HiPrune lose ≥ 8. 45%.
+
 **Accounts.** D's two GPU notebooks were created by API on Nov 7 and have no `cvpr` secret, so D runs SLAKE and
 OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run the RadImageNet cells (both models).
 `KEEP_GOING = True`: a failing method is reported and the next run starts.

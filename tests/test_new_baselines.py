@@ -428,3 +428,26 @@ def test_merge_hook_rewrites_the_tower_output_and_qwen3_deepstack():
         torch.testing.assert_close(b[5], (a[5] + a[6]) / 2)
         torch.testing.assert_close(b[[0, 6, 23]], a[[0, 6, 23]])
     torch.testing.assert_close(unmerged[0], plain[0])
+
+
+def test_merge_ablation_runs_drop_or_merge_on_the_fake_model(tmp_path):
+    import json
+
+    from medprune.data import Sample, write_manifest
+    from medprune.run_eval import RunSpec, run_many
+    from PIL import Image
+
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    (bundle / "images").mkdir(parents=True)
+    samples = []
+    for i in range(3):
+        Image.fromarray(np.full((32, 32, 3), 60 * i, np.uint8)).save(bundle / "images" / f"{i}.png")
+        samples.append(Sample(qid=f"toy/{i}", dataset="slake_en", image_id=f"toy/{i}", image_path=f"images/{i}.png",
+                              question="Is it?", answer="yes", answer_type="yesno", prompt_style="close"))
+    write_manifest(samples, bundle, "slake_en")
+    names = ("visionzip", "visionzip_nomerge", "vscan", "vscan_nomerge", "fastv_merge", "fastv_prellm")
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.25) for m in names]
+    run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    rows = {s.method: [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs}
+    for a, b in (("visionzip", "visionzip_nomerge"), ("vscan", "vscan_nomerge"), ("fastv_merge", "fastv_prellm")):
+        assert [r["keep_idx"] for r in rows[a]] == [r["keep_idx"] for r in rows[b]], (a, b)  # same selection

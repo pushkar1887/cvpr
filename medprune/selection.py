@@ -39,6 +39,8 @@ class MethodSpec:
     physical_gate: bool = False
     invert: bool = False  # keep the lowest scores instead (attention-informativeness control)
     profile: bool = False  # no pruning; log both readouts and sink scores at every layer (plan.md §A10 D1)
+    merge: str | None = None  # None = the method's own; "off" = drop without merging; "nearest" = merge every dropped
+    #                           token into its most similar kept token before the LLM (VScan's token_merging; E18)
 
 
 def _spec(name: str, rule: str, **kw) -> tuple[str, MethodSpec]:
@@ -104,6 +106,10 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("feather", "feather", score="ropefree", mask_from=8),
         _spec("vscan", "vscan", mask_from=0),
         _spec("transprune", "transprune", score="text", mask_from=7),
+        # Merge ablation (plan.md E18, Nov 7): does merging, not selection, rescue VisionZip and VScan?
+        _spec("visionzip_nomerge", "visionzip", mask_from=0, merge="off"),
+        _spec("vscan_nomerge", "vscan", mask_from=0, merge="off"),
+        _spec("fastv_merge", "topk", score="attn", score_layer=1, mask_from=0, two_pass=True, merge="nearest"),
     ]
 )
 

@@ -57,6 +57,9 @@ class PruneState:
     text_pos: torch.Tensor | None = None  # sequence positions of the tokens after the image ("text" readout)
     profile: bool = False  # log log-attention of both readouts and visual-sink scores at every layer (plan.md D1)
     need_raters: bool = False  # SparseVLM: choose text raters from the decoder input embeddings (layer-0 pre-hook)
+    merge: tuple[np.ndarray, np.ndarray] | None = None  # (rows, weights [R, N]): vision output[rows] <- weights @ output
+    ttv_layers: tuple[int, ...] = ()  # TransPrune: layers whose token transition variation is recorded
+    ttv: dict[int, np.ndarray] = field(default_factory=dict)  # layer -> TTV of the visual tokens [N]
     rater_pos: torch.Tensor | None = None  # sequence positions of the raters
     stop_after_scoring: bool = False
     logs: dict[str, np.ndarray] = field(default_factory=dict)
@@ -162,14 +165,21 @@ def sink_scores(hidden: torch.Tensor, vis_pos: torch.Tensor, tau: float = SINK_T
     return phi[:, dims].abs().max(dim=-1).values.cpu().numpy()
 
 
-def ropefree_attention(state: PruneState, head_dim: int, scaling: float) -> torch.Tensor:
-    """Same as last_token_attention but from the captured pre-RoPE q and k (FEATHER's criterion), [T] float32."""
+ROPEFREE_LOG_LAYER = 1  # full runs log RoPE-free scores here only (later captures serve FEATHER and VScan stages)
+
+
+def ropefree_attention(state: PruneState, head_dim: int, scaling: float,
+                       exclude: torch.Tensor | None = None) -> torch.Tensor:
+    """Same as last_token_attention but from the captured pre-RoPE q and k (FEATHER's criterion), [T] float32.
+    `exclude` key positions get zero weight, as in last_token_attention."""
     q, k = state.pre_rope["q"], state.pre_rope["k"]  # [1, T, Hq*D] or [1, T, Hq, D]
     q = q.reshape(q.shape[0], q.shape[1], -1, head_dim)[0, -1]  # [Hq, D]
     k = k.reshape(k.shape[0], k.shape[1], -1, head_dim)[0].transpose(0, 1)  # [Hk, T, D]
     n_rep = q.shape[0] // k.shape[0]
     k = k.repeat_interleave(n_rep, dim=0) if n_rep > 1 else k
     logits = torch.einsum("hd,htd->ht", q.float(), k.float()) * scaling
+    if exclude is not None:
+        logits[:, exclude.to(logits.device)] = float("-inf")
     return logits.softmax(dim=-1).mean(dim=0)
 
 
@@ -240,6 +250,47 @@ def install_layer_hooks(layers) -> list:
     return [layer.register_forward_pre_hook(recorder(i), with_kwargs=True) for i, layer in enumerate(layers)]
 
 
+def install_ttv_hooks(layers) -> list:
+    """TransPrune: record the token transition variation of the attention and FFN sub-layers of the layers in
+    `state.ttv_layers` (prefill only). The sub-layer input is the normalized hidden state the layer passes in."""
+    from .baselines.transprune import transition_weight
+
+    def recorder(index: int, part: str):
+        def hook(_module, args, kwargs, output):
+            state = ACTIVE
+            if state is None or index not in state.ttv_layers:
+                return
+            before = kwargs.get("hidden_states", args[0] if args else None)
+            after = output[0] if isinstance(output, tuple) else output
+            if before is None or before.shape[1] <= 1:
+                return
+            live = torch.ones(before.shape[1], dtype=torch.bool, device=before.device)
+            dropped = state.dropped_at(index)
+            if dropped is not None:
+                live[dropped.to(before.device)] = False
+            w = transition_weight(before[0], after[0], live)[state.vis_pos.to(before.device)].cpu().numpy()
+            state.ttv[index] = state.ttv.get(index, 0) + w  # attention + FFN
+
+        return hook
+
+    handles = []
+    for i, layer in enumerate(layers):
+        handles.append(layer.self_attn.register_forward_hook(recorder(i, "attn"), with_kwargs=True))
+        handles.append(layer.mlp.register_forward_hook(recorder(i, "mlp"), with_kwargs=True))
+    return handles
+
+
+def merge_rows(x: torch.Tensor, merge: tuple[np.ndarray, np.ndarray]) -> torch.Tensor:
+    """x [N, d] with rows `merge[0]` replaced by `merge[1] @ x` (float32 math, x's dtype)."""
+    rows, weights = merge
+    if x.shape[0] != weights.shape[1]:
+        raise RuntimeError(f"merge built for {weights.shape[1]} visual tokens, vision output has {x.shape[0]}")
+    w = torch.as_tensor(weights, dtype=torch.float32, device=x.device)
+    out = x.clone()
+    out[torch.as_tensor(rows, device=x.device)] = (w @ x.float()).to(x.dtype)
+    return out
+
+
 def allow_mask(attention_mask: torch.Tensor | None, query: torch.Tensor, key: torch.Tensor,
                dropped: torch.Tensor) -> torch.Tensor:
     """Boolean [1, 1, Tq, Tk] mask (True = attend): causal on prefill, dropped visual keys removed.
@@ -274,7 +325,7 @@ def _prefill_step(state: PruneState, module, layer: int, query: torch.Tensor, ke
         if state.pre_rope.get("layer") != layer:
             raise RuntimeError(f"RoPE-free scores requested at layer {layer}, captured at {state.pre_rope.get('layer')}")
         if "ropefree" not in cache:
-            cache["ropefree"] = ropefree_attention(state, module.head_dim, scaling)[vis].cpu().numpy()
+            cache["ropefree"] = ropefree_attention(state, module.head_dim, scaling, state.dropped_at(layer))[vis]                 .cpu().numpy()
         return cache["ropefree"]
 
     def text_scores() -> np.ndarray:
@@ -294,7 +345,7 @@ def _prefill_step(state: PruneState, module, layer: int, query: torch.Tensor, ke
 
     if layer in state.log_layers:
         state.logs[f"scores_l{layer}"] = attention_scores()
-    if state.log_ropefree and state.pre_rope.get("layer") == layer:
+    if state.log_ropefree and layer == ROPEFREE_LOG_LAYER and state.pre_rope.get("layer") == layer:
         state.logs[f"scores_ropefree_l{layer}"] = ropefree_scores()
     if state.profile:  # log-probabilities: deep-layer visual attention underflows float16 storage as a probability
         state.logs[f"lp_last_l{layer}"] = np.log(attention_scores() + 1e-30)

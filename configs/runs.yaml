@@ -7,15 +7,15 @@ rates_s_per_q:  # T4x2 fp16, batch 1. "m" = measured (Stage 3-4 run files), "p" 
   lingshu7b:
     {slake_en: 1.07, slake_zh: 1.10, rin_anat_mc: 0.35, rin_abn_closed: 0.30, omni_anat: 0.50, omni_panel: 0.80,
      natural: 0.72, slake: 1.10, rin: 0.35, omni: 0.80,
-     slake_en_s224: 0.65, natural_s224: 0.30, rin_anat_mc_s448: 0.66,
-     text_only: {slake: 0.66, rin: 0.23, omni: 0.25, natural: 0.30}}
+     slake_en_s224: 0.65, natural_s224: 0.30, rin_anat_mc_s448: 0.66, rin_open: 0.60,
+     text_only: {slake: 0.66, rin: 0.23, omni: 0.25, natural: 0.30, rin_open: 0.45}}
     # m: slake_en, rin_anat_mc, text_only slake/rin. p: the rest (slake_zh +3% for longer CJK answers; resized
     # datasets from the cost model at 64 / 256 visual tokens).
   qwen3vl8b:
     {slake_en: 0.98, slake_zh: 1.00, rin_anat_mc: 0.28, rin_abn_closed: 0.26, omni_anat: 0.43, omni_panel: 0.68,
      natural: 0.58, slake: 1.00, rin: 0.28, omni: 0.68,
-     slake_en_s224: 0.65, natural_s224: 0.25, rin_anat_mc_s448: 0.49,
-     text_only: {slake: 0.35, rin: 0.18, omni: 0.20, natural: 0.25}}
+     slake_en_s224: 0.65, natural_s224: 0.25, rin_anat_mc_s448: 0.49, rin_open: 0.55,
+     text_only: {slake: 0.35, rin: 0.18, omni: 0.20, natural: 0.25, rin_open: 0.40}}
     # m: slake_en, rin_anat_mc, text_only slake/rin. p: the rest.
   huatuo7b:
     {slake: 1.15, rin: 1.15, omni: 1.15, natural: 1.15, text_only: 0.30}
@@ -166,3 +166,26 @@ blocks:
   # Lingshu on C, Qwen3-VL on B.
   - {exp: E13, tier: P1, account: C, model: lingshu7b, groups: [S3], methods: [divprune, gate_divprune]}
   - {exp: E13, tier: P1, account: B, model: qwen3vl8b, groups: [rin_abn_closed, S3], methods: [divprune, gate_divprune]}
+
+  # Nov 7 — E14 (G19): published pruners that do not read early-layer LLM attention, or fix it — vision-encoder attention
+  # (VisionZip, HiPrune), instruction-conditioned diversity before the LLM (CDPruner), RoPE-free + uniform early stage
+  # (FEATHER), encoder scans + mid-layer pruning (VScan), token transition + instruction attention (TransPrune); the
+  # gate composed with VisionZip and CDPruner. Account D (4th account): Lingshu all methods; Qwen3-VL split D / B.
+  - {exp: E14, tier: P0, account: D, model: lingshu7b, groups: [K, rin_abn_closed, S3],
+     methods: [feather, cdpruner, hiprune, visionzip, vscan, transprune, gate_cdpruner, gate_visionzip]}
+  - {exp: E14, tier: P0, account: D, model: qwen3vl8b, groups: [K, rin_abn_closed, S3],
+     methods: [feather, cdpruner, hiprune, visionzip]}
+  - {exp: E14, tier: P0, account: B, model: qwen3vl8b, groups: [K, rin_abn_closed, S3],
+     methods: [vscan, transprune, gate_cdpruner, gate_visionzip]}
+
+  # Nov 7 — E15 (§A10 D5): RadImageNet open questions (500 anatomy + 500 pathology, judge-scored in the same session:
+  # the license forbids moving RadImageNet text off the session). Lingshu only (account C, 2.8 h left).
+  - {exp: E15, tier: P0, account: C, model: lingshu7b, groups: [rin_open],
+     methods: [full, text_only, random_l2, fastv, gate_fastv, gate_uniform, uniform_l2, prunesid]}
+  - {exp: E15, tier: P1, account: C, model: lingshu7b, groups: [rin_open], methods: [random_l2], seeds: [1, 2]}
+
+  # Nov 7 — E16 (D-15): why SparseVLM survives on Qwen3-VL where FastV collapses. Its text raters with one FastV-style
+  # stage at 10%, at FastV's layer (raters vs last token, same schedule as `fastv` / `fastv_text`) and at SparseVLM's
+  # first-stage layer (one stage vs its three). Account A (University), Qwen3-VL first.
+  - {exp: E16, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc, slake_en], methods: [fastv_raters, sparsevlm_single]}
+  - {exp: E16, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc], methods: [fastv_raters, sparsevlm_single]}

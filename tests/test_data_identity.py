@@ -27,6 +27,8 @@ def test_radimagenet_template_ids_do_not_collapse_distinct_images(tmp_path):
         for content, qtype, template, answer in (
             ("anatomy", "multiple_choice", "anatomy_mc", "A"),
             ("pathology", "closed", "abnormal_closed", "yes"),
+            ("anatomy", "open", "anatomy_open", "Chest"),
+            ("pathology", "open", "pathology_open", "No abnormality"),
         ):
             rows.append({"image": image, "question": "Which region?", "choices": ["A. Chest", "B. Brain"],
                          "answer": answer, "question_type": qtype,
@@ -35,7 +37,7 @@ def test_radimagenet_template_ids_do_not_collapse_distinct_images(tmp_path):
     source = tmp_path / "source.parquet"
     pq.write_table(pa.Table.from_pylist(rows), source)
     first, second = tmp_path / "first", tmp_path / "second"
-    assert build_radimagenet(source, first) == {"rin_anat_mc": 2, "rin_abn_closed": 2}
+    assert build_radimagenet(source, first) == {"rin_anat_mc": 2, "rin_abn_closed": 2, "rin_open": 4}
     samples = load_manifest(first, "rin_anat_mc") + load_manifest(first, "rin_abn_closed")
     assert len({s.qid for s in samples}) == 4
     anatomy = load_manifest(first, "rin_anat_mc")
@@ -47,6 +49,30 @@ def test_radimagenet_template_ids_do_not_collapse_distinct_images(tmp_path):
         (s.image_id, s.dataset): s.qid
         for ds in ("rin_anat_mc", "rin_abn_closed") for s in load_manifest(second, ds)
     }
+
+
+def test_radimagenet_open_keeps_one_question_per_image_and_template_and_samples_per_template(tmp_path, monkeypatch):
+    import medprune.data as data
+
+    monkeypatch.setattr(data, "RIN_OPEN_PER_TEMPLATE", 2)
+    rows = []
+    for value in (10, 60, 110, 160):
+        buffer = io.BytesIO()
+        Image.fromarray(np.full((8, 8, 3), value, np.uint8)).save(buffer, format="PNG")
+        image = {"bytes": buffer.getvalue(), "path": None}
+        for template, content, answer in (("anatomy_open", "anatomy", "Liver"), ("anatomy_open", "anatomy", "Liver"),
+                                          ("pathology_open", "pathology", "Mass")):
+            rows.append({"image": image, "question": "What is shown?", "choices": [], "answer": answer,
+                         "question_type": "open", "metadata": {"content_type": content, "question_id": template}})
+    source = tmp_path / "source.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), source)
+    assert build_radimagenet(source, tmp_path / "a", datasets=("rin_open",)) == {"rin_open": 4}
+    first = load_manifest(tmp_path / "a", "rin_open")
+    assert sorted(s.meta["question_id"] for s in first) == ["anatomy_open"] * 2 + ["pathology_open"] * 2
+    assert all(s.answer_type == "open" and s.prompt_style == "open" for s in first)
+    pq.write_table(pa.Table.from_pylist(list(reversed(rows))), source)
+    build_radimagenet(source, tmp_path / "b", datasets=("rin_open",))
+    assert [s.qid for s in load_manifest(tmp_path / "b", "rin_open")] == [s.qid for s in first]
 
 
 def test_write_manifest_rejects_duplicate_ids_without_overwriting(tmp_path):

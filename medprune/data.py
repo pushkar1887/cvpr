@@ -232,9 +232,26 @@ def _strip_option_tag(text: str) -> str:
     return re.sub(r"^\s*\(?[A-Da-d][\.\):]\s*", "", str(text)).strip()
 
 
+def _sample_per_template(samples: list[Sample], n: int, seed: int) -> list[Sample]:
+    """At most n samples per meta['question_id'] template, drawn with a fixed seed; output sorted by qid."""
+    by_template: dict[str, list[Sample]] = defaultdict(list)
+    for s in samples:
+        by_template[s.meta.get("question_id", "")].append(s)
+    picked = []
+    for name in sorted(by_template):
+        pool = sorted(by_template[name], key=lambda s: s.qid)
+        picked.extend(pool if len(pool) <= n else random.Random(f"{seed}:{name}").sample(pool, n))
+    return sorted(picked, key=lambda s: s.qid)
+
+
+RIN_OPEN_TEMPLATES = ("anatomy_open", "pathology_open")
+RIN_OPEN_PER_TEMPLATE = 500  # rin_open = 500 + 500 of the benchmark's 1,000 + 1,000 open questions (seed 0)
+
+
 def build_radimagenet(parquet_path: Path, out_root: Path,
-                     datasets: tuple[str, ...] | list[str] | None = None) -> dict[str, int]:
-    """RadImageNet-VQA benchmark → rin_anat_mc and rin_abn_closed, one question per image each (plan.md §C2).
+                     datasets: tuple[str, ...] | list[str] | None = None, seed: int = 0) -> dict[str, int]:
+    """RadImageNet-VQA benchmark → rin_anat_mc and rin_abn_closed (one question per image each) and rin_open
+    (open questions, judge-scored: one per image and template, 500 per template; plan.md §C2, §A10 D5).
 
     Run inside a GPU session only (license forbids redistribution). Prints the field values it filtered on so the
     choice can be recorded; raises if a subset comes out empty.
@@ -261,6 +278,7 @@ def build_radimagenet(parquet_path: Path, out_root: Path,
         "rin_anat_mc": (content.str.contains("anatom")) & qtype.str.contains("mc|multiple|choice"),
         # The source calls this content "pathology"; disease-specific closed questions are a different task.
         "rin_abn_closed": template.eq("abnormal_closed") & content.eq("pathology") & qtype.eq("closed"),
+        "rin_open": qtype.eq("open") & template.isin(RIN_OPEN_TEMPLATES),
     }
     if datasets is not None:
         unknown = set(datasets) - set(subsets)
@@ -273,7 +291,8 @@ def build_radimagenet(parquet_path: Path, out_root: Path,
         for idx in np.flatnonzero(selector.to_numpy()):
             row, m = df.iloc[idx], meta.iloc[idx]
             key, data = image_key(row["image"])
-            if key in seen:
+            unit = (key, template.iloc[idx]) if name == "rin_open" else key  # rin_open: one per image and template
+            if unit in seen:
                 continue
             path = Path(out_root) / "images" / "radimagenet" / f"{key}.png"
             if not path.exists():
@@ -295,12 +314,20 @@ def build_radimagenet(parquet_path: Path, out_root: Path,
                 if letter is None:
                     continue
                 samples.append(Sample(answer=letter, answer_type="mc", prompt_style="mc", choices=choices, **common))
+            elif name == "rin_open":
+                answer = str(row["answer"]).strip()
+                if not answer:
+                    continue
+                samples.append(Sample(answer=answer, answer_type="open", prompt_style="open", **common))
             else:
                 answer = str(row["answer"]).strip().lower()
                 if answer not in ("yes", "no"):
                     continue
                 samples.append(Sample(answer=answer, answer_type="yesno", prompt_style="judgement", **common))
-            seen.add(key)
+            seen.add(unit)
+        if name == "rin_open":
+            samples = _sample_per_template(samples, RIN_OPEN_PER_TEMPLATE, seed)
+            print("rin_open per template:", dict(Counter(s.meta.get("question_id", "") for s in samples)))
         if not samples:
             raise ValueError(f"{name}: no rows matched; adjust the filters using the printed values")
         write_manifest(samples, out_root, name)

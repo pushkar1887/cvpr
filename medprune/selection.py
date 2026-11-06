@@ -24,7 +24,8 @@ class MethodSpec:
 
     name: str
     rule: str  # "none" | "random" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop" |
-    #            "sparsevlm" | "vispruner" | "prunesid" | "btp" (medprune/baselines/)
+    #            "sparsevlm" | "vispruner" | "prunesid" | "btp" | "visionzip" | "hiprune" | "cdpruner" | "feather" |
+    #            "vscan" | "transprune" (medprune/baselines/)
     score: str | None = None  # None | "attn" (last prompt token) | "ropefree" | "text" (every token after the
     #                           image) | "raters" (SparseVLM text raters)
     score_layer: int | None = None
@@ -82,6 +83,21 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("vispruner", "vispruner", mask_from=0),
         _spec("prunesid", "prunesid", mask_from=0),
         _spec("btp", "btp", score="attn", mask_from=3),
+        # SparseVLM ablation (plan.md E16, D-15): its text raters with one FastV-style stage at 10%, at FastV's layer
+        # (raters vs last token at the same schedule) and at SparseVLM's first-stage layer (vs the 3-stage schedule).
+        _spec("fastv_raters", "topk", score="raters", score_layer=1, mask_from=2),
+        _spec("sparsevlm_single", "topk", score="raters", score_layer=2, mask_from=3),
+        # Published pruners added Nov 7 (plan.md E14, G19): vision-encoder attention (VisionZip, HiPrune),
+        # instruction-conditioned diversity without LLM attention (CDPruner), RoPE-free + uniform early stage (FEATHER),
+        # encoder scans + mid-layer pruning (VScan), token transition + instruction attention (TransPrune).
+        _spec("visionzip", "visionzip", mask_from=0),
+        _spec("gate_visionzip", "visionzip", mask_from=0, gate="foreground"),
+        _spec("hiprune", "hiprune", mask_from=0),
+        _spec("cdpruner", "cdpruner", mask_from=0),
+        _spec("gate_cdpruner", "cdpruner", mask_from=0, gate="foreground"),
+        _spec("feather", "feather", score="ropefree", mask_from=8),
+        _spec("vscan", "vscan", mask_from=0),
+        _spec("transprune", "transprune", score="text", mask_from=7),
     ]
 )
 

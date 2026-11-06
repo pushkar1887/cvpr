@@ -64,8 +64,10 @@ def load_runs(path: Path, exp: str | None = None, model: str | None = None, acco
     cfg = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     groups, merged = cfg["groups"], {}
     exps = set(exp.split(",")) if exp else None  # "E6,E3": several experiments, in configs/runs.yaml block order
+    models = set(model.split(",")) if model else None  # several models load one after another
+    methods = set(method.split(",")) if method else None
     for block in cfg["blocks"]:
-        if (exps and block["exp"] not in exps) or (model and block["model"] != model) or \
+        if (exps and block["exp"] not in exps) or (models and block["model"] not in models) or \
                 (account and block.get("account") != account):
             continue
         datasets = [d for g in block["groups"] for d in groups.get(g, [g])]
@@ -75,7 +77,7 @@ def load_runs(path: Path, exp: str | None = None, model: str | None = None, acco
                 for b in budgets:
                     for s in block.get("seeds", [0]):
                         spec = RunSpec(block["model"], ds, m, float(b), int(s))
-                        if (dataset and ds != dataset) or (method and m != method):
+                        if (dataset and ds not in dataset.split(",")) or (methods and m not in methods):
                             continue
                         old = merged.get(spec)
                         merged[spec] = RunSpec(spec.model, ds, m, float(b), int(s),
@@ -215,6 +217,7 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
             rest = select_topk(np.where(taken, -np.inf, scores), k - k_bg, candidates & ~taken)
             return np.union1d(np.flatnonzero(taken), rest)
 
+        state.need_raters = method.score == "raters"  # SparseVLM's raters with one FastV-style stage (E16)
         state.stages.append(Stage(method.score_layer, method.mask_from, select, score_kind=method.score))
     elif rule == "pdrop":
         for boundary, fraction in pdrop_schedule(spec.budget, adapter.num_layers):
@@ -225,9 +228,10 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
 
             state.stages.append(Stage(boundary - 1, boundary, select, score_kind="attn"))
     elif rule in BASELINES:
-        if allowed is not None:
-            raise ValueError(f"{method.name}: the published pruners run without the gate")
-        BASELINES[rule](state, spec, sample, inputs, adapter, n, k)
+        if allowed is not None and rule not in GATED_BASELINES:
+            raise ValueError(f"{method.name}: this published pruner runs without the gate")
+        extra = {"allowed": allowed} if rule in GATED_BASELINES else {}
+        BASELINES[rule](state, spec, sample, inputs, adapter, n, k, **extra)
     else:
         raise ValueError(f"unknown rule {rule!r}")
     return state
@@ -284,7 +288,76 @@ def _btp(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
         state.stages.append(Stage(mask_from - 1, mask_from, select, score_kind="attn", needs_hidden=True))
 
 
-BASELINES = {"sparsevlm": _sparsevlm, "vispruner": _vispruner, "prunesid": _prunesid, "btp": _btp}
+def _visionzip(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
+    from .baselines.visionzip import select_visionzip
+
+    cues = adapter.vision_attention(inputs)
+    kept, merge = select_visionzip(cues["attn"][max(cues["attn"])], cues["keys"], k, allowed)
+    state.merge = merge
+    state.apply_keep(kept, 0)
+
+
+def _hiprune(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .baselines.hiprune import object_block, select_hiprune
+
+    obj = object_block(adapter.name)
+    cues = adapter.vision_attention(inputs, (obj,))
+    state.apply_keep(select_hiprune(cues["attn"][obj], cues["attn"][max(cues["attn"])], inputs.grid_hw, k), 0)
+
+
+def _cdpruner(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
+    from .baselines.cdpruner import select_cdpruner
+
+    kept = select_cdpruner(adapter.visual_embeddings(inputs), adapter.instruction_embeddings(inputs), k, allowed)
+    state.apply_keep(kept, 0)
+
+
+def _feather(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .attention_hook import Stage
+    from .baselines.feather import STAGE_LAYERS, feather_fractions, stage1_keep, stage2_keep, uniform_grid
+
+    f1, f2 = feather_fractions(spec.budget)
+    k1, k2 = keep_count(n, f1), keep_count(n, f2)
+    uniform = uniform_grid(inputs.rc)
+    first, second = STAGE_LAYERS
+    state.stages.append(Stage(first - 1, first, lambda s, surv: stage1_keep(s, surv, uniform, k1),
+                              score_kind="ropefree"))
+    state.stages.append(Stage(second - 1, second, lambda s, surv: stage2_keep(s, surv, k2), score_kind="ropefree"))
+
+
+def _vscan(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .attention_hook import Stage
+    from .baselines.vscan import LOCAL_BLOCK, stage1, stage2_keep, vscan_schedule
+
+    f1, layer, f2 = vscan_schedule(spec.budget, adapter.num_layers)
+    k1, k2 = keep_count(n, f1), keep_count(n, f2)
+    local = LOCAL_BLOCK[adapter.name]
+    cues = adapter.vision_attention(inputs, (local,))
+    kept, merge = stage1(cues["attn"][local], cues["attn"][max(cues["attn"])], cues["embeds"], inputs.grid_hw, k1)
+    state.merge = merge
+    state.apply_keep(kept, 0)
+    state.stages.append(Stage(layer, layer, lambda s, surv: stage2_keep(s, surv, k2), score_kind="ropefree"))
+
+
+def _transprune(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+    from .attention_hook import Stage
+    from .baselines.transprune import ACCUMULATING_LAYERS, stage_keep, transprune_schedule
+
+    state.ttv_layers = ACCUMULATING_LAYERS
+    for layer, fraction in transprune_schedule(spec.budget):
+        count = keep_count(n, fraction)
+
+        def select(scores, survivors, layer=layer, count=count):
+            ttv = sum((state.ttv[l] for l in ACCUMULATING_LAYERS if l < layer), np.zeros(n))
+            return stage_keep(scores, ttv, survivors, count)
+
+        state.stages.append(Stage(layer, layer, select, score_kind="text"))
+
+
+BASELINES = {"sparsevlm": _sparsevlm, "vispruner": _vispruner, "prunesid": _prunesid, "btp": _btp,
+             "visionzip": _visionzip, "hiprune": _hiprune, "cdpruner": _cdpruner, "feather": _feather,
+             "vscan": _vscan, "transprune": _transprune}
+GATED_BASELINES = {"visionzip", "cdpruner"}  # pruners with a gated variant (gate_visionzip, gate_cdpruner)
 
 
 # ----------------------------------------------------------------------------------------------- running
@@ -442,6 +515,8 @@ class FakeAdapter:
                 state.logs[f"sink_l{layer}"] = 40 * self._scores(qid, f"sink{layer}", state.n)
         if state.need_raters:  # SparseVLM: every other token after the image rates
             state.rater_pos = state.text_pos[::2].clone()
+        for layer in state.ttv_layers:  # TransPrune's token transition variation
+            state.ttv[layer] = self._scores(qid, f"ttv{layer}", state.n)
         for stage in sorted(state.stages, key=lambda s: s.mask_from):
             if not stage.done:
                 key = f"{stage.score_kind}{stage.score_layer}" if stage.score_kind != "attn" else stage.score_layer
@@ -482,6 +557,15 @@ class FakeAdapter:
         n = len(inputs.vis_pos)
         return self._scores(inputs.model_kwargs.get("qid", ""), "vit", n), np.random.default_rng(1).normal(size=(n, 8))
 
+    def vision_attention(self, inputs, blocks: tuple[int, ...] = ()) -> dict:
+        n, qid = len(inputs.vis_pos), inputs.model_kwargs.get("qid", "")
+        attn = {b: self._scores(qid, f"vit{b}", n) for b in set(blocks) | {31}}
+        return {"attn": attn, "keys": np.random.default_rng(2).normal(size=(n, 8)),
+                "feats": np.random.default_rng(1).normal(size=(n, 8)), "embeds": self.visual_embeddings(inputs)}
+
+    def instruction_embeddings(self, inputs) -> np.ndarray:
+        return np.random.default_rng(3).normal(size=(5, 8))
+
 
 def bundle_for(bundles: Path | list[Path], dataset: str) -> Path:
     """First bundle root holding the dataset's manifest. Several roots let RadImageNet-VQA live in a session-only
@@ -495,8 +579,10 @@ def bundle_for(bundles: Path | list[Path], dataset: str) -> Path:
 
 def run_many(specs: list[RunSpec], bundle: Path | list[Path], out: Path, rates: dict, max_hours: float = 6.0,
              limit: int | None = None, dry_run: bool = False, vision_fp32: bool = False,
-             max_new_tokens: int = 64) -> list[dict]:
-    """Load each model once and run its pending runs until the next one would exceed `max_hours`."""
+             max_new_tokens: int = 64, keep_going: bool = False) -> list[dict]:
+    """Load each model once and run its pending runs until the next one would exceed `max_hours`. With
+    `keep_going`, a run that raises is reported (traceback, `failed` summary) and the next run starts; its partial
+    file stays and resumes next time."""
     from .env import detect_profile
     from .models import load_adapter
 
@@ -517,11 +603,28 @@ def run_many(specs: list[RunSpec], bundle: Path | list[Path], out: Path, rates: 
             if results and (time.time() - start) / 3600 + hours > max_hours:
                 print(f"stopping: next run needs {hours:.2f} h, session budget {max_hours} h reached")
                 return results
-            summary = run_one(adapter, spec, root, out, profile_name, limit=limit, max_new_tokens=max_new_tokens,
-                              strict_masks=not dry_run)
+            try:
+                summary = run_one(adapter, spec, root, out, profile_name, limit=limit, max_new_tokens=max_new_tokens,
+                                  strict_masks=not dry_run)
+            except Exception as error:  # noqa: BLE001 - only with keep_going: report and continue
+                if not keep_going:
+                    raise
+                import traceback
+
+                traceback.print_exc()
+                summary = {"run_id": spec.run_id(profile_name), "failed": f"{type(error).__name__}: {error}"}
             print(json.dumps(summary))
             results.append(summary)
         del adapter
+        import gc
+
+        gc.collect()  # hooks hold the adapter in a reference cycle: free the model before loading the next one
+        try:
+            import torch
+
+            torch.cuda.empty_cache()
+        except ImportError:
+            pass
     return results
 
 
@@ -546,6 +649,7 @@ def main() -> None:
     p.add_argument("--max-hours", type=float, default=6.0)
     p.add_argument("--max-new-tokens", type=int, default=64)
     p.add_argument("--vision-fp32", action="store_true")
+    p.add_argument("--keep-going", action="store_true", help="report a failing run and continue with the next")
     args = p.parse_args()
 
     bundles = args.bundle or [data_root()]
@@ -575,7 +679,7 @@ def main() -> None:
         print(f"{len(specs)} runs: {n_complete} complete, {n_missing} without manifest, {pending_hours:.2f} h pending")
         return
     run_many(specs, bundles, out, rates, max_hours=args.max_hours, limit=args.limit, dry_run=args.dry_run,
-             vision_fp32=args.vision_fp32, max_new_tokens=args.max_new_tokens)
+             vision_fp32=args.vision_fp32, max_new_tokens=args.max_new_tokens, keep_going=args.keep_going)
 
 
 if __name__ == "__main__":

@@ -43,7 +43,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12) | 0 | 0 | ≈ 0.3 |
-| B — Qwen3-VL | `pushkararora` | 30 | 26.52 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50) | `medprune-gpu-qwen3vl8b` v7 (E14 Lingshu RIN) | 0 | weekly reset ≈ 05:30 IST Nov 7 |
+| B — Qwen3-VL | `pushkararora` | 30 | 28.37 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50, E14 Lingshu RIN 1.85) | 0 | E18 after the reset | weekly reset ≈ 05:30 IST Nov 7 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9; v5 E15 1.80) = 21.01 | 0 | E14o after the reset | reset ≈ 05:30 IST Nov 7 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
 
@@ -1080,11 +1080,11 @@ PruneSID. E16: `fastv_raters` (SparseVLM's raters, layer 1 → 2, 10%: the FastV
 
 **Predictions (written Nov 7 03:20, before any E14–E16 result; exploratory, outside the Holm family).**
 - P19 (E14): the three pre-LLM methods that never read LLM attention (VisionZip, HiPrune, CDPruner) are within 3 points
-  of Random on Lingshu RIN anatomy. 55%.
+  of Random on Lingshu RIN anatomy. 55%. **Contradicted (Nov 7):** VisionZip +3.3, HiPrune −4.1, CDPruner −7.1.
 - P20 (E14): VScan and TransPrune (first LLM-attention stage at layer ≥ 7) stay above Random − 5 on Lingshu RIN
-  anatomy. 50%.
+  anatomy. 50%. **Supported:** VScan +7.0, TransPrune +6.7.
 - P21 (E14): FEATHER stays above Random − 5 on Lingshu RIN anatomy — its K = 16 stage rescues it, not the RoPE removal
-  (RoPE-free = FastV on these models, G18). 50%.
+  (RoPE-free = FastV on these models, G18). 50%. **Supported:** +1.6 [−0.5, +3.7] (FEATHER − `fastv_k16` −6.9).
 - P22 (E16): on Qwen3-VL RIN anatomy, `fastv_raters` − Random ≤ −15 (the raters alone do not rescue SparseVLM; its
   schedule does). 55%. **Supported (Nov 7): −25.9 [−28.9, −22.7]** — but the larger share of the rescue is the scoring
   layer (1 → 2), not the schedule (E16 result below).
@@ -1136,6 +1136,28 @@ content into the kept ones, and FEATHER's hard cut comes at layer 16. HiPrune (v
 CDPruner (early hard drop) collapse. [FLAG] CDPruner's relevance sign: the paper's Eq. 5 (used) has none, the released
 LLaVA code negates it; with Eq. 5 the relevance points at background (BRR 2.48). `cdpruner_neg` (released sign) is
 added to E17; the paper reports CDPruner only with both signs.
+
+**E14 result, Lingshu RadImageNet (B `medprune-gpu-qwen3vl8b` v7, Nov 7 05:15, ≈ 1.85 h, 16 runs × 1,000).**
+X − Random (seeds 0-2); for abnormality also the share of "yes" answers (Full 0.27, Random 0.28, text-only 0.05) and
+balanced accuracy (Full 0.586, Random 0.575):
+
+| Lingshu | RIN anatomy | RIN abnormality | yes-rate | balanced acc. |
+|---|---|---|---|---|
+| FastV (ref.) / K=8 / K=16 | −41.7 / −43.9 / +8.5 | −14.2 / −17.4 / −6.6 | 0.04 / 0.01 / 0.17 | 0.524 / 0.501 / 0.545 |
+| VScan | **+7.0** [+5.5, +8.4] | −2.9 | 0.25 | 0.549 |
+| TransPrune | **+6.7** [+4.8, +8.7] | **−17.2** (= K=8, +0.2) | 0.01 | 0.502 |
+| Gate+VisionZip / VisionZip | +3.8 / +3.3 | −0.1 / −3.5 | 0.30 / 0.23 | 0.560 / 0.556 |
+| FEATHER | +1.6 [−0.5, +3.7] | **−14.0** | 0.08 | 0.505 |
+| Gate+CDPruner / CDPruner | −2.4 / −7.1 | +1.6 / −3.2 | 0.36 / 0.29 | 0.545 / 0.525 |
+| HiPrune | −4.1 | −2.9 | 0.23 | 0.559 |
+
+**Reading.** Anatomy repeats Qwen3-VL's pattern (merging or late pruning survive; early hard drops lose), with smaller
+losses for HiPrune and CDPruner. Abnormality splits by *where the score comes from*: every method that ranks by LLM
+attention — FastV at K = 2, 8, 16, SparseVLM, FEATHER, TransPrune — drives the yes-rate to the text-only level (0.01-0.08)
+and loses 7-17 points, while every pre-LLM method stays within 3.5 (yes-rate 0.23-0.36). On this cell the pruned
+model's fallback is the language prior ("no abnormality", L6) and pruning late does not prevent it. [FLAG] The cell is
+72% "yes" and weak even unpruned (balanced 0.586): report balanced accuracy beside accuracy (G10); the gaps shrink to
+≈ 5-7 balanced points but keep their order.
 
 **E17 / E15b (added Nov 7 04:45, after E16, before any E17 result).** E17 sweeps FastV's scoring layer over 2-5
 (`fastv_k3`-`fastv_k6`) on RIN anatomy, both models (+ Lingshu `sparsevlm_single`); E15b runs `rin_open` on Qwen3-VL
@@ -2757,3 +2779,6 @@ run IDs, counts, accuracies with CIs. Template:
 - Queued for 05:40-05:41 (after the reset): A `medprune-gpu-lingshu7b` v11 (E17 + `cdpruner_neg`), A
   `medprune-baselines-lingshu7b` (E15b, Qwen3-VL `rin_open`), B `medprune-baselines-qwen3vl8b` v4 (E18 merge ablation,
   both models), C `medprune-gpu-lingshu7b` v6 (E14o). Predictions P24-P27 written before any of them.
+- 05:15 **B `medprune-gpu-qwen3vl8b` v7 COMPLETE** (≈ 1.85 h; 16 / 16 Lingshu RIN runs, merged: 52 new files). P19
+  contradicted, P20 and P21 supported (card). On RIN abnormality every LLM-attention ranker (incl. TransPrune and
+  FEATHER, which prune late) collapses to the text-only yes-rate; pre-LLM methods do not.

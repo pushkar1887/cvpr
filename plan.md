@@ -28,7 +28,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | ✅ DONE. B v5 6.30 h (79 runs; merged Nov 5 00:30); A v9 9.43 h (87 runs, 86 complete; merged Nov 5 03:40; judge pass 7 merged). Missing: Lingshu SLAKE-zh `gate_fastv` (0.32 h, did not fit) | 15.73 | 0.32 (A) | Nov 4–5 | **E10r**: more tokens do not help (Lingshu −48.9 at 256 tokens vs −41.7; Qwen3-VL −29.2 vs −33.7). **`fastv_text` = FastV** (Lingshu +0.5 / +0.2). **E5**: Lingshu RIN loss flat 5→25% (−39.8 / −41.7 / −43.9). **P9 ✗**: no background dose-response across modalities. **E12**: question dependence starts at layer 14 (Lingshu) / 17 (Qwen3-VL) |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | ✅ DONE (A 4.74 h, B 4.34 h; 32 runs, all complete; merged Nov 5 00:10). SLAKE judge-scored (pass 5 merged) | 9.23 | 0 | Nov 4–5 | **Only LLM-attention scoring collapses**: SparseVLM fails like FastV on Lingshu (−44.8 RIN anatomy), not on Qwen3-VL (+0.1); VisPruner / PruneSID ≈ Random. Gate+Uniform ≥ all published on Lingshu RIN; on SLAKE (judge) no non-attention method separates from another. P15 ✗, P16 ✗, P17 ✗, P18 ✓ |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ DONE. E8r, E6-P2 (both halves), judge passes 4–8 merged. **C v4 ✅** (2.71 h, 10 runs, merged Nov 5 07:30): the 8 registered Lingshu runs A did not reach, Lingshu DivPrune on OmniMedVQA anatomy, **E9 latency** and Lingshu prompt tokens. **B v6 ✅** (1.38 h, 4 runs): Qwen3-VL DivPrune on RIN abnormality + OmniMedVQA anatomy. Registry: 324 of 324 registered runs complete. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 14.45 | 0 | Nov 3–5 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most. **E9**: FastV at 10% → prefill 2.95× (paired 3.07×), first-token path 1.69× (vision encoder 183 ms is untouched); the gate alone saves nothing. **Oracle organ gate = heuristic gate** on SLAKE (−0.9, n.s.) |
-| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu), D v1 × 2 (E14 smoke, 3 questions per run); B (E14 RadImageNet cells) and the full D sessions (E14 SLAKE + OmniMedVQA) start once the smoke passes | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2) | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
+| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2) | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Nov 7, 03:20:** E14–E16 launched (Stage 7b): ≈ 21 GPU-h planned, within every account's free hours (C 2.8 h left
@@ -1098,7 +1098,9 @@ OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run 
   VScan `token_merging` / `window_selection`, TransPrune `compute_transf_weight`); vision cues equal the pre-Nov-7
   VisPruner cues on tiny Qwen2.5-VL / Qwen3-VL towers; TTV under masking equals the official weights on the shortened
   sequence; RoPE-free scores exclude dropped keys (162 tests).
-- [ ] Smoke (D v1, 3 questions × 16 runs per model) passes before the full sessions.
+- [x] Smoke (D v1, 3 questions × 16 runs per model, Nov 7 03:22): every run complete, k = 10% of N, stage layers
+  [8, 16] / [7, 9, 12] / [0, L/2], sane answers on both models. Cost per question on OmniMedVQA ≈ 0.9 s (Lingshu,
+  vision-tower cue pass) vs 0.5 s in the rate table, VScan ≈ 1.5 s (merge on the CPU) → Lingshu cap raised to 10.5 h.
 
 ---
 
@@ -2660,5 +2662,8 @@ run IDs, counts, accuracies with CIs. Template:
   Qwen3-VL then Lingshu, MAX_HOURS 1.0), D `medprune-gpu-lingshu7b` v1 and `medprune-gpu-qwen3vl8b` v1 (E14 smoke,
   LIMIT 3). Full D (Lingshu 9 h, Qwen3-VL 8 h caps) and B (Qwen3-VL in `medprune-baselines-qwen3vl8b`, Lingshu in
   `medprune-gpu-qwen3vl8b`, the slot with the secret) follow the smoke.
+- 03:22 smoke ✅ (see the E14 card's checks); 03:24 launched D `medprune-gpu-lingshu7b` v2 (MAX_HOURS 10.5) and
+  `medprune-gpu-qwen3vl8b` v2 (8.0), both `JUDGE = True` for their SLAKE open answers; B `medprune-baselines-qwen3vl8b`
+  v3 (Qwen3-VL RadImageNet, 2.0) and `medprune-gpu-qwen3vl8b` v7 (Lingshu RadImageNet, 2.2).
 - [FLAG] The two-stage method idea (coverage early, text-guided attention late) is published (STS 2606.03569, VScan,
   LearnPruner, STAR-Pro): the paper stays diagnosis-first; VScan and TransPrune now represent that family in E14.

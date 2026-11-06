@@ -1113,6 +1113,16 @@ minimum of the positional prior and a 4× maximum of attention to the image, lay
 visual hidden states after decoder layers 0–2 (layer 2 is the first to see two injections), but layer 3 sees three
 and is positional again: a hypothesis, not tested.
 
+**E17 / E15b (added Nov 7 04:45, after E16, before any E17 result).** E17 sweeps FastV's scoring layer over 2-5
+(`fastv_k3`-`fastv_k6`) on RIN anatomy, both models (+ Lingshu `sparsevlm_single`); E15b runs `rin_open` on Qwen3-VL
+(account B). Both start after the weekly quota reset (≈ 05:30 IST). The E12 profile's position share of the layer-(K-1)
+last-token ranking is the prediction: Qwen3-VL RIN 51 / 36 / 46 / 52 / 33% at layers 1-5 (K = 2-6), 50% at 7, Lingshu
+69 / 69 / 73 / 65 / 69%, 67% at 7.
+- P24 (E17): on Qwen3-VL RIN anatomy, `fastv_k3` and `fastv_k6` each beat FastV (K = 2) by ≥ 10 points, and `fastv_k4`,
+  `fastv_k5` are each ≥ 5 points below `fastv_k3`; across K = 2, 3, 4, 5, 6, 8, Spearman(position share, accuracy)
+  ≤ −0.6. 45%.
+- P25 (E17): on Lingshu RIN anatomy every K in 3-6 stays ≥ 30 points below Random (its prior is flat at 65-73%). 75%.
+
 **Accounts.** D's two GPU notebooks were created by API on Nov 7 and have no `cvpr` secret, so D runs SLAKE and
 OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run the RadImageNet cells (both models).
 `KEEP_GOING = True`: a failing method is reported and the next run starts.

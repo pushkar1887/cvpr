@@ -61,6 +61,11 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_random", "random", mask_from=2, gate="foreground"),
         _spec("fastv_k8", "topk", score="attn", score_layer=7, mask_from=8),
         _spec("fastv_k16", "topk", score="attn", score_layer=15, mask_from=16),
+        # Early-layer sweep (plan.md E17, Nov 7): FastV scored at layers 2-5; the E12 profile predicts which help.
+        _spec("fastv_k3", "topk", score="attn", score_layer=2, mask_from=3),
+        _spec("fastv_k4", "topk", score="attn", score_layer=3, mask_from=4),
+        _spec("fastv_k5", "topk", score="attn", score_layer=4, mask_from=5),
+        _spec("fastv_k6", "topk", score="attn", score_layer=5, mask_from=6),
         _spec("static_map", "static", mask_from=2),
         _spec("inverse_gate", "inverse", mask_from=2, gate="foreground"),
         _spec("oracle_gate", "topk", score="attn", score_layer=1, mask_from=2, gate="oracle"),

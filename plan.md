@@ -43,7 +43,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12) | 0 | 0 | ≈ 0.3 |
-| B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38) = 25.02 | 0 | E14 RadImageNet cells, both models (≈ 3.3 h, after D's smoke) | 1.7 |
+| B — Qwen3-VL | `pushkararora` | 30 | 26.52 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50) | `medprune-gpu-qwen3vl8b` v7 (E14 Lingshu RIN) | 0 | weekly reset ≈ 05:30 IST Nov 7 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9) | v5 E15 (Nov 7 03:14, ≈ 2.4 h; the user counted 2 h 47 min left) | 0 | ≈ 0.4 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
 
@@ -1112,6 +1112,30 @@ minimum of the positional prior and a 4× maximum of attention to the image, lay
 10%, mass 0.043 / 0.085). [FLAG] A candidate cause is Qwen3-VL's DeepStack, which adds vision-encoder features to the
 visual hidden states after decoder layers 0–2 (layer 2 is the first to see two injections), but layer 3 sees three
 and is positional again: a hypothesis, not tested.
+
+**E14 result, Qwen3-VL RadImageNet (B `medprune-baselines-qwen3vl8b` v3, Nov 7 04:54, 1.5 h, 16 runs × 1,000).**
+X − Random (seeds 0-2), with each method's background retention ratio (BRR, gate masks) and the number of distinct
+keep-sets over the 1,000 anatomy images:
+
+| Qwen3-VL | RIN anatomy | BRR | distinct keep-sets | RIN abnormality |
+|---|---|---|---|---|
+| FastV (ref.) | −33.7 | 2.96 | 508 | −2.2 |
+| VScan | **+5.7** [+4.5, +7.0] (above Full, 89.7) | 2.14 | 766 | +0.4 |
+| TransPrune | +4.5 [+2.9, +6.2] | — | — | +0.2 |
+| FEATHER | +3.9 [+2.4, +5.5] (− `fastv_k16` −1.7; − `fastv_k8` +31.0) | 2.79 | 455 | +0.6 |
+| Gate+VisionZip | +3.0 [+1.6, +4.4] | — | — | −0.2 |
+| VisionZip | +1.8 [+0.3, +3.3] | 1.80 | **59** (one set on 495 images) | +0.2 |
+| HiPrune | **−12.3** [−14.9, −9.5] | 2.31 | 322 | −0.9 |
+| CDPruner | **−23.7** [−26.6, −20.6] | 2.48 | 943 | −1.1 |
+| Gate+CDPruner | −9.3 (+14.4 vs CDPruner) | 0.00 | 1000 | −0.7 |
+
+RIN abnormality stays the text-answerable cell (every method within 1.1 of Random). **Reading:** a biased selection
+only hurts when tokens are dropped early. VisionZip keeps the same positions on half the images and VScan / FEATHER
+are as background-heavy as CDPruner, yet all three beat Random: merging (VisionZip, VScan) routes the dropped tokens'
+content into the kept ones, and FEATHER's hard cut comes at layer 16. HiPrune (vision-encoder attention, no merge) and
+CDPruner (early hard drop) collapse. [FLAG] CDPruner's relevance sign: the paper's Eq. 5 (used) has none, the released
+LLaVA code negates it; with Eq. 5 the relevance points at background (BRR 2.48). `cdpruner_neg` (released sign) is
+added to E17; the paper reports CDPruner only with both signs.
 
 **E17 / E15b (added Nov 7 04:45, after E16, before any E17 result).** E17 sweeps FastV's scoring layer over 2-5
 (`fastv_k3`-`fastv_k6`) on RIN anatomy, both models (+ Lingshu `sparsevlm_single`); E15b runs `rin_open` on Qwen3-VL
@@ -2706,3 +2730,9 @@ run IDs, counts, accuracies with CIs. Template:
   anatomy SparseVLM's rescue is +7.8 readout (raters vs last token), **+17.2 for scoring one layer later**, +8.8 for
   its three-stage schedule; on Lingshu the raters change nothing. P22 supported. Lingshu `sparsevlm_single` (0.1 h)
   did not fit A's 1.0 h cap → B after its E14 sessions.
+- 04:54 **B `medprune-baselines-qwen3vl8b` v3 COMPLETE** (1.50 h; `HF token loaded`; 16 / 16 runs, merged: 52 new
+  files). Qwen3-VL RIN anatomy, X − Random: VScan +5.7, TransPrune +4.5, FEATHER +3.9, Gate+VisionZip +3.0, VisionZip
+  +1.8, HiPrune −12.3, CDPruner −23.7, Gate+CDPruner −9.3; RIN abnormality all within ±1.1. Keep-set statistics
+  (BRR, distinct sets) in the E14-E16 card: merging or late pruning survives a biased selection; early hard drops do
+  not. CDPruner's sign is now a sensitivity run (`cdpruner_neg`, `263da31`, in E17).
+- The user: every Kaggle account's GPU quota resets ≈ 05:30 IST; all accounts and slots may be used after it.

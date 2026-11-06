@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-04 18:30 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-07 03:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -28,9 +28,11 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | ✅ DONE. B v5 6.30 h (79 runs; merged Nov 5 00:30); A v9 9.43 h (87 runs, 86 complete; merged Nov 5 03:40; judge pass 7 merged). Missing: Lingshu SLAKE-zh `gate_fastv` (0.32 h, did not fit) | 15.73 | 0.32 (A) | Nov 4–5 | **E10r**: more tokens do not help (Lingshu −48.9 at 256 tokens vs −41.7; Qwen3-VL −29.2 vs −33.7). **`fastv_text` = FastV** (Lingshu +0.5 / +0.2). **E5**: Lingshu RIN loss flat 5→25% (−39.8 / −41.7 / −43.9). **P9 ✗**: no background dose-response across modalities. **E12**: question dependence starts at layer 14 (Lingshu) / 17 (Qwen3-VL) |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | ✅ DONE (A 4.74 h, B 4.34 h; 32 runs, all complete; merged Nov 5 00:10). SLAKE judge-scored (pass 5 merged) | 9.23 | 0 | Nov 4–5 | **Only LLM-attention scoring collapses**: SparseVLM fails like FastV on Lingshu (−44.8 RIN anatomy), not on Qwen3-VL (+0.1); VisPruner / PruneSID ≈ Random. Gate+Uniform ≥ all published on Lingshu RIN; on SLAKE (judge) no non-attention method separates from another. P15 ✗, P16 ✗, P17 ✗, P18 ✓ |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ DONE. E8r, E6-P2 (both halves), judge passes 4–8 merged. **C v4 ✅** (2.71 h, 10 runs, merged Nov 5 07:30): the 8 registered Lingshu runs A did not reach, Lingshu DivPrune on OmniMedVQA anatomy, **E9 latency** and Lingshu prompt tokens. **B v6 ✅** (1.38 h, 4 runs): Qwen3-VL DivPrune on RIN abnormality + OmniMedVQA anatomy. Registry: 324 of 324 registered runs complete. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 14.45 | 0 | Nov 3–5 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most. **E9**: FastV at 10% → prefill 2.95× (paired 3.07×), first-token path 1.69× (vision encoder 183 ms is untouched); the gate alone saves nothing. **Oracle organ gate = heuristic gate** on SLAKE (−0.9, n.s.) |
+| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu), D v1 × 2 (E14 smoke, 3 questions per run); B (E14 RadImageNet cells) and the full D sessions (E14 SLAKE + OmniMedVQA) start once the smoke passes | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2) | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
-**Totals (Nov 5, 07:40):** spent 72.8 GPU-h (A 28.58, B 25.02, C 19.21) · running 0 · free this week ≈ 9.0
+**Nov 7, 03:20:** E14–E16 launched (Stage 7b): ≈ 21 GPU-h planned, within every account's free hours (C 2.8 h left
+before v5 by the user's count, A 1.4, B 5.0, D 30). **Totals (Nov 5, 07:40):** spent 72.8 GPU-h (A 28.58, B 25.02, C 19.21) · running 0 · free this week ≈ 9.0
 (A 1.4, B 5.0, C 2.6) + D 30 (bundle built; GPU unused). Every registered run is complete. Earlier estimate (measured rates, §C4): **≈ 61
 GPU-h for the whole project** (48 before Nov 3 evening; the added hours are the diagnostic controls of §A9 — E6 on both
 models before the grid, E10, E11, Random seeds — and E12, the layer profile and text readout of §A10, 1.0 + 0.9). The
@@ -40,10 +42,10 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | 28.58 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43) | 0 | 0 (its last run moved to C) | 1.4 |
-| B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38) = 25.02 | 0 | 0 | 5.0 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9) | 0 | 0 | 2.6 |
-| D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | 0 | — | 30; `cvpr` secret added by the user (Nov 5) → RadImageNet allowed; first D session verifies it in its setup cell |
+| A — Lingshu | `pushkararora88` | 30 | 28.58 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43) | v10 E16 (Nov 7 03:14, ≈ 1.2 h) | 0 | 0.2 |
+| B — Qwen3-VL | `pushkararora` | 30 | 23.64 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38) = 25.02 | 0 | E14 RadImageNet cells, both models (≈ 3.3 h, after D's smoke) | 1.7 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9) | v5 E15 (Nov 7 03:14, ≈ 2.4 h; the user counted 2 h 47 min left) | 0 | ≈ 0.4 |
+| D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
 RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge). HuatuoGPT P2 blocks (incl.
@@ -280,7 +282,7 @@ Status column as results land; numbers come from the Work log (Nov 3, "Offline d
 | G16 | "Show me FastV misses the evidence, not just 'background'" | SLAKE organ masks, 358 / 364 questions naming an annotated structure: FastV keeps it at 0.84× [0.57, 1.11] / 0.61× [0.43, 0.80] chance (Random 1.00 / 1.05; Gate+FastV 2.81 / 1.68); large organs 0.20× / 0.23×, dropped entirely in 58% / 71% of questions (Random 13% / 11%); small structures 1.46× / 0.88×; FastV − Random −16.8 [−25.2, −7.1] on large organs vs −2.5 on small (Lingshu) | `oracle_gate` (E6-P1); within-question test of "evidence kept → correct" with Random seeds 0–2 (conditional logit, D4) | **`oracle_gate` read (Nov 5, judge)**: it keeps the named structure at 4.89× chance (hit 100%). On the 358 questions naming a structure, Oracle − Random +5.3 [+2.0, +8.9] (p 0.003); on the other 703, −3.6 [−6.9, −0.3] (p 0.033); net −0.6 (n.s.). **[FLAG] FastV loses more where no structure is named** (−16.4 [−20.2, −12.5] vs −7.5 [−11.4, −3.8]): missed evidence is a real but minor part of the loss, so G16 cannot be the headline mechanism. D4 still open | P0 |
 | G17 | "This is the visual attention sink (Kang et al., ICLR 2025), already known" | Spearman(layer-1 score, layer-1 input norm) 0.32 / 0.44 Lingshu (RIN / SLAKE), ≈ 0 / 0.16 Qwen3-VL; FastV's top-10% overlaps the top-10% by norm at 2.3–3.9× chance; ViT-norm outliers selected 2.6–5.1× (P5) → a partial mechanism for Lingshu, not for Qwen3-VL | `artifact_excl` (E6, running); sink-dimension count per token in the layer profile (D1); cite and contrast | Partial | P1 |
 | G18 | "FEATHER already explained early-layer bias by RoPE" | RoPE-free scores give the same positional variance share as RoPE scores (RIN: 69% vs 69% Lingshu, 47% vs 51% Qwen3-VL) and keep-set overlap 0.94 / 0.77 → in M-RoPE models the positional prior sits in the visual keys | HuatuoGPT (1D RoPE, E8) as the FEATHER-like case; D1 per layer | Analysis done | P0 |
-| G19 | "Only FastV; the title says attention-guided pruning" | — | PDrop ± gate (E6-P2), `fastv_k8/k16`, `fastv_text` (D2); scope the title to early-layer LLM attention unless a ViT-side method (VisionZip-style) is added | Partly queued | P1 |
+| G19 | "Only FastV; the title says attention-guided pruning" | — | PDrop ± gate (E6-P2), `fastv_k8/k16`, `fastv_text` (D2); scope the title to early-layer LLM attention unless a ViT-side method (VisionZip-style) is added | **E14 running (Nov 7)**: VisionZip and HiPrune (vision-encoder attention), CDPruner (instruction-conditioned DPP, no LLM attention), FEATHER, VScan, TransPrune | P1 |
 | G20 | "Prior work already shows Random ≥ attention pruning" (Wen et al. 2025, ACL Findings; DART; VTC-Bench) | Not yet positioned | Related-work check (D6); our delta = medical regime + quantified prior + anatomy grounding + E7/E10 controls | Writing | P0 |
 | G21 | "Many exploratory analyses: forking paths" | §A6 frozen Nov 2; G-tests added Nov 3 | Confirmatory set = P1–P14 with Holm correction; everything else labelled exploratory with its date (extends G13) | Writing | P0 |
 | G22 | "Why does RadImageNet collapse 2.5× more than SLAKE at the same 64 tokens?" | FastV − Random −41.2 / −33.7 on RIN vs −16.3 / −0.5 on SLAKE at 224² and −10.7 / −2.7 on photographs at 224²; Random alone loses only 9.7 / 5.1 points on RIN (anatomy is readable from any 6 tokens); position explains 69% / 51% of RIN's layer-1 ranking vs 64% / 40% on SLAKE at 224² — similar priors, very different damage | E11r (flip RIN), E6 `static_map` on RIN (is a fixed map as bad as FastV?), E10r (RIN at 448²); in-session token statistics of RIN images at FastV-kept vs random cells (aggregates only, license) | Partly answered (Nov 5): a position-only map built on SLAKE reproduces FastV on both RIN tasks (Lingshu static map − Random −50.9 anatomy, −15.6 abnormality vs FastV −41.7 / −14.2; static − FastV on abnormality −1.4, p 0.09) → RIN's collapse is what a fixed position prior does to these images. Open: why the same prior hurts RIN more than SLAKE | P0 |
@@ -334,7 +336,7 @@ New work, in order of decision value per GPU-hour (none is in `configs/runs.yaml
 | D2 | `fastv_text`: prune with the text-token readout at layer 1 | G2 ("your FastV is not FastV") | ≈ 0.4 GPU-h per model on K | L2 |
 | D3 | Evidence grounding as a tested `analysis.py` function, on every SLAKE cell (E6, E10 224², E11 flipped) | G16 | laptop | Fig. 1, Fig. 5 |
 | D4 | Within-question evidence test: Random seeds 0–2, conditional logit of correct on evidence kept | is evidence retention causal for accuracy? | laptop, after E6 seeds | L4 |
-| D5 | RadImageNet open questions (`rin_open`), judge-scored | MedSTP's strongest column | ≈ 1.0 GPU-h per model | L1 |
+| D5 | RadImageNet open questions (`rin_open`), judge-scored | MedSTP's strongest column | ≈ 1.0 GPU-h per model | L1 — **E15 running (Nov 7, C, Lingshu only, 1,000 questions)** |
 | D6 | Related-work check: question independence of FastV, Random ≥ attention, visual attention sinks | G20 | 1 h | §2 |
 | D7 | Holm correction over P1–P14; every other analysis labelled exploratory with its date | G21 | laptop | §3 |
 
@@ -1051,6 +1053,52 @@ Fix found on the way: `flops_table` took the Full reference from each row's own 
 - [x] Latency timed around prefill only, with device-wide syncs (both T4s), on identical questions for every
   schedule, in shuffled order; the layer loop equals the model's forward on the first question (max relative diff
   0.0) and the text-token count matches the processor on every question.
+
+### E14 / E15 / E16 — more published pruners, RadImageNet open questions, SparseVLM raters (added Nov 7)
+
+**Why.** G19: a reviewer will say the paper tested one family. E14 adds the methods that avoid early-layer LLM
+attention or claim to fix it, each ported from its official code at a pinned commit (`medprune/baselines/`; equivalence
+tests in `tests/test_new_baselines.py` run the official functions and inline selection blocks from `third_party/`).
+E15 adds the column MedSTP is strongest on (open answers, RadImageNet). E16 asks why SparseVLM survives on Qwen3-VL
+where FastV collapses (D-15): rater subset, or its three-stage schedule?
+
+| Method | What it reads | Acts | Schedule at our 10% budget | Port notes |
+|---|---|---|---|---|
+| VisionZip (CVPR 2025) ± gate | attention received at the last vision block; keys for merging | pre-LLM; contextual tokens merge the rest | dominant = budget − contextual, contextual = max(int(0.05 N), 1) (official Qwen2.5-VL code) | merged embeddings written into the tower output (Qwen3-VL: also its deepstack features) |
+| HiPrune (AAAI 2026 SA) | attention at the object block (16 of 32; Qwen3-VL 14 of 27) and the last block | pre-LLM | anchors round(T × 0.1 / 5) + 4-neighbour buffers + registers | official block, verbatim |
+| CDPruner (NeurIPS 2025) ± gate | projected visual tokens; mean LLM embedding of the instruction | pre-LLM | DPP MAP, T tokens | paper Eq. 5 relevance for models without a CLIP text tower (no negation) |
+| FEATHER (ICCV 2025) | RoPE-free last-token attention; stride-3 grid | LLM layers 8 and 16 | (1 − R) = 0.1^(1/3): 46.4% at 8 (grid + attention), 10% at 16 | no public code; not token-matched (8 unpruned layers) |
+| VScan (TMLR 2026) | local (block 7, 4 × 4 windows) + global (last block) vision attention; RoPE-free attention at L/2 | pre-LLM merge + LLM L/2 | stage 1 24.6% (Lingshu) / 22.5% (Qwen3-VL), then 1/3 of it; token-matched to FastV | official Qwen2.5-VL functions; merge = mean of kept + merged |
+| TransPrune (CVPR 2026) | token transition (attention + FFN, layers 6–11) + instruction attention | LLM layers 7, 9, 12 | 87.5%, 62.5%, 10% | not token-matched (7 unpruned layers); softmax over the live sequence |
+
+E15: `rin_open` = 500 `anatomy_open` + 500 `pathology_open` questions (one per image and template, seed 0), MedEvalKit's
+open prompt, judged in the same session (`JUDGE = True`: the judge items with RadImageNet text stay in `/tmp`; only
+verdicts reach the output). Methods: Full, text-only, Random (seeds 0–2), Uniform, FastV, Gate+FastV, Gate+Uniform,
+PruneSID. E16: `fastv_raters` (SparseVLM's raters, layer 1 → 2, 10%: the FastV schedule) and `sparsevlm_single`
+(raters at SparseVLM's first stage, layer 2 → 3, one stage at 10%), on RIN anatomy + SLAKE (Qwen3-VL) and RIN anatomy
+(Lingshu).
+
+**Predictions (written Nov 7 03:20, before any E14–E16 result; exploratory, outside the Holm family).**
+- P19 (E14): the three pre-LLM methods that never read LLM attention (VisionZip, HiPrune, CDPruner) are within 3 points
+  of Random on Lingshu RIN anatomy. 55%.
+- P20 (E14): VScan and TransPrune (first LLM-attention stage at layer ≥ 7) stay above Random − 5 on Lingshu RIN
+  anatomy. 50%.
+- P21 (E14): FEATHER stays above Random − 5 on Lingshu RIN anatomy — its K = 16 stage rescues it, not the RoPE removal
+  (RoPE-free = FastV on these models, G18). 50%.
+- P22 (E16): on Qwen3-VL RIN anatomy, `fastv_raters` − Random ≤ −15 (the raters alone do not rescue SparseVLM; its
+  schedule does). 55%.
+- P23 (E15): on `rin_open` (Lingshu, judge), FastV − Random ≤ −8 and Gate+Uniform ≥ Random − 3. 55%.
+
+**Accounts.** D's two GPU notebooks were created by API on Nov 7 and have no `cvpr` secret, so D runs SLAKE and
+OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run the RadImageNet cells (both models).
+`KEEP_GOING = True`: a failing method is reported and the next run starts.
+
+**Checks**
+- [x] Ports equal the official code on random inputs (VisionZip and HiPrune inline blocks, CDPruner `encode_images`,
+  VScan `token_merging` / `window_selection`, TransPrune `compute_transf_weight`); vision cues equal the pre-Nov-7
+  VisPruner cues on tiny Qwen2.5-VL / Qwen3-VL towers; TTV under masking equals the official weights on the shortened
+  sequence; RoPE-free scores exclude dropped keys (162 tests).
+- [ ] Smoke (D v1, 3 questions × 16 runs per model) passes before the full sessions.
 
 ---
 
@@ -2597,3 +2645,20 @@ run IDs, counts, accuracies with CIs. Template:
   scratchpad only, not committed).
 - The user added the `cvpr` secret (HF token) on account D. D can now build RadImageNet in-session; the first D
   notebook's setup cell confirms the secret resolves before any GPU work.
+
+### 2026-11-07 — Claude — E14–E16 launched: six more pruners, RadImageNet open questions, SparseVLM raters
+
+- The user chose (Nov 7): E14 (VisionZip, HiPrune, CDPruner, FEATHER + TransPrune and VScan) on accounts D and B; E15
+  (`rin_open`, one model) on C (2 h 47 min left); E16 (SparseVLM ablation) on A (University). Excluded and why (chat,
+  Nov 7): ATP-LLaVA, IF-Prune, LearnPruner, ViToS need training; MedPruner is a 3D-volume method; MedSTP has no code.
+- Code (`b69ffd3`, `868a9ba`): six modules in `medprune/baselines/` (§E14 card); hooks for RoPE-free scores at layers
+  1/7/15/L-2 with dropped keys excluded, a vision-output merge, TransPrune's transition weights; `vision_attention`
+  (several blocks, keys, embeddings; VisPruner's cues unchanged, tested); `rin_open` builder; `fastv_raters`,
+  `sparsevlm_single`; `run_eval --keep-going`, comma lists for `--model/--method/--dataset`; the notebook masks
+  `rin_open` and can judge open answers in-session (`JUDGE`). 162 CPU tests.
+- 03:14 launched: C `medprune-gpu-lingshu7b` v5 (E15, MAX_HOURS 1.9 + judge), A `medprune-gpu-lingshu7b` v10 (E16,
+  Qwen3-VL then Lingshu, MAX_HOURS 1.0), D `medprune-gpu-lingshu7b` v1 and `medprune-gpu-qwen3vl8b` v1 (E14 smoke,
+  LIMIT 3). Full D (Lingshu 9 h, Qwen3-VL 8 h caps) and B (Qwen3-VL in `medprune-baselines-qwen3vl8b`, Lingshu in
+  `medprune-gpu-qwen3vl8b`, the slot with the secret) follow the smoke.
+- [FLAG] The two-stage method idea (coverage early, text-guided attention late) is published (STS 2606.03569, VScan,
+  LearnPruner, STAR-Pro): the paper stays diagnosis-first; VScan and TransPrune now represent that family in E14.

@@ -1105,10 +1105,13 @@ questions (X − Random; Random = mean of seeds 0–2):
 Qwen3-VL SLAKE (judge; 4 new open answers rule-scored): FastV −5.0, `fastv_raters` −0.8 (+4.2 vs FastV), `sparsevlm_single`
 −1.0, SparseVLM +0.8 — the readout matters there, the layer does not. Lingshu RIN anatomy: `fastv_raters` −41.3 = FastV
 (+0.4, n.s.), as `fastv_text` was: on Lingshu no readout change helps. **Reading:** on Qwen3-VL the layer-1 ranking is
-the broken object (the E12 profile already shows Qwen3-VL's question share is ~0 at layer 1); one more layer removes half
-of FastV's RadImageNet loss. [FLAG] A candidate mechanism is Qwen3-VL's DeepStack, which adds vision-encoder features
-to the visual hidden states after decoder layers 0–2 — the layer-2 scores are the first to see two injections. This is
-a hypothesis, not tested; the E12 per-layer logs (`lp_last_l1` vs `lp_last_l2`, position share) can check it offline.
+the broken object; one more layer removes half of FastV's RadImageNet loss. The E12 profile (`tables/layer_profile.csv`,
+last-token readout, Qwen3-VL RIN anatomy) agrees: position explains 32% / **51%** / **36%** / 46% / 52% of the ranking
+at layers 0–4 and the visual attention mass is 0.027 / **0.009** / **0.040** / 0.030 / 0.020 — layer 2 is a local
+minimum of the positional prior and a 4× maximum of attention to the image, layer 1 the opposite (SLAKE: position 12% /
+10%, mass 0.043 / 0.085). [FLAG] A candidate cause is Qwen3-VL's DeepStack, which adds vision-encoder features to the
+visual hidden states after decoder layers 0–2 (layer 2 is the first to see two injections), but layer 3 sees three
+and is positional again: a hypothesis, not tested.
 
 **Accounts.** D's two GPU notebooks were created by API on Nov 7 and have no `cvpr` secret, so D runs SLAKE and
 OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run the RadImageNet cells (both models).

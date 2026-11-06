@@ -592,7 +592,13 @@ def run_many(specs: list[RunSpec], bundle: Path | list[Path], out: Path, rates: 
     for model in dict.fromkeys(s.model for s in specs):
         adapter = FakeAdapter(model) if dry_run else load_adapter(model, profile, vision_fp32=vision_fp32)
         for spec in [s for s in specs if s.model == model]:
-            root = bundle_for(bundle, spec.dataset)
+            try:
+                root = bundle_for(bundle, spec.dataset)
+            except FileNotFoundError:  # e.g. RadImageNet not built (secret missing): run the other datasets
+                if not keep_going:
+                    raise
+                print(json.dumps({"run_id": spec.run_id(profile_name), "failed": "no manifest"}))
+                continue
             samples = load_manifest(root, spec.dataset)
             n_total = min(len(samples), limit) if limit else len(samples)
             remaining = n_total - len(_done_qids(out / "runs" / f"{spec.run_id(profile_name)}.jsonl",

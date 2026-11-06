@@ -170,13 +170,16 @@ blocks:
   # Nov 7 — E14 (G19): published pruners that do not read early-layer LLM attention, or fix it — vision-encoder attention
   # (VisionZip, HiPrune), instruction-conditioned diversity before the LLM (CDPruner), RoPE-free + uniform early stage
   # (FEATHER), encoder scans + mid-layer pruning (VScan), token transition + instruction attention (TransPrune); the
-  # gate composed with VisionZip and CDPruner. Account D (4th account): Lingshu all methods; Qwen3-VL split D / B.
-  - {exp: E14, tier: P0, account: D, model: lingshu7b, groups: [K, rin_abn_closed, S3],
+  # gate composed with VisionZip and CDPruner. Account D (4th account, new notebooks without the `cvpr` secret) runs
+  # SLAKE and OmniMedVQA; account B (notebooks with the secret) runs the RadImageNet cells.
+  - {exp: E14, tier: P0, account: D, model: lingshu7b, groups: [slake_en, S3],
      methods: [feather, cdpruner, hiprune, visionzip, vscan, transprune, gate_cdpruner, gate_visionzip]}
-  - {exp: E14, tier: P0, account: D, model: qwen3vl8b, groups: [K, rin_abn_closed, S3],
-     methods: [feather, cdpruner, hiprune, visionzip]}
-  - {exp: E14, tier: P0, account: B, model: qwen3vl8b, groups: [K, rin_abn_closed, S3],
-     methods: [vscan, transprune, gate_cdpruner, gate_visionzip]}
+  - {exp: E14, tier: P0, account: D, model: qwen3vl8b, groups: [slake_en, S3],
+     methods: [feather, cdpruner, hiprune, visionzip, vscan, transprune, gate_cdpruner, gate_visionzip]}
+  - {exp: E14, tier: P0, account: B, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed],
+     methods: [feather, cdpruner, hiprune, visionzip, vscan, transprune, gate_cdpruner, gate_visionzip]}
+  - {exp: E14, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed],
+     methods: [feather, cdpruner, hiprune, visionzip, vscan, transprune, gate_cdpruner, gate_visionzip]}
 
   # Nov 7 — E15 (§A10 D5): RadImageNet open questions (500 anatomy + 500 pathology, judge-scored in the same session:
   # the license forbids moving RadImageNet text off the session). Lingshu only (account C, 2.8 h left).

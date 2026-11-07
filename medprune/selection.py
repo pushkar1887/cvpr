@@ -77,6 +77,8 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("fastv_k24", "topk", score="attn", score_layer=23, mask_from=24),
         _spec("random_l8", "random", mask_from=8),
         _spec("random_l16", "random", mask_from=16),
+        _spec("random_l12", "random", mask_from=12),  # E36: the same tokens cut inside the reading window
+        _spec("random_l20", "random", mask_from=20),
         # Background context for a coverage selector (plan.md E20, Nov 7): on Qwen3-VL's open questions that ask for the
         # body region the gate costs Uniform 12.6 points (answers drift to an organ inside the right region). Give back
         # 3% of N evenly spaced background tokens, or admit boundary cells (tau 0.25).

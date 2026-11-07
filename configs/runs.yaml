@@ -373,3 +373,10 @@ blocks:
   # Nov 7 14:22 — E35: complete the Random + merge row (Qwen3-VL SLAKE, judged, and RIN abnormality; Qwen3-VL OmniMedVQA is
   # in E27b). Both cells separate little (Full − Random +2.6 / −0.3). No prediction. Account B, slot 2.
   - {exp: E35, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, rin_abn_closed], methods: [random_merge]}
+
+  # Nov 7 14:34 — E36: is a cut inside the reading window worse than an early one? E32: Random's seed-0 tokens cut at layer 16
+  # lose 6.3 on Lingshu RIN abnormality vs the same tokens cut at 2, and FastV recovers only at K = 20; E19: cut at 8,
+  # Random loses 3.1 on Lingshu RIN anatomy. Random's tokens cut at 8 / 12 / 20 on RIN abnormality, at 12 on RIN anatomy
+  # (Lingshu). Account C (P57).
+  - {exp: E36, tier: P0, account: C, model: lingshu7b, groups: [rin_abn_closed], methods: [random_l8, random_l12, random_l20]}
+  - {exp: E36, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc], methods: [random_l12]}

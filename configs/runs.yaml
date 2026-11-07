@@ -281,3 +281,11 @@ blocks:
   # Account A, slot 1 (P41-P42).
   - {exp: E23, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc], methods: [fastv_merge, fastv_k16], budgets: [0.05, 0.25]}
   - {exp: E23, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc], methods: [fastv_merge, fastv_k16], budgets: [0.05, 0.25]}
+
+  # Nov 7 10:17 — E24: budget robustness of the reported rows. Fig. 4 has FastV / Gate+FastV / Random at 5% and 25% on
+  # both models but Gate+Uniform only on Lingshu, and none of the E13/E14 published rows. Gate+Uniform on Qwen3-VL
+  # (SLAKE judged + RIN anatomy) and released-sign CDPruner, Gate+CDPruner (released) and VScan on RIN anatomy, both
+  # models, at 5% / 25%. Account A, slot 2 (P43).
+  - {exp: E24, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_anat_mc], methods: [gate_uniform], budgets: [0.05, 0.25]}
+  - {exp: E24, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc], methods: [cdpruner_neg, gate_cdpruner_neg, vscan], budgets: [0.05, 0.25]}
+  - {exp: E24, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc], methods: [cdpruner_neg, gate_cdpruner_neg, vscan], budgets: [0.05, 0.25]}

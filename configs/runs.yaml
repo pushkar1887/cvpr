@@ -263,3 +263,9 @@ blocks:
   - {exp: E21, tier: P0, account: B, model: qwen3vl8b, groups: [rin_open], methods: [fastv_merge, random_merge, gate_fastv_merge]}
   - {exp: E21, tier: P0, account: B, model: lingshu7b, groups: [rin_open], methods: [fastv_merge, random_merge, gate_fastv_merge]}
   - {exp: E21, tier: P0, account: B, model: lingshu7b, groups: [slake_en], methods: [fastv_merge, visionzip_nomerge, vscan_nomerge]}
+
+  # Nov 7 09:20 — E22: does the merge remedy generalise? FastV + VScan's merge on the other baseline cells where FastV
+  # loses (Lingshu RIN abnormality -14.2, Lingshu OmniMedVQA anatomy -29.4, Qwen3-VL OmniMedVQA anatomy -4.3; Qwen3-VL
+  # RIN abnormality is uninformative, Full = Random). Account B, slot 2 (P38).
+  - {exp: E22, tier: P0, account: B, model: lingshu7b, groups: [rin_abn_closed, omni_anat], methods: [fastv_merge]}
+  - {exp: E22, tier: P0, account: B, model: qwen3vl8b, groups: [omni_anat], methods: [fastv_merge]}

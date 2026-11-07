@@ -75,6 +75,11 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("fastv_k14", "topk", score="attn", score_layer=13, mask_from=14),
         _spec("random_l8", "random", mask_from=8),
         _spec("random_l16", "random", mask_from=16),
+        # Background context for a coverage selector (plan.md E20, Nov 7): on Qwen3-VL's open questions that ask for the
+        # body region the gate costs Uniform 12.6 points (answers drift to an organ inside the right region). Give back
+        # 3% of N evenly spaced background tokens, or admit boundary cells (tau 0.25).
+        _spec("gate_uniform_q3", "uniform", mask_from=2, gate="foreground", bg_quota=0.03),
+        _spec("gate_uniform_t25", "uniform", mask_from=2, gate="foreground", tau=0.25),
         _spec("static_map", "static", mask_from=2),
         _spec("inverse_gate", "inverse", mask_from=2, gate="foreground"),
         _spec("oracle_gate", "topk", score="attn", score_layer=1, mask_from=2, gate="oracle"),
@@ -168,6 +173,15 @@ def select_uniform(n: int, k: int, allowed: np.ndarray | None = None) -> np.ndar
     candidates = everything if allowed is None else np.flatnonzero(allowed)
     chosen = _even_pick(candidates, k)
     outside = np.setdiff1d(everything, chosen)
+    return _finish(chosen, n, k, _even_pick(outside, k - chosen.size) if chosen.size < k else outside)
+
+
+def select_uniform_quota(n: int, k: int, allowed: np.ndarray, k_bg: int) -> np.ndarray:
+    """k_bg evenly spaced tokens outside `allowed` (fewer if the background is smaller), the rest evenly spaced inside."""
+    allowed = np.asarray(allowed, dtype=bool)
+    background = _even_pick(np.flatnonzero(~allowed), min(k_bg, k))
+    chosen = np.union1d(background, _even_pick(np.flatnonzero(allowed), k - background.size))
+    outside = np.setdiff1d(np.arange(n), chosen)
     return _finish(chosen, n, k, _even_pick(outside, k - chosen.size) if chosen.size < k else outside)
 
 

@@ -30,7 +30,7 @@ from .data import Sample, load_manifest
 from .masks import MaskStore
 from .scoring import is_correct
 from .selection import (METHODS, MethodSpec, keep_count, pdrop_schedule, rng_for, sample_map, select_divprune,
-                        select_inverse, select_random, select_topk, select_uniform)
+                        select_inverse, select_random, select_topk, select_uniform, select_uniform_quota)
 
 LOG_LAYERS = (1, 7, 15)  # full runs log FastV scores here (layers K-1 for K = 2, 8, 16)
 OUTLIER_Z = 5.0  # high-norm "artifact" tokens: robust z-score above this (plan.md §C7)
@@ -193,7 +193,11 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
     if rule == "random":
         state.apply_keep(select_random(n, k, rng_for(spec.seed, sample.qid), allowed), method.mask_from)
     elif rule == "uniform":
-        state.apply_keep(select_uniform(n, k, allowed), method.mask_from)
+        if method.bg_quota > 0 and allowed is not None:  # E20: background quota for the coverage selector
+            keep = select_uniform_quota(n, k, allowed, keep_count(n, method.bg_quota))
+        else:
+            keep = select_uniform(n, k, allowed)
+        state.apply_keep(keep, method.mask_from)
     elif rule == "inverse":
         state.apply_keep(select_inverse(allowed, k), method.mask_from)
     elif rule == "static":

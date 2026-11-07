@@ -28,7 +28,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | ✅ DONE. B v5 6.30 h (79 runs; merged Nov 5 00:30); A v9 9.43 h (87 runs, 86 complete; merged Nov 5 03:40; judge pass 7 merged). Missing: Lingshu SLAKE-zh `gate_fastv` (0.32 h, did not fit) | 15.73 | 0.32 (A) | Nov 4–5 | **E10r**: more tokens do not help (Lingshu −48.9 at 256 tokens vs −41.7; Qwen3-VL −29.2 vs −33.7). **`fastv_text` = FastV** (Lingshu +0.5 / +0.2). **E5**: Lingshu RIN loss flat 5→25% (−39.8 / −41.7 / −43.9). **P9 ✗**: no background dose-response across modalities. **E12**: question dependence starts at layer 14 (Lingshu) / 17 (Qwen3-VL) |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | ✅ DONE (A 4.74 h, B 4.34 h; 32 runs, all complete; merged Nov 5 00:10). SLAKE judge-scored (pass 5 merged) | 9.23 | 0 | Nov 4–5 | **Only LLM-attention scoring collapses**: SparseVLM fails like FastV on Lingshu (−44.8 RIN anatomy), not on Qwen3-VL (+0.1); VisPruner / PruneSID ≈ Random. Gate+Uniform ≥ all published on Lingshu RIN; on SLAKE (judge) no non-attention method separates from another. P15 ✗, P16 ✗, P17 ✗, P18 ✓ |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ DONE. E8r, E6-P2 (both halves), judge passes 4–8 merged. **C v4 ✅** (2.71 h, 10 runs, merged Nov 5 07:30): the 8 registered Lingshu runs A did not reach, Lingshu DivPrune on OmniMedVQA anatomy, **E9 latency** and Lingshu prompt tokens. **B v6 ✅** (1.38 h, 4 runs): Qwen3-VL DivPrune on RIN abnormality + OmniMedVQA anatomy. Registry: 324 of 324 registered runs complete. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 14.45 | 0 | Nov 3–5 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most. **E9**: FastV at 10% → prefill 2.95× (paired 3.07×), first-token path 1.69× (vision encoder 183 ms is untouched); the gate alone saves nothing. **Oracle organ gate = heuristic gate** on SLAKE (−0.9, n.s.) |
-| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2); Nov 7 06:56 A v11 E17 ✅ (1.22 h; P24 ✗, P25 ✓, **CDPruner's released sign +26.5 / +8.1 → reported row**); 07:00 E17b on A + B | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
+| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2); Nov 7 06:56 A v11 E17 ✅ (1.22 h; P24 ✗, P25 ✓, **CDPruner's released sign +26.5 / +8.1 → reported row**); 07:00 E17b on A + B; 07:09 A E15b ✅ (P23 replicates on Qwen3-VL); 07:12 C E14o-Lingshu ✅ (P27 ✗; TransPrune collapses on open anatomy); 07:30 E19 on C; 08:51 A E14o-Qwen3-VL ✅ (P30 ✗; FEATHER collapses on Qwen3-VL; gate costs coverage selectors 12.6 on region-asking questions); 09:25 E20 on A | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Nov 7, 03:20:** E14–E16 launched (Stage 7b): ≈ 21 GPU-h planned, within every account's free hours (C 2.8 h left
@@ -42,7 +42,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22, baselines v3 E15b 1.43 = 2.65 | `medprune-gpu-lingshu7b` v12 (E17b, 07:00, cap 3.0), `medprune-baselines-lingshu7b` v4 (E14o Qwen3-VL, 07:15, cap 2.0) | — | ≈ 22 |
+| A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22, baselines v3 E15b 1.43, baselines v4 E14o-Qwen3-VL 1.65 = 4.30 | `medprune-gpu-lingshu7b` v12 (E17b, 07:00, cap 3.0), `medprune-baselines-lingshu7b` v5 (E20, 09:25, cap 2.0) | — | ≈ 21 |
 | B — Qwen3-VL | `pushkararora` | 30 | 28.37 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50, E14 Lingshu RIN 1.85) | 0 | E18 after the reset | weekly reset ≈ 05:30 IST Nov 7 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | week of Oct 31: 21.01 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.84; Lingshu v4 2.71; v5 E15 1.80). **Week of Nov 7:** v6 E14o 1.50 | v7 E19 (07:30, cap 2.8) | — | ≈ 17 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
@@ -1240,7 +1240,8 @@ reported as uninformative. [FLAG] On Qwen3-VL the gate *hurts* Uniform on open a
 Gate+CDPruner on the released sign) on Qwen3-VL `rin_open`, + Lingshu `gate_cdpruner_neg`; A
 `medprune-baselines-lingshu7b` v4 (2.0 h cap), judged in-session.
 - P30 (E14o, Qwen3-VL): on `rin_open` anatomy the nine methods keep their RIN anatomy (multiple-choice) order,
-  Spearman ≥ 0.6, and HiPrune and Eq. 5 CDPruner each lose ≥ 8 points to Random. 50%.
+  Spearman ≥ 0.6, and HiPrune and Eq. 5 CDPruner each lose ≥ 8 points to Random. 50%. **Contradicted (Nov 7):**
+  Spearman 0.57 (0.38 without FastV); Eq. 5 CDPruner −15.1 but HiPrune −4.9.
 
 **E19 — depth × ranking (added Nov 7 07:30, after E14o Lingshu, before any E19 result).** FastV at K = 10 / 12 / 14
 (scored at layers 9 / 11 / 13) on RIN anatomy, both models; Random's seed-0 keep-set applied from layer 8 or 16
@@ -1254,6 +1255,56 @@ Lingshu's last-token position share: 0.65 / 0.59 / 0.53 at layers 9 / 11 / 13, 0
   ±3 — and at layer 8 it still does — `random_l8` − `fastv_k8` ≥ +20. 60%.
 - P33 (E19, Lingshu `rin_open` anatomy): `fastv_k12` − Random ≤ −8 (as TransPrune, last cut at 12) and `fastv_k16`
   within 3 of Random. 45%.
+
+**E14o result, Qwen3-VL (A `medprune-baselines-lingshu7b` v4, Nov 7 08:51, 1.65 h, 10 runs × 1,000, 1,976 in-session
+verdicts, 462 new; 19 overlap earlier verdicts by > 0.001, max 0.013, none crosses 0.5 — stored kept).** `rin_open`,
+judge-scored, X − Random (seeds 0-2), with Lingshu (E14o above) for comparison:
+
+| `rin_open` anatomy (Random 37.6 / 46.1, Full 52.6 / 56.6) | Qwen3-VL | Lingshu | Qwen3-VL RIN anatomy (MC) |
+|---|---|---|---|
+| VisionZip | **+6.1** [+2.9, +9.5] | +0.3 | +1.8 |
+| VScan | +5.3 [+2.2, +8.3] | +2.5 | +5.7 |
+| CDPruner (released sign) | +4.3 [+1.3, +7.5] | **+7.9** | +2.8 |
+| TransPrune | +3.7 [+0.4, +7.1] | **−11.5** | +4.5 |
+| Gate+CDPruner (released) / Gate+VisionZip | +1.7 / +0.9 | +4.1 / −0.9 | — / +3.0 |
+| HiPrune | −4.9 [−8.5, −1.5] | −0.9 | −12.3 |
+| **FEATHER** | **−7.3** [−10.6, −3.9] | +3.9 | +3.9 |
+| CDPruner (Eq. 5) | −15.1 | −11.3 | −23.7 |
+| FastV (E15b) | −17.7 | −25.1 | −33.7 |
+
+All 1,000 (Random 19.7): VisionZip +3.1, VScan +3.2, released CDPruner +3.3, TransPrune +2.3, FEATHER −3.9, Eq. 5
+CDPruner −7.6. Pathology is at the floor (Full 4.2).
+- **The open-answer collapse is model-specific and hits a different method on each model.** FEATHER collapses on
+  Qwen3-VL (36 distinct answers on 500 vs 47 for Full; "abdomen" 129 vs 58) while TransPrune does not (50 distinct);
+  on Lingshu it is the reverse. FEATHER's second ranking is RoPE-free attention at layer 15: past Lingshu's positional
+  transition (28 layers), not past Qwen3-VL's (36 layers; BRR ≈ 2.8 through layer 16, E17). Post hoc, consistent with
+  the E19 reading; E19's Qwen3-VL `fastv_k16` on `rin_open` tests it.
+- Robust across both models on open anatomy: released-sign CDPruner (+4.3 / +7.9) and VScan (+5.3 / +2.5) beat Random;
+  Eq. 5 CDPruner and FastV lose on both.
+- Error type (post hoc, hand region lexicon over the frequent answer words, local only): FastV's, TransPrune's
+  (Lingshu) and FEATHER's (Qwen3-VL) extra errors name **another body region** (Qwen3-VL FastV 60.8% of questions vs
+  Random 28.2%; Lingshu FastV 74.8% vs 38.2%, TransPrune 59.6%). The gate's errors on coverage selectors name a
+  structure **inside the right region** (Qwen3-VL Gate+Uniform: −6.2 correct, +4.6 same-region, +1.6 other-region;
+  Gate+VisionZip −5.2 / +6.8 / −1.6).
+- [FLAG] **The gate's cost to coverage selectors sits on the region-asking questions.** The benchmark's open anatomy
+  templates ask either for an organ / structure (278 of 500) or for a region / body part (222); the reference is
+  always one of 8 region labels. Qwen3-VL, gated − ungated: Uniform **−12.6** [−18.9, −6.3] on region-asking vs −1.1
+  on organ-asking; VisionZip −13.1 vs +1.1; released CDPruner −5.0 vs −0.7; Gate+FastV − FastV +6.8 / +5.4 (the gate
+  still helps the attention ranking). Lingshu: −2.3 / −4.0 (Uniform), n.s. I first suspected a scoring artefact
+  (organ answers to organ questions marked wrong): the split rules it out — the loss is where the question asks for
+  the region. Reading: keeping only foreground removes the field-of-view context (body outline, air) that names the
+  region; the model then names the tissue it sees. On multiple choice the gate's gain on Uniform grows with the
+  image's background share (Qwen3-VL +0.8 / +1.6 / +3.3 at < 5% / 5-40% / 40-70% background), so the cost is specific
+  to producing the region name. Paper: the remedy row must report the region-asking split, and the gate is
+  qualified as a remedy for attention rankings (third instance after E15b).
+
+**E20 — background context for the coverage selector (added Nov 7 09:20, after E14o Qwen3-VL, before any E20
+result).** `gate_uniform_q3` = Gate+Uniform with 3% of N evenly spaced background tokens inside the same k (the E6-P2
+quota, now for Uniform: `select_uniform_quota`, tested); `gate_uniform_t25` = Gate+Uniform with τ 0.25 (admits boundary
+cells). `rin_open` (judged) + RIN anatomy (MC), both models; A `medprune-baselines-lingshu7b` v5 (cap 2.0 h).
+- P34 (E20): on Qwen3-VL's region-asking open anatomy questions (n 222), `gate_uniform_q3` − `gate_uniform` ≥ +6 (half
+  the −12.6) and `gate_uniform_t25` − `gate_uniform` ≥ +4; on RIN anatomy (MC) both within ±2 of `gate_uniform` on both
+  models. 40%.
 
 **E15 result (C v5, Nov 7 05:04, ≈ 1.8 h, 10 runs × 1,000, judge-scored in-session: 1,965 verdicts merged).**
 `rin_open`, Lingshu, X − Random (seeds 0-2; Random 24.1, Full 33.2, text-only 4.0): FastV **−12.4** [−14.7, −10.0],
@@ -2912,3 +2963,11 @@ run IDs, counts, accuracies with CIs. Template:
   answers collapse onto frequent labels like FastV's. MC → open rank agreement 0.30.
 - 07:30 E19 (depth × ranking: `fastv_k10/12/14`, `random_l8/16`; 165 tests) on C `medprune-gpu-lingshu7b` v7.
   P31-P33 written first.
+- 08:51 **A `medprune-baselines-lingshu7b` v4 COMPLETE** (E14o Qwen3-VL, 1.65 h; 10 / 10 runs, 30 new files, 462
+  new verdicts; 19 re-judged items differ by ≤ 0.013, none crosses 0.5). P30 contradicted (Spearman 0.57; HiPrune
+  −4.9). Qwen3-VL `rin_open` anatomy: VisionZip +6.1, VScan +5.3, released CDPruner +4.3, TransPrune +3.7, **FEATHER
+  −7.3** (collapses; TransPrune collapses on Lingshu instead). Offline: the gate's cost to Uniform / VisionZip is on
+  the region-asking templates (−12.6 / −13.1; organ-asking −1.1 / +1.1) and its errors name a structure inside the
+  right region; FastV's name another region.
+- 09:25 E20 (`gate_uniform_q3`, `gate_uniform_t25`; `select_uniform_quota`; 166 tests) on A
+  `medprune-baselines-lingshu7b` v5. P34 written first.

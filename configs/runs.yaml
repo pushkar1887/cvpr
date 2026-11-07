@@ -245,3 +245,10 @@ blocks:
      methods: [fastv_k10, fastv_k12, fastv_k14, random_l8, random_l16]}
   - {exp: E19, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [fastv_k8, fastv_k12, fastv_k16, random_l16]}
   - {exp: E19, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [fastv_k8, fastv_k16, random_l16]}
+
+  # Nov 7 09:20 — E20: background context for the coverage selector. E14o/E15b on Qwen3-VL: Gate+Uniform - Uniform -12.6
+  # on the open anatomy questions that ask for the body region (-1.1 on those that ask for an organ); the gated answers
+  # name an organ inside the right region. Give back 3% of N evenly spaced background tokens (`gate_uniform_q3`) or
+  # admit boundary cells (`gate_uniform_t25`). Open (judged) + multiple choice, both models. Account A, slot 2 (P34).
+  - {exp: E20, tier: P0, account: A, model: qwen3vl8b, groups: [rin_open, rin_anat_mc], methods: [gate_uniform_q3, gate_uniform_t25]}
+  - {exp: E20, tier: P0, account: A, model: lingshu7b, groups: [rin_open, rin_anat_mc], methods: [gate_uniform_q3, gate_uniform_t25]}

@@ -108,7 +108,7 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 57  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
+    assert len(METHODS) == 59  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
     #                            FastV K = 3-6 (E17)
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
@@ -137,3 +137,22 @@ def test_ungated_random_draw_is_unchanged():
     a = select_random(64, 6, np.random.default_rng(7))
     b = np.sort(np.random.default_rng(7).choice(64, size=6, replace=False))
     assert np.array_equal(a, b)
+
+
+def test_uniform_quota_keeps_k_with_background_share():
+    from medprune.selection import _even_pick, select_uniform, select_uniform_quota
+
+    n, k, k_bg = 100, 10, 3
+    allowed = np.zeros(n, dtype=bool)
+    allowed[20:80] = True
+    keep = select_uniform_quota(n, k, allowed, k_bg)
+    assert keep.size == k and np.unique(keep).size == k
+    assert (~allowed[keep]).sum() == k_bg
+    assert set(keep[~allowed[keep]]) == set(_even_pick(np.flatnonzero(~allowed), k_bg))
+    everything = np.ones(n, dtype=bool)  # no background: same as Uniform inside the gate
+    assert np.array_equal(select_uniform_quota(n, k, everything, k_bg), select_uniform(n, k, everything))
+    small = np.zeros(n, dtype=bool)
+    small[:4] = True  # gate smaller than k - k_bg: topped up from the rest, still k distinct
+    keep = select_uniform_quota(n, k, small, k_bg)
+    assert keep.size == k and np.unique(keep).size == k and allowed.size == n
+    assert METHODS["gate_uniform_q3"].bg_quota == 0.03 and METHODS["gate_uniform_t25"].tau == 0.25

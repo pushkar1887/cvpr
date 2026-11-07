@@ -393,3 +393,11 @@ blocks:
   # with the cut at layer 20 (`random_sched20`: 20.3% of N to layer 20, 6.8% after, at 10%) on Lingshu's four baseline
   # cells (SLAKE judged). Account A, slot 2 (P59).
   - {exp: E38, tier: P0, account: A, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat], methods: [random_sched20]}
+
+  # Nov 7 17:30 — E39: the late-cut schedule on Qwen3-VL and on open answers. E38: Random's tokens on the token-matched
+  # schedule with the hard cut at layer 20 of 28 are +1.2 to +8.3 on all four Lingshu cells (the cut at 14 lost 7.2 on
+  # abnormality). Qwen3-VL (36 layers): cut at 26 (5/7 of the depth, as 20/28) on the four cells + `rin_open`, cut at 24 on
+  # RIN anatomy + OmniMedVQA; Lingshu cut at 20 on `rin_open`. A slot 1 (cut 26) and slot 2 (the rest) (P60-P61).
+  - {exp: E39, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [random_sched26]}
+  - {exp: E39b, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc, omni_anat], methods: [random_sched24]}
+  - {exp: E39b, tier: P0, account: A, model: lingshu7b, groups: [rin_open], methods: [random_sched20]}

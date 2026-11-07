@@ -28,7 +28,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | ✅ DONE. B v5 6.30 h (79 runs; merged Nov 5 00:30); A v9 9.43 h (87 runs, 86 complete; merged Nov 5 03:40; judge pass 7 merged). Missing: Lingshu SLAKE-zh `gate_fastv` (0.32 h, did not fit) | 15.73 | 0.32 (A) | Nov 4–5 | **E10r**: more tokens do not help (Lingshu −48.9 at 256 tokens vs −41.7; Qwen3-VL −29.2 vs −33.7). **`fastv_text` = FastV** (Lingshu +0.5 / +0.2). **E5**: Lingshu RIN loss flat 5→25% (−39.8 / −41.7 / −43.9). **P9 ✗**: no background dose-response across modalities. **E12**: question dependence starts at layer 14 (Lingshu) / 17 (Qwen3-VL) |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | ✅ DONE (A 4.74 h, B 4.34 h; 32 runs, all complete; merged Nov 5 00:10). SLAKE judge-scored (pass 5 merged) | 9.23 | 0 | Nov 4–5 | **Only LLM-attention scoring collapses**: SparseVLM fails like FastV on Lingshu (−44.8 RIN anatomy), not on Qwen3-VL (+0.1); VisPruner / PruneSID ≈ Random. Gate+Uniform ≥ all published on Lingshu RIN; on SLAKE (judge) no non-attention method separates from another. P15 ✗, P16 ✗, P17 ✗, P18 ✓ |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ DONE. E8r, E6-P2 (both halves), judge passes 4–8 merged. **C v4 ✅** (2.71 h, 10 runs, merged Nov 5 07:30): the 8 registered Lingshu runs A did not reach, Lingshu DivPrune on OmniMedVQA anatomy, **E9 latency** and Lingshu prompt tokens. **B v6 ✅** (1.38 h, 4 runs): Qwen3-VL DivPrune on RIN abnormality + OmniMedVQA anatomy. Registry: 324 of 324 registered runs complete. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 14.45 | 0 | Nov 3–5 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most. **E9**: FastV at 10% → prefill 2.95× (paired 3.07×), first-token path 1.69× (vision encoder 183 ms is untouched); the gate alone saves nothing. **Oracle organ gate = heuristic gate** on SLAKE (−0.9, n.s.) |
-| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2); Nov 7 06:56 A v11 E17 ✅ (1.22 h; P24 ✗, P25 ✓, **CDPruner's released sign +26.5 / +8.1 → reported row**); 07:00 E17b on A + B; 07:09 A E15b ✅ (P23 replicates on Qwen3-VL); 07:12 C E14o-Lingshu ✅ (P27 ✗; TransPrune collapses on open anatomy); 07:30 E19 on C; 08:51 A E14o-Qwen3-VL ✅ (P30 ✗; FEATHER collapses on Qwen3-VL; gate costs coverage selectors 12.6 on region-asking questions); 09:03 E20 on A; 09:04 B E18 ✅ (P26 ✗; **VScan's merge on FastV's keep-set +39.0 / +35.3**, beats Gate+FastV by 21-24); 09:12 E21 on B; 09:15 B E17b-Qwen3-VL ✅ (P28 / P29 Qwen3-VL halves hold); 09:22 E22 on B; 09:22 C E19 ✅ (P31 ✗, P32 ✓, P33 ✓: the ranking's cost ends at K ≈ 10-12 on multiple choice, later on open answers, with BRR unchanged); 09:28 E19b on C | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
+| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2); Nov 7 06:56 A v11 E17 ✅ (1.22 h; P24 ✗, P25 ✓, **CDPruner's released sign +26.5 / +8.1 → reported row**); 07:00 E17b on A + B; 07:09 A E15b ✅ (P23 replicates on Qwen3-VL); 07:12 C E14o-Lingshu ✅ (P27 ✗; TransPrune collapses on open anatomy); 07:30 E19 on C; 08:51 A E14o-Qwen3-VL ✅ (P30 ✗; FEATHER collapses on Qwen3-VL; gate costs coverage selectors 12.6 on region-asking questions); 09:03 E20 on A; 09:04 B E18 ✅ (P26 ✗; **VScan's merge on FastV's keep-set +39.0 / +35.3**, beats Gate+FastV by 21-24); 09:12 E21 on B; 09:15 B E17b-Qwen3-VL ✅ (P28 / P29 Qwen3-VL halves hold); 09:22 E22 on B; 09:22 C E19 ✅ (P31 ✗, P32 ✓, P33 ✓: the ranking's cost ends at K ≈ 10-12 on multiple choice, later on open answers, with BRR unchanged); 09:28 E19b on C; 09:34 A E17b-Lingshu ✅ (P28 ✗, P29 ✗; the gate helps released CDPruner where its BRR > 1); 09:40 E23 on A | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Nov 7, 03:20:** E14–E16 launched (Stage 7b): ≈ 21 GPU-h planned, within every account's free hours (C 2.8 h left
@@ -42,7 +42,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22, baselines v3 E15b 1.43, baselines v4 E14o-Qwen3-VL 1.65 = 4.30 | `medprune-gpu-lingshu7b` v12 (E17b, 07:00, cap 3.0), `medprune-baselines-lingshu7b` v5 (E20, 09:03, cap 2.0) | — | ≈ 21 |
+| A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22, baselines v3 E15b 1.43, baselines v4 E14o-Qwen3-VL 1.65, gpu v12 E17b 2.49 = 6.79 | `medprune-gpu-lingshu7b` v13 (E23, 09:40, cap 1.6), `medprune-baselines-lingshu7b` v5 (E20, 09:03, cap 2.0) | — | ≈ 20 |
 | B — Qwen3-VL | `pushkararora` | 30 | week of Oct 31: 28.37 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50, E14 Lingshu RIN 1.85). **Week of Nov 7:** baselines v4 E18 3.27, gpu v8 E17b 2.18 = 5.45 | `medprune-gpu-qwen3vl8b` v9 (E22, 09:22, cap 2.5), `medprune-baselines-qwen3vl8b` v5 (E21, 09:12, cap 4.0) | — | ≈ 18 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | week of Oct 31: 21.01 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.84; Lingshu v4 2.71; v5 E15 1.80). **Week of Nov 7:** v6 E14o 1.50, v7 E19 2.05 = 3.55 | v8 E19b (09:28, cap 1.5) | — | ≈ 17 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
@@ -1227,8 +1227,24 @@ re-judged items differ by ≤ 0.009, one of them crosses 0.5 — the stored verd
 | CDPruner (released sign) | +2.8 | −0.4 [−1.4, +0.6] | +0.7 [−0.7, +2.0] | +2.2 [+0.8, +3.5] |
 | Gate+CDPruner (released sign) | +2.4 (−0.4 vs ungated, n.s.) | −0.4 (+0.0) | +0.2 (−0.5) | +3.1 (+1.0, p 0.009) |
 
-P28's three Qwen3-VL cells hold (all within 3 of Random); P29's Qwen3-VL half holds (−0.4). Both wait for the Lingshu
-half (A `medprune-gpu-lingshu7b` v12). The Eq. 5 rows on SLAKE / OmniMedVQA come from D.
+P28's three Qwen3-VL cells hold (all within 3 of Random); P29's Qwen3-VL half holds (−0.4). The Eq. 5 rows on SLAKE /
+OmniMedVQA come from D.
+
+**E17b result, Lingshu half (A `medprune-gpu-lingshu7b` v12, Nov 7 09:34, 2.49 h, 7 / 7 runs, 12 new verdicts; 15
+re-judged within 0.015, none crosses 0.5).** X − Random, with released-sign CDPruner's BRR (gate masks, seed 0):
+
+| | RIN anatomy | RIN abnormality | SLAKE (judge) | OmniMedVQA anatomy (Random seed 0) |
+|---|---|---|---|---|
+| Lingshu CDPruner (released sign) | +1.0 (BRR 1.90) | **−4.7** (BRR 1.59) | −0.5 (BRR 1.31) | **−8.5** (BRR 1.96) |
+| Lingshu Gate+CDPruner (released) | +2.5 (+1.5 [−0.2, +3.3]) | +2.2 (**+6.9**) | +2.9 (+3.4) | −1.4 (**+7.1**) |
+| Qwen3-VL CDPruner (released sign) | +2.8 (BRR 0.82) | −0.4 (BRR 0.68) | +0.7 (BRR 0.77) | +2.2 (BRR 0.75) |
+| Qwen3-VL Gate+CDPruner (released) | +2.4 (−0.4) | −0.4 (+0.0) | +0.2 (−0.5) | +3.1 (+1.0) |
+
+- **P28 contradicted** (4 of 6 cells; Lingshu RIN abnormality −4.7 and OmniMedVQA −8.5 fail). **P29 contradicted** as
+  registered (Lingshu RIN anatomy +1.5, n.s.; Qwen3-VL half holds).
+- Post hoc, across all eight cells: the gate helps released-sign CDPruner exactly where it keeps background (Lingshu,
+  BRR 1.3-2.0: +1.5 to +7.1) and not where it avoids it (Qwen3-VL, BRR 0.7-0.8: −0.5 to +1.0). Gate+CDPruner (released
+  sign) is within 3 of Random or above on all eight cells — the most uniform pruned row so far.
 
 **E15b result (A `medprune-baselines-lingshu7b` v3, Nov 7 07:09, 1.43 h, 10 runs × 1,000, 1,646 in-session verdicts;
 1,630 new merged).** `rin_open`, Qwen3-VL, judge-scored, X − Random (seeds 0-2; Random 19.7, Full 28.4, text-only 1.2):
@@ -1415,6 +1431,14 @@ abnormality is skipped (Full = Random). Reference: FastV, since FastV's pre-LLM 
 the four cells measured (E18). B `medprune-gpu-qwen3vl8b` v9 (cap 2.5 h).
 - P38 (E22): the merge removes at least half of FastV's deficit on all three cells — `fastv_merge` − Random ≥ −7.1
   (Lingshu RIN abnormality), ≥ −14.7 (Lingshu OmniMedVQA), ≥ −2.2 (Qwen3-VL OmniMedVQA). 55%.
+
+**E23 — the two new remedies across budgets (added Nov 7 09:38, before any E23 result).** `fastv_merge` and
+`fastv_k16` at 5% and 25% kept, RIN anatomy, both models. Existing references (Random seed 0): FastV −39.8 / −43.9
+(Lingshu 5% / 25%), −32.2 / −15.9 (Qwen3-VL); Gate+FastV −32.5 / −15.3, −22.0 / −7.7. A `medprune-gpu-lingshu7b` v13
+(cap 1.6 h).
+- P41 (E23): the merge removes at least two thirds of FastV's deficit on all four cells (`fastv_merge` − Random ≥
+  −13.3 / −14.6 Lingshu, ≥ −10.7 / −5.3 Qwen3-VL). 50%.
+- P42 (E23): a cut at layer 16 stays within 3 of Random on all four cells. 50%.
 - P27 (E14o): on `rin_open` anatomy questions (Lingshu, judge), VScan and FEATHER are within 3 points of Random, and
   CDPruner (either sign) and HiPrune lose ≥ 8. 45%. **Contradicted (Nov 7):** VScan +2.5, FEATHER +3.9; CDPruner
   −11.3 (Eq. 5) but **+7.9** (released sign); HiPrune −0.9.
@@ -3085,3 +3109,8 @@ run IDs, counts, accuracies with CIs. Template:
   K = 8 and 10 (Lingshu, −43.9 → +1.6) / 10 and 14 (Qwen3-VL) with BRR still 2.4-2.9; Random's tokens cut at 16 =
   FastV's. Open anatomy recovers later (Lingshu −16.7 at K = 12, Qwen3-VL −4.5 at 16).
 - 09:28 E19b (`fastv_k20`, `fastv_k24` added; 167 tests) on C `medprune-gpu-lingshu7b` v8. P39-P40 written first.
+- 09:34 **A `medprune-gpu-lingshu7b` v12 COMPLETE** (E17b Lingshu, 2.49 h; 7 / 7 runs, 14 new files, 12 new verdicts;
+  15 re-judged within 0.015). P28 contradicted (Lingshu RIN abnormality −4.7, OmniMedVQA −8.5), P29 contradicted
+  (+1.5). The gate lifts released-sign CDPruner by +1.5 to +7.1 on Lingshu (BRR 1.3-2.0) and −0.5 to +1.0 on Qwen3-VL
+  (BRR 0.7-0.8); Gate+CDPruner (released) is ≥ Random − 3 on all eight cells.
+- 09:40 E23 (`fastv_merge`, `fastv_k16` at 5% / 25%) on A `medprune-gpu-lingshu7b` v13. P41-P42 written first.

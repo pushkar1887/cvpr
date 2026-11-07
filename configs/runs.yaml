@@ -275,3 +275,9 @@ blocks:
   # Qwen3-VL still -4.5 at 16. Fill the open curve: Lingshu K = 10 / 14, Qwen3-VL K = 12 / 20 / 24. Account C (P39-P40).
   - {exp: E19b, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [fastv_k10, fastv_k14]}
   - {exp: E19b, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [fastv_k12, fastv_k20, fastv_k24]}
+
+  # Nov 7 09:38 — E23: budget robustness of the two new remedies. E18: FastV's keep-set + VScan's merge reaches Full /
+  # −7.1 at 10%; E19: a cut at layer 16 is at Full. Both at 5% and 25% on RIN anatomy, where FastV loses 32-44 / 16-44.
+  # Account A, slot 1 (P41-P42).
+  - {exp: E23, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc], methods: [fastv_merge, fastv_k16], budgets: [0.05, 0.25]}
+  - {exp: E23, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc], methods: [fastv_merge, fastv_k16], budgets: [0.05, 0.25]}

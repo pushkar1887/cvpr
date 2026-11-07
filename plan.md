@@ -42,7 +42,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 
 | Role | Account | Weekly quota | Spent | Running | Left in plan | Slack |
 |---|---|---|---|---|---|---|
-| A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22 | `medprune-baselines-lingshu7b` v3 (E15b, 05:41), `medprune-gpu-lingshu7b` v12 (E17b, 07:00, cap 3.0) | — | ≈ 24 |
+| A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22, baselines v3 E15b 1.43 = 2.65 | `medprune-gpu-lingshu7b` v12 (E17b, 07:00, cap 3.0), `medprune-baselines-lingshu7b` v4 (E14o Qwen3-VL, 07:15, cap 2.0) | — | ≈ 22 |
 | B — Qwen3-VL | `pushkararora` | 30 | 28.37 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50, E14 Lingshu RIN 1.85) | 0 | E18 after the reset | weekly reset ≈ 05:30 IST Nov 7 |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9; v5 E15 1.80) = 21.01 | 0 | E14o after the reset | reset ≈ 05:30 IST Nov 7 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
@@ -1218,6 +1218,29 @@ Qwen3-VL on B `medprune-gpu-qwen3vl8b` v8 (2.6 h).
   models (6 cells). 55%.
 - P29 (E17b): on RIN anatomy, `gate_cdpruner_neg` − `cdpruner_neg` ≥ +2 on Lingshu (BRR 1.90) and within ±2 on
   Qwen3-VL (BRR 0.82). 40%.
+
+**E15b result (A `medprune-baselines-lingshu7b` v3, Nov 7 07:09, 1.43 h, 10 runs × 1,000, 1,646 in-session verdicts;
+1,630 new merged).** `rin_open`, Qwen3-VL, judge-scored, X − Random (seeds 0-2; Random 19.7, Full 28.4, text-only 1.2):
+
+| Qwen3-VL `rin_open` | all 1,000 | anatomy (Random 37.6, Full 52.6) | pathology (Random 1.8, Full 4.2) |
+|---|---|---|---|
+| FastV | **−9.3** [−11.3, −7.2] | **−17.7** [−21.4, −13.9] | −0.9 |
+| Gate+FastV | −5.7 (+3.6 vs FastV) | −11.7 (+6.0) | +0.3 |
+| Uniform | +2.1 | +4.9 | −0.7 |
+| Gate+Uniform | −0.4 (−2.5 vs Uniform, p 0.021) | −1.3 (**−6.2** vs Uniform, p 0.002) | +0.5 |
+| PruneSID | +2.9 | +5.3 | +0.5 |
+
+P23's two conditions hold on the second model (FastV ≤ −8, Gate+Uniform ≥ Random − 3). FastV keeps 34% of the image's
+contribution, Random 68% (Lingshu 27% / 69%). Pathology is at the floor on both models (Full 4.2 / 9.8) and is
+reported as uninformative. [FLAG] On Qwen3-VL the gate *hurts* Uniform on open anatomy (−6.2): the same sign as E1g
+(`gate_random` − Random +0.5, n.s.) but now significant. The gate is a remedy for attention rankings on RadImageNet
+(+3.6 / +6.0 over FastV), not a free improvement for coverage selectors — the paper must say so.
+
+**E14o on Qwen3-VL (added Nov 7 07:15, after E15b, before any E14o result).** The nine E14 rows (both CDPruner signs,
+Gate+CDPruner on the released sign) on Qwen3-VL `rin_open`, + Lingshu `gate_cdpruner_neg`; A
+`medprune-baselines-lingshu7b` v4 (2.0 h cap), judged in-session.
+- P30 (E14o, Qwen3-VL): on `rin_open` anatomy the nine methods keep their RIN anatomy (multiple-choice) order,
+  Spearman ≥ 0.6, and HiPrune and Eq. 5 CDPruner each lose ≥ 8 points to Random. 50%.
 
 **E15 result (C v5, Nov 7 05:04, ≈ 1.8 h, 10 runs × 1,000, judge-scored in-session: 1,965 verdicts merged).**
 `rin_open`, Lingshu, X − Random (seeds 0-2; Random 24.1, Full 33.2, text-only 4.0): FastV **−12.4** [−14.7, −10.0],
@@ -2840,3 +2863,8 @@ run IDs, counts, accuracies with CIs. Template:
   the only pre-LLM loser), and BRR does not explain CDPruner on Lingshu (released sign: BRR 1.90, +1.0).
 - 07:00 E17b (`gate_cdpruner_neg`, `28d1ec5`; 164 tests): `cdpruner_neg` + `gate_cdpruner_neg` on the four baseline
   cells, Lingshu on A `medprune-gpu-lingshu7b` v12, Qwen3-VL on B `medprune-gpu-qwen3vl8b` v8. P28-P29 written first.
+- 07:09 **A `medprune-baselines-lingshu7b` v3 COMPLETE** (E15b, 1.43 h; 10 / 10 runs, 36 new files, 1,630 new
+  verdicts). Qwen3-VL `rin_open` (judge): FastV −9.3, anatomy −17.7; Gate+FastV +3.6 over FastV; Uniform +2.1,
+  PruneSID +2.9; Gate+Uniform −2.5 vs Uniform (anatomy −6.2, p 0.002) — the gate does not help coverage selectors on
+  Qwen3-VL. P23's conditions replicate on the second model.
+- 07:15 E14o on Qwen3-VL (nine E14 rows + Lingshu `gate_cdpruner_neg`) on A `medprune-baselines-lingshu7b` v4. P30 first.

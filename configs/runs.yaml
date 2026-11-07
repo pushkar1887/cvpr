@@ -228,3 +228,9 @@ blocks:
   - {exp: E17b, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_cdpruner_neg]}
   - {exp: E17b, tier: P0, account: B, model: qwen3vl8b, groups: [rin_abn_closed, slake_en, S3],
      methods: [cdpruner_neg, gate_cdpruner_neg]}
+
+  # Nov 7 07:15 — E14o on Qwen3-VL (A slot 2, after E15b): the E14 pruners on RadImageNet open questions, both CDPruner
+  # signs and the gate on the released sign; + Lingshu `gate_cdpruner_neg` (not in C's E14o). Judged in-session.
+  - {exp: E14o, tier: P1, account: A, model: qwen3vl8b, groups: [rin_open],
+     methods: [feather, cdpruner, cdpruner_neg, gate_cdpruner_neg, hiprune, visionzip, vscan, transprune, gate_visionzip]}
+  - {exp: E14o, tier: P1, account: A, model: lingshu7b, groups: [rin_open], methods: [gate_cdpruner_neg]}

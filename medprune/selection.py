@@ -73,6 +73,8 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("fastv_k10", "topk", score="attn", score_layer=9, mask_from=10),
         _spec("fastv_k12", "topk", score="attn", score_layer=11, mask_from=12),
         _spec("fastv_k14", "topk", score="attn", score_layer=13, mask_from=14),
+        _spec("fastv_k20", "topk", score="attn", score_layer=19, mask_from=20),  # E19b: Qwen3-VL (36 layers) only
+        _spec("fastv_k24", "topk", score="attn", score_layer=23, mask_from=24),
         _spec("random_l8", "random", mask_from=8),
         _spec("random_l16", "random", mask_from=16),
         # Background context for a coverage selector (plan.md E20, Nov 7): on Qwen3-VL's open questions that ask for the

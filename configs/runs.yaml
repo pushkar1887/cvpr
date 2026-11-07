@@ -269,3 +269,9 @@ blocks:
   # RIN abnormality is uninformative, Full = Random). Account B, slot 2 (P38).
   - {exp: E22, tier: P0, account: B, model: lingshu7b, groups: [rin_abn_closed, omni_anat], methods: [fastv_merge]}
   - {exp: E22, tier: P0, account: B, model: qwen3vl8b, groups: [omni_anat], methods: [fastv_merge]}
+
+  # Nov 7 09:26 — E19b: the open-answer transition depth. E19: on multiple choice FastV's ranking stops costing between
+  # K = 8 and 10 (Lingshu) / 10 and 14 (Qwen3-VL); on open anatomy Lingshu is still -16.7 at K = 12 and recovered at 16,
+  # Qwen3-VL still -4.5 at 16. Fill the open curve: Lingshu K = 10 / 14, Qwen3-VL K = 12 / 20 / 24. Account C (P39-P40).
+  - {exp: E19b, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [fastv_k10, fastv_k14]}
+  - {exp: E19b, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [fastv_k12, fastv_k20, fastv_k24]}

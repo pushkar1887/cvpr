@@ -296,3 +296,8 @@ blocks:
   # Qwen3-VL SLAKE is skipped (Full - Random +2.6). Account C (P44-P45).
   - {exp: E25, tier: P0, account: C, model: lingshu7b, groups: [omni_anat, slake_en], methods: [fastv_k10, fastv_k16]}
   - {exp: E25, tier: P0, account: C, model: qwen3vl8b, groups: [omni_anat], methods: [fastv_k12, fastv_k16]}
+
+  # Nov 7 10:45 — E26: Random seeds 1-2 at 5% / 25% (Fig. 4's budget deltas rest on seed 0 there; 10% uses seeds 0-2).
+  # Reference runs, no prediction. Account A, slot 1.
+  - {exp: E26, tier: P0, account: A, model: lingshu7b, groups: [slake_en, rin_anat_mc], methods: [random_l2], budgets: [0.05, 0.25], seeds: [1, 2]}
+  - {exp: E26, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_anat_mc], methods: [random_l2], budgets: [0.05, 0.25], seeds: [1, 2]}

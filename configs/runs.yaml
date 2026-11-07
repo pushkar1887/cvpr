@@ -308,3 +308,10 @@ blocks:
   - {exp: E27, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [gate_visionzip]}
   - {exp: E27, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [random_l2], seeds: [1, 2]}
   - {exp: E27, tier: P0, account: D, model: lingshu7b, groups: [omni_anat], methods: [random_l2], seeds: [1, 2]}
+
+  # Nov 7 11:28 — E28: E22 — the merge lifts FastV to Random on OmniMedVQA (+29.2 Lingshu) but not on RIN abnormality
+  # (yes-rate 0.05 = text-only). Lingshu SLAKE (open + closed, judged; FastV -13.4) with the merge, the two E18 SLAKE
+  # leftovers (E21's tail may not reach them; identical IDs if both run), and Random + merge on Lingshu OmniMedVQA
+  # (Full - Random 14.2). Account B, slot 2 (P46-P47).
+  - {exp: E28, tier: P0, account: B, model: lingshu7b, groups: [slake_en], methods: [fastv_merge, visionzip_nomerge, vscan_nomerge]}
+  - {exp: E28, tier: P0, account: B, model: lingshu7b, groups: [omni_anat], methods: [random_merge]}

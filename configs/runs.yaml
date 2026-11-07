@@ -363,3 +363,9 @@ blocks:
   # the other six baseline cells (SLAKE judged). Account A, slot 2 (P56).
   - {exp: E33, tier: P0, account: A, model: lingshu7b, groups: [slake_en, rin_abn_closed, omni_anat], methods: [random_vscan]}
   - {exp: E33, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_abn_closed, omni_anat], methods: [random_vscan]}
+
+  # Nov 7 14:19 — E34: selector-seed variance for the two new Random-based rows. `random_merge` (E21) and `random_vscan`
+  # (E30) use Random's seed-0 tokens; seeds 1-2 on RIN anatomy (MC) and `rin_open` (judged) at 10%, both models.
+  # Reference runs, no prediction. Account B, slot 1.
+  - {exp: E34, tier: P0, account: B, model: lingshu7b, groups: [rin_anat_mc, rin_open], methods: [random_merge, random_vscan], seeds: [1, 2]}
+  - {exp: E34, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [random_merge, random_vscan], seeds: [1, 2]}

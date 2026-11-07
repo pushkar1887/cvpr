@@ -352,3 +352,8 @@ blocks:
   # tokens cut at 16 (depth vs ranking), and Qwen3-VL OmniMedVQA at K = 20 (half its 36 layers is 18). Account C (P52-P54).
   - {exp: E32, tier: P0, account: C, model: lingshu7b, groups: [rin_abn_closed], methods: [fastv_k20, fastv_k24, random_l16]}
   - {exp: E32, tier: P0, account: C, model: qwen3vl8b, groups: [omni_anat], methods: [fastv_k20]}
+
+  # Nov 7 13:35 — E27b: the Lingshu OmniMedVQA Random seed 2 that E27 did not reach, and Random + merge on Qwen3-VL
+  # OmniMedVQA (P46's cell on the second model). Public data only. Account D, slot 2 (P55).
+  - {exp: E27b, tier: P0, account: D, model: lingshu7b, groups: [omni_anat], methods: [random_l2], seeds: [2]}
+  - {exp: E27b, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [random_merge]}

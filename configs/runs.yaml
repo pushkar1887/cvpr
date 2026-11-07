@@ -380,3 +380,10 @@ blocks:
   # (Lingshu). Account C (P57).
   - {exp: E36, tier: P0, account: C, model: lingshu7b, groups: [rin_abn_closed], methods: [random_l8, random_l12, random_l20]}
   - {exp: E36, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc], methods: [random_l12]}
+
+  # Nov 7 15:20 — E37: the U-shaped depth curve on a second dataset and model. E36: on Lingshu, the same random tokens cut at
+  # layer 12 lose 10.3 on RIN abnormality (cut at 2: 0; at 20: +0.8) and cut at 8 lose 3.6 on RIN anatomy. Random's
+  # tokens cut at 8 / 12 / 16 / 20 on OmniMedVQA anatomy (public; Full − Random +14.3 / +13.7). Lingshu on C, Qwen3-VL on
+  # D slot 1 (P58).
+  - {exp: E37, tier: P0, account: C, model: lingshu7b, groups: [omni_anat], methods: [random_l8, random_l12, random_l16, random_l20]}
+  - {exp: E37, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [random_l8, random_l12, random_l16, random_l20]}

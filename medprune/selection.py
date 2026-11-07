@@ -85,6 +85,8 @@ METHODS: dict[str, MethodSpec] = dict(
         # VScan's token-matched two-stage schedule with Random's tokens (plan.md E30, Nov 7): f1·N random tokens kept
         # from layer 0, a random f2·N of them from layer L/2 (no merge). Separates VScan's schedule from its selection.
         _spec("random_vscan", "random_sched", mask_from=0),
+        # The same token-matched schedule with the hard cut at layer 20, after Lingshu's findings window (E36, E38).
+        _spec("random_sched20", "random_sched", mask_from=0, score_layer=20),
         _spec("gate_uniform_q3", "uniform", mask_from=2, gate="foreground", bg_quota=0.03),
         _spec("gate_uniform_t25", "uniform", mask_from=2, gate="foreground", tau=0.25),
         _spec("static_map", "static", mask_from=2),

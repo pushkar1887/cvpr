@@ -521,3 +521,32 @@ def test_random_vscan_follows_vscans_schedule(tmp_path):
         assert r["k_keep"] == v["k_keep"] == keep_count(n, f2)  # same final count as VScan
         first, last = r["keep_stages"][0][1], r["keep_stages"][-1][1]
         assert len(first) == keep_count(n, f1) and set(last) <= set(first)
+
+
+def test_random_sched20_moves_the_cut_and_keeps_the_token_budget(tmp_path):
+    import json
+
+    from medprune.baselines.vscan import vscan_schedule
+    from medprune.data import Sample, write_manifest
+    from medprune.run_eval import RunSpec, run_many
+    from medprune.selection import keep_count
+    from PIL import Image
+
+    f1, layer, f2 = vscan_schedule(0.10, 28, layer=20)
+    target = (2 + 26 * 0.10) / 28
+    assert layer == 20 and abs((20 * f1 + 8 * f2) / 28 - target) < 1e-9  # same mean tokens per layer as FastV
+    assert vscan_schedule(0.10, 28) == vscan_schedule(0.10, 28, layer=14)
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    (bundle / "images").mkdir(parents=True)
+    samples = []
+    for i in range(2):
+        Image.fromarray(np.full((64, 64, 3), 60 * i, np.uint8)).save(bundle / "images" / f"{i}.png")
+        samples.append(Sample(qid=f"toy/{i}", dataset="slake_en", image_id=f"toy/{i}", image_path=f"images/{i}.png",
+                              question="Is it?", answer="yes", answer_type="yesno", prompt_style="close"))
+    write_manifest(samples, bundle, "slake_en")
+    spec = RunSpec("lingshu7b", "slake_en", "random_sched20", 0.25)
+    run_many([spec], bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    f1, _, f2 = vscan_schedule(0.25, 28, layer=20)
+    for r in (json.loads(l) for l in open(out / "runs" / f"{spec.run_id('dryrun')}.jsonl")):
+        assert [s[0] for s in r["keep_stages"]] == [0, 20]
+        assert len(r["keep_stages"][0][1]) == keep_count(r["n_vis"], f1) and r["k_keep"] == keep_count(r["n_vis"], f2)

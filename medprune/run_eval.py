@@ -192,11 +192,11 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
     rule = method.rule
     if rule == "random":
         state.apply_keep(select_random(n, k, rng_for(spec.seed, sample.qid), allowed), method.mask_from)
-    elif rule == "random_sched":  # E30: Random's tokens on VScan's schedule (stage 2 at L/2, as `_vscan`)
+    elif rule == "random_sched":  # E30: Random's tokens on VScan's schedule (stage 2 at L/2, as `_vscan`; E38: elsewhere)
         from .attention_hook import Stage
         from .baselines.vscan import vscan_schedule
 
-        f1, layer, f2 = vscan_schedule(spec.budget, adapter.num_layers)
+        f1, layer, f2 = vscan_schedule(spec.budget, adapter.num_layers, layer=method.score_layer)
         k1, k2 = keep_count(n, f1), keep_count(n, f2)
         rng = rng_for(spec.seed, sample.qid)
         state.apply_keep(select_random(n, k1, rng, allowed), method.mask_from)

@@ -387,3 +387,9 @@ blocks:
   # D slot 1 (P58).
   - {exp: E37, tier: P0, account: C, model: lingshu7b, groups: [omni_anat], methods: [random_l8, random_l12, random_l16, random_l20]}
   - {exp: E37, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [random_l8, random_l12, random_l16, random_l20]}
+
+  # Nov 7 15:58 — E38: place the hard cut after the reading window. E33: Random's tokens on VScan's schedule lose 7.2 on
+  # Lingshu RIN abnormality (second cut at layer 14, inside the findings window of E36). The same token-matched schedule
+  # with the cut at layer 20 (`random_sched20`: 20.3% of N to layer 20, 6.8% after, at 10%) on Lingshu's four baseline
+  # cells (SLAKE judged). Account A, slot 2 (P59).
+  - {exp: E38, tier: P0, account: A, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat], methods: [random_sched20]}

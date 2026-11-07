@@ -30,9 +30,13 @@ WINDOW = 4
 LOCAL_BLOCK = {"lingshu7b": 7, "qwen3vl8b": 6}  # 0-based vision block of the local scan
 
 
-def vscan_schedule(budget: float, n_layers: int, first: int = 2) -> tuple[float, int, float]:
-    """(stage-1 keep fraction, stage-2 layer, stage-2 keep fraction of N), token-matched to FastV at `budget`."""
-    layer = n_layers // 2
+def vscan_schedule(budget: float, n_layers: int, first: int = 2, layer: int | None = None) -> tuple[float, int, float]:
+    """(stage-1 keep fraction, stage-2 layer, stage-2 keep fraction of N), token-matched to FastV at `budget`.
+
+    `layer` moves the second stage (default L/2, VScan's); the fractions are re-solved so the mean visual tokens per
+    layer still equal FastV's (plan.md E38).
+    """
+    layer = n_layers // 2 if layer is None else layer
     target = (first + (n_layers - first) * budget) / n_layers  # FastV's mean visual tokens per layer, units of N
     a = target * n_layers / (layer + (n_layers - layer) * STAGE2_RATIO)
     return min(1.0, a), layer, min(1.0, a) * STAGE2_RATIO

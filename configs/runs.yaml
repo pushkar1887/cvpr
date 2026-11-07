@@ -331,3 +331,12 @@ blocks:
   - {exp: E30, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc], methods: [vscan_nomerge], budgets: [0.05]}
   - {exp: E30, tier: P0, account: A, model: lingshu7b, groups: [rin_open], methods: [random_vscan]}
   - {exp: E30, tier: P0, account: A, model: qwen3vl8b, groups: [rin_open], methods: [random_vscan]}
+
+  # Nov 7 12:55 — E31: is the merge itself harmful for findings? E22: FastV + merge stays at the language prior on Lingshu RIN
+  # abnormality; E21: Random + merge is the best anatomy row (MC and open). Random + merge on Lingshu RIN abnormality and
+  # SLAKE (judged), Gate+FastV + merge on Lingshu RIN abnormality, and Random + merge at 5% on RIN anatomy (vs VScan's
+  # +17.8 / +14.6). Account B, slot 1 (P50-P51).
+  - {exp: E31, tier: P0, account: B, model: lingshu7b, groups: [rin_abn_closed], methods: [random_merge, gate_fastv_merge]}
+  - {exp: E31, tier: P0, account: B, model: lingshu7b, groups: [slake_en], methods: [random_merge]}
+  - {exp: E31, tier: P0, account: B, model: lingshu7b, groups: [rin_anat_mc], methods: [random_merge], budgets: [0.05]}
+  - {exp: E31, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc], methods: [random_merge], budgets: [0.05]}

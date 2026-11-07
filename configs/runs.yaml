@@ -346,3 +346,9 @@ blocks:
   - {exp: E26b, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc], methods: [random_l2], budgets: [0.05, 0.25], seeds: [1, 2]}
   - {exp: E26b, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en], methods: [random_l2], budgets: [0.05], seeds: [2]}
   - {exp: E26b, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en], methods: [random_l2], budgets: [0.25], seeds: [1, 2]}
+
+  # Nov 7 13:26 — E32: where findings are read. E25: every anatomy / SLAKE cell is at or near Full by K = 16 (about half the
+  # depth), but Lingshu RIN abnormality is still -6.6 at K = 16 (yes-rate 0.17). FastV at K = 20 / 24 there, Random's
+  # tokens cut at 16 (depth vs ranking), and Qwen3-VL OmniMedVQA at K = 20 (half its 36 layers is 18). Account C (P52-P54).
+  - {exp: E32, tier: P0, account: C, model: lingshu7b, groups: [rin_abn_closed], methods: [fastv_k20, fastv_k24, random_l16]}
+  - {exp: E32, tier: P0, account: C, model: qwen3vl8b, groups: [omni_anat], methods: [fastv_k20]}

@@ -315,3 +315,9 @@ blocks:
   # (Full - Random 14.2). Account B, slot 2 (P46-P47).
   - {exp: E28, tier: P0, account: B, model: lingshu7b, groups: [slake_en], methods: [fastv_merge, visionzip_nomerge, vscan_nomerge]}
   - {exp: E28, tier: P0, account: B, model: lingshu7b, groups: [omni_anat], methods: [random_merge]}
+
+  # Nov 7 11:48 — E29: does the gate add anything once the dropped tokens are merged (E21's P36, on the public cells)?
+  # Gate+FastV + merge on OmniMedVQA anatomy (both models; FastV + merge −0.3 / +1.0) and Lingshu SLAKE (judged; E28 has
+  # FastV + merge there). Public data only. Account D, slot 1 (P48).
+  - {exp: E29, tier: P0, account: D, model: lingshu7b, groups: [omni_anat, slake_en], methods: [gate_fastv_merge]}
+  - {exp: E29, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [gate_fastv_merge]}

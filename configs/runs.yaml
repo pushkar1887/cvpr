@@ -219,3 +219,12 @@ blocks:
   - {exp: E14o, tier: P1, account: C, model: lingshu7b, groups: [rin_open],
      methods: [feather, cdpruner, cdpruner_neg, hiprune, visionzip, vscan, transprune, gate_visionzip]}
 
+  # Nov 7 07:10 — E17b: CDPruner with the released code's sign (`cdpruner_neg`) beat the Eq. 5 sign by +26.5 (Qwen3-VL)
+  # and +8.1 (Lingshu) on RIN anatomy (E17), so the released sign becomes the reported CDPruner. Its full row: the other
+  # three baseline cells, and the gate composed with it. Lingshu on A slot 1, Qwen3-VL on B slot 2 (both have the secret).
+  - {exp: E17b, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc], methods: [gate_cdpruner_neg]}
+  - {exp: E17b, tier: P0, account: A, model: lingshu7b, groups: [rin_abn_closed, slake_en, S3],
+     methods: [cdpruner_neg, gate_cdpruner_neg]}
+  - {exp: E17b, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_cdpruner_neg]}
+  - {exp: E17b, tier: P0, account: B, model: qwen3vl8b, groups: [rin_abn_closed, slake_en, S3],
+     methods: [cdpruner_neg, gate_cdpruner_neg]}

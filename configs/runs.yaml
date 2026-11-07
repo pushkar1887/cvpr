@@ -301,3 +301,10 @@ blocks:
   # Reference runs, no prediction. Account A, slot 1.
   - {exp: E26, tier: P0, account: A, model: lingshu7b, groups: [slake_en, rin_anat_mc], methods: [random_l2], budgets: [0.05, 0.25], seeds: [1, 2]}
   - {exp: E26, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_anat_mc], methods: [random_l2], budgets: [0.05, 0.25], seeds: [1, 2]}
+
+  # Nov 7 11:23 — E27: OmniMedVQA references. Every OmniMedVQA anatomy delta uses Random seed 0 only (3,329 questions);
+  # add seeds 1-2 on both models, and the Qwen3-VL Gate+VisionZip run D v2 did not reach. Public data only (D has no
+  # `cvpr` secret). Reference runs, no prediction. Account D, slot 2.
+  - {exp: E27, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [gate_visionzip]}
+  - {exp: E27, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [random_l2], seeds: [1, 2]}
+  - {exp: E27, tier: P0, account: D, model: lingshu7b, groups: [omni_anat], methods: [random_l2], seeds: [1, 2]}

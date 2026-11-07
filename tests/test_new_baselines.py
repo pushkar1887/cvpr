@@ -493,3 +493,31 @@ def test_random_merge_keeps_random_l0s_tokens(tmp_path):
     run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
     keeps = [[json.loads(l)["keep_idx"] for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs]
     assert keeps[0] == keeps[1]  # the merge changes what the kept tokens carry, not which tokens are kept
+
+
+def test_random_vscan_follows_vscans_schedule(tmp_path):
+    import json
+
+    from medprune.baselines.vscan import vscan_schedule
+    from medprune.data import Sample, write_manifest
+    from medprune.run_eval import RunSpec, run_many
+    from medprune.selection import keep_count
+    from PIL import Image
+
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    (bundle / "images").mkdir(parents=True)
+    samples = []
+    for i in range(3):
+        Image.fromarray(np.full((64, 64, 3), 60 * i, np.uint8)).save(bundle / "images" / f"{i}.png")
+        samples.append(Sample(qid=f"toy/{i}", dataset="slake_en", image_id=f"toy/{i}", image_path=f"images/{i}.png",
+                              question="Is it?", answer="yes", answer_type="yesno", prompt_style="close"))
+    write_manifest(samples, bundle, "slake_en")
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.25) for m in ("random_vscan", "vscan")]
+    run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    rows = {s.method: [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs}
+    f1, _, f2 = vscan_schedule(0.25, 28)
+    for r, v in zip(rows["random_vscan"], rows["vscan"]):
+        n = r["n_vis"]
+        assert r["k_keep"] == v["k_keep"] == keep_count(n, f2)  # same final count as VScan
+        first, last = r["keep_stages"][0][1], r["keep_stages"][-1][1]
+        assert len(first) == keep_count(n, f1) and set(last) <= set(first)

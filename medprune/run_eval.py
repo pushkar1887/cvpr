@@ -192,6 +192,20 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
     rule = method.rule
     if rule == "random":
         state.apply_keep(select_random(n, k, rng_for(spec.seed, sample.qid), allowed), method.mask_from)
+    elif rule == "random_sched":  # E30: Random's tokens on VScan's schedule (stage 2 at L/2, as `_vscan`)
+        from .attention_hook import Stage
+        from .baselines.vscan import vscan_schedule
+
+        f1, layer, f2 = vscan_schedule(spec.budget, adapter.num_layers)
+        k1, k2 = keep_count(n, f1), keep_count(n, f2)
+        rng = rng_for(spec.seed, sample.qid)
+        state.apply_keep(select_random(n, k1, rng, allowed), method.mask_from)
+
+        def select_later(scores: np.ndarray, survivors: np.ndarray) -> np.ndarray:
+            alive = np.flatnonzero(survivors)
+            return np.sort(rng.choice(alive, size=max(1, min(k2, alive.size)), replace=False)).astype(np.int64)
+
+        state.stages.append(Stage(layer, layer, select_later, score_kind="attn"))
     elif rule == "uniform":
         if method.bg_quota > 0 and allowed is not None:  # E20: background quota for the coverage selector
             keep = select_uniform_quota(n, k, allowed, keep_count(n, method.bg_quota))

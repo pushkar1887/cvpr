@@ -23,7 +23,7 @@ class MethodSpec:
     """
 
     name: str
-    rule: str  # "none" | "random" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop" |
+    rule: str  # "none" | "random" | "random_sched" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop" |
     #            "sparsevlm" | "vispruner" | "prunesid" | "btp" | "visionzip" | "hiprune" | "cdpruner" | "feather" |
     #            "vscan" | "transprune" (medprune/baselines/)
     score: str | None = None  # None | "attn" (last prompt token) | "ropefree" | "text" (every token after the
@@ -80,6 +80,9 @@ METHODS: dict[str, MethodSpec] = dict(
         # Background context for a coverage selector (plan.md E20, Nov 7): on Qwen3-VL's open questions that ask for the
         # body region the gate costs Uniform 12.6 points (answers drift to an organ inside the right region). Give back
         # 3% of N evenly spaced background tokens, or admit boundary cells (tau 0.25).
+        # VScan's token-matched two-stage schedule with Random's tokens (plan.md E30, Nov 7): f1·N random tokens kept
+        # from layer 0, a random f2·N of them from layer L/2 (no merge). Separates VScan's schedule from its selection.
+        _spec("random_vscan", "random_sched", mask_from=0),
         _spec("gate_uniform_q3", "uniform", mask_from=2, gate="foreground", bg_quota=0.03),
         _spec("gate_uniform_t25", "uniform", mask_from=2, gate="foreground", tau=0.25),
         _spec("static_map", "static", mask_from=2),

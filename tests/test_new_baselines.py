@@ -472,3 +472,24 @@ def test_depth_matched_random_keeps_random_l2s_tokens(tmp_path):
     run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
     keeps = [[json.loads(l)["keep_idx"] for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs]
     assert keeps[0] == keeps[1] == keeps[2]  # same tokens, only the layer the drop starts at differs
+
+
+def test_random_merge_keeps_random_l0s_tokens(tmp_path):
+    import json
+
+    from medprune.data import Sample, write_manifest
+    from medprune.run_eval import RunSpec, run_many
+    from PIL import Image
+
+    bundle, out = tmp_path / "bundle", tmp_path / "results"
+    (bundle / "images").mkdir(parents=True)
+    samples = []
+    for i in range(3):
+        Image.fromarray(np.full((32, 32, 3), 60 * i, np.uint8)).save(bundle / "images" / f"{i}.png")
+        samples.append(Sample(qid=f"toy/{i}", dataset="slake_en", image_id=f"toy/{i}", image_path=f"images/{i}.png",
+                              question="Is it?", answer="yes", answer_type="yesno", prompt_style="close"))
+    write_manifest(samples, bundle, "slake_en")
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.25) for m in ("random_l0", "random_merge")]
+    run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    keeps = [[json.loads(l)["keep_idx"] for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs]
+    assert keeps[0] == keeps[1]  # the merge changes what the kept tokens carry, not which tokens are kept

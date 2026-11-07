@@ -123,6 +123,12 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("visionzip_nomerge", "visionzip", mask_from=0, merge="off"),
         _spec("vscan_nomerge", "vscan", mask_from=0, merge="off"),
         _spec("fastv_merge", "topk", score="attn", score_layer=1, mask_from=0, two_pass=True, merge="nearest"),
+        # Merge as the remedy (plan.md E21, Nov 7): VScan's merge lifts FastV's own keep-set by 35-39 points on RIN
+        # anatomy. Does it lift Random (a keep-set that already covers the foreground), and does the gate add anything
+        # once the dropped tokens are merged?
+        _spec("random_merge", "random", mask_from=0, merge="nearest"),
+        _spec("gate_fastv_merge", "topk", score="attn", score_layer=1, mask_from=0, two_pass=True, gate="foreground",
+              merge="nearest"),
     ]
 )
 

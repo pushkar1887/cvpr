@@ -246,9 +246,20 @@ blocks:
   - {exp: E19, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [fastv_k8, fastv_k12, fastv_k16, random_l16]}
   - {exp: E19, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [fastv_k8, fastv_k16, random_l16]}
 
-  # Nov 7 09:20 — E20: background context for the coverage selector. E14o/E15b on Qwen3-VL: Gate+Uniform - Uniform -12.6
+  # Nov 7 09:00 — E20: background context for the coverage selector. E14o/E15b on Qwen3-VL: Gate+Uniform - Uniform -12.6
   # on the open anatomy questions that ask for the body region (-1.1 on those that ask for an organ); the gated answers
   # name an organ inside the right region. Give back 3% of N evenly spaced background tokens (`gate_uniform_q3`) or
   # admit boundary cells (`gate_uniform_t25`). Open (judged) + multiple choice, both models. Account A, slot 2 (P34).
   - {exp: E20, tier: P0, account: A, model: qwen3vl8b, groups: [rin_open, rin_anat_mc], methods: [gate_uniform_q3, gate_uniform_t25]}
   - {exp: E20, tier: P0, account: A, model: lingshu7b, groups: [rin_open, rin_anat_mc], methods: [gate_uniform_q3, gate_uniform_t25]}
+
+  # Nov 7 09:10 — E21: merge as the remedy. E18: VScan's merge applied to FastV's own pre-LLM keep-set gains +39.0
+  # (Qwen3-VL) / +35.3 (Lingshu) on RIN anatomy, more than the gate ever repaired there; removing the merge costs
+  # VisionZip / VScan only 0.3-2.9. Random + merge (does merging help a covering keep-set?), Gate+FastV + merge (does
+  # the gate add anything once merged?), and the open questions; + the 3 Lingshu SLAKE E18 runs B1 did not reach.
+  # Account B, slot 1 (P35).
+  - {exp: E21, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc], methods: [random_merge, gate_fastv_merge, random_l0]}
+  - {exp: E21, tier: P0, account: B, model: lingshu7b, groups: [rin_anat_mc], methods: [random_merge, gate_fastv_merge]}
+  - {exp: E21, tier: P0, account: B, model: qwen3vl8b, groups: [rin_open], methods: [fastv_merge, random_merge, gate_fastv_merge]}
+  - {exp: E21, tier: P0, account: B, model: lingshu7b, groups: [rin_open], methods: [fastv_merge, random_merge, gate_fastv_merge]}
+  - {exp: E21, tier: P0, account: B, model: lingshu7b, groups: [slake_en], methods: [fastv_merge, visionzip_nomerge, vscan_nomerge]}

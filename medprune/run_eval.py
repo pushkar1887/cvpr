@@ -443,13 +443,15 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
                 state = PruneState(vis_pos=inputs.vis_pos)
                 state.apply_keep(scored.keep, method.mask_from)
                 state.logs = scored.logs
-                if method.merge == "nearest":  # E18: the dropped tokens merge into the kept ones (VScan's rule)
-                    from .baselines.vscan import merge_weights
+            if method.merge == "nearest":  # E18 / E21: the dropped tokens merge into the kept ones (VScan's rule)
+                from .baselines.vscan import merge_weights
 
-                    import torch
+                import torch
 
-                    emb = torch.as_tensor(adapter.visual_embeddings(inputs))
-                    state.merge = (state.keep, merge_weights(emb, torch.as_tensor(state.keep)))
+                if method.mask_from != 0 or state is None or state.keep is None:
+                    raise ValueError(f"{method.name}: merging needs a keep-set fixed before the LLM (mask_from 0)")
+                emb = torch.as_tensor(adapter.visual_embeddings(inputs))
+                state.merge = (state.keep, merge_weights(emb, torch.as_tensor(state.keep)))
             calls_before = hook.CALLS["decoder"]
             with pruning(state):
                 response, n_new = adapter.generate(inputs, max_new_tokens)

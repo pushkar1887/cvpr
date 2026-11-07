@@ -65,7 +65,7 @@ def test_dry_run_writes_one_line_per_question_and_resumes(tmp_path):
     rates = {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}
     specs = [RunSpec("lingshu7b", "slake_en", m, 0.25 if m not in ("full", "full_profile") else 1.0) for m in
              ("full", "random_l2", "fastv", "gate_uniform", "fastv_prellm", "divprune", "pdrop", "fastv_bottom",
-              "fastv_text", "full_profile", "gate_uniform_q3", "gate_uniform_t25")]
+              "fastv_text", "full_profile", "gate_uniform_q3", "gate_uniform_t25", "random_merge")]
     run_many(specs, bundle, out, rates, limit=4, dry_run=True)
     for spec in specs:
         path = out / "runs" / f"{spec.run_id('dryrun')}.jsonl"

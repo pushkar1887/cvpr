@@ -369,3 +369,7 @@ blocks:
   # Reference runs, no prediction. Account B, slot 1.
   - {exp: E34, tier: P0, account: B, model: lingshu7b, groups: [rin_anat_mc, rin_open], methods: [random_merge, random_vscan], seeds: [1, 2]}
   - {exp: E34, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [random_merge, random_vscan], seeds: [1, 2]}
+
+  # Nov 7 14:22 — E35: complete the Random + merge row (Qwen3-VL SLAKE, judged, and RIN abnormality; Qwen3-VL OmniMedVQA is
+  # in E27b). Both cells separate little (Full − Random +2.6 / −0.3). No prediction. Account B, slot 2.
+  - {exp: E35, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, rin_abn_closed], methods: [random_merge]}

@@ -357,3 +357,9 @@ blocks:
   # OmniMedVQA (P46's cell on the second model). Public data only. Account D, slot 2 (P55).
   - {exp: E27b, tier: P0, account: D, model: lingshu7b, groups: [omni_anat], methods: [random_l2], seeds: [2]}
   - {exp: E27b, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [random_merge]}
+
+  # Nov 7 13:47 — E33: the schedule as a baseline row. E30: Random's tokens on VScan's token-matched front-loaded schedule
+  # carry VScan on RIN anatomy (within 3 of VScan without its merge at 5% and 10%, both models). `random_vscan` at 10% on
+  # the other six baseline cells (SLAKE judged). Account A, slot 2 (P56).
+  - {exp: E33, tier: P0, account: A, model: lingshu7b, groups: [slake_en, rin_abn_closed, omni_anat], methods: [random_vscan]}
+  - {exp: E33, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_abn_closed, omni_anat], methods: [random_vscan]}

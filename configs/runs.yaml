@@ -234,3 +234,14 @@ blocks:
   - {exp: E14o, tier: P1, account: A, model: qwen3vl8b, groups: [rin_open],
      methods: [feather, cdpruner, cdpruner_neg, gate_cdpruner_neg, hiprune, visionzip, vscan, transprune, gate_visionzip]}
   - {exp: E14o, tier: P1, account: A, model: lingshu7b, groups: [rin_open], methods: [gate_cdpruner_neg]}
+
+  # Nov 7 07:30 — E19: depth x ranking. E17 put the break of the FastV ranking between K = 8 and 16 on both models, and
+  # E14o showed TransPrune (last cut at layer 12) collapsing on Lingshu's open anatomy questions while FEATHER (16) and
+  # VScan (L/2) do not. FastV at K = 10 / 12 / 14 maps the break; Random's keep-set applied from layer 8 / 16 (same
+  # tokens as `random_l2`) separates depth from the ranking. Account C, slot 1 (P31-P33 in plan.md, before results).
+  - {exp: E19, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc],
+     methods: [fastv_k10, fastv_k12, fastv_k14, random_l8, random_l16]}
+  - {exp: E19, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc],
+     methods: [fastv_k10, fastv_k12, fastv_k14, random_l8, random_l16]}
+  - {exp: E19, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [fastv_k8, fastv_k12, fastv_k16, random_l16]}
+  - {exp: E19, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [fastv_k8, fastv_k16, random_l16]}

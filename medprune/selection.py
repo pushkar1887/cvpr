@@ -68,6 +68,13 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("fastv_k4", "topk", score="attn", score_layer=3, mask_from=4),
         _spec("fastv_k5", "topk", score="attn", score_layer=4, mask_from=5),
         _spec("fastv_k6", "topk", score="attn", score_layer=5, mask_from=6),
+        # Depth x ranking (plan.md E19, Nov 7): where between K = 8 and 16 the FastV ranking stops costing accuracy, and
+        # Random's keep-set (same seed -> same tokens as `random_l2`) applied from layer 8 / 16: depth alone.
+        _spec("fastv_k10", "topk", score="attn", score_layer=9, mask_from=10),
+        _spec("fastv_k12", "topk", score="attn", score_layer=11, mask_from=12),
+        _spec("fastv_k14", "topk", score="attn", score_layer=13, mask_from=14),
+        _spec("random_l8", "random", mask_from=8),
+        _spec("random_l16", "random", mask_from=16),
         _spec("static_map", "static", mask_from=2),
         _spec("inverse_gate", "inverse", mask_from=2, gate="foreground"),
         _spec("oracle_gate", "topk", score="attn", score_layer=1, mask_from=2, gate="oracle"),

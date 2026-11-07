@@ -44,7 +44,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22, baselines v3 E15b 1.43 = 2.65 | `medprune-gpu-lingshu7b` v12 (E17b, 07:00, cap 3.0), `medprune-baselines-lingshu7b` v4 (E14o Qwen3-VL, 07:15, cap 2.0) | — | ≈ 22 |
 | B — Qwen3-VL | `pushkararora` | 30 | 28.37 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50, E14 Lingshu RIN 1.85) | 0 | E18 after the reset | weekly reset ≈ 05:30 IST Nov 7 |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | 19.21 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.10 + 0.21 + 0.11 + 0.11 + 0.06 + 0.08 + 0.10 + 0.10; Lingshu v4 2.71: 8 missing runs, DivPrune OmniMedVQA, E9; v5 E15 1.80) = 21.01 | 0 | E14o after the reset | reset ≈ 05:30 IST Nov 7 |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | week of Oct 31: 21.01 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.84; Lingshu v4 2.71; v5 E15 1.80). **Week of Nov 7:** v6 E14o 1.50 | v7 E19 (07:30, cap 2.8) | — | ≈ 17 |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | 0 (bundle built on CPU, 0.35 h, Nov 5 04:51; manifest sha256 = C's) | v1 × 2 E14 smoke (Nov 7 03:14, ≈ 0.6 h) | E14 SLAKE + OmniMedVQA, both models (≈ 13.5 h) | ≈ 16; the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
@@ -1242,6 +1242,19 @@ Gate+CDPruner on the released sign) on Qwen3-VL `rin_open`, + Lingshu `gate_cdpr
 - P30 (E14o, Qwen3-VL): on `rin_open` anatomy the nine methods keep their RIN anatomy (multiple-choice) order,
   Spearman ≥ 0.6, and HiPrune and Eq. 5 CDPruner each lose ≥ 8 points to Random. 50%.
 
+**E19 — depth × ranking (added Nov 7 07:30, after E14o Lingshu, before any E19 result).** FastV at K = 10 / 12 / 14
+(scored at layers 9 / 11 / 13) on RIN anatomy, both models; Random's seed-0 keep-set applied from layer 8 or 16
+(`random_l8`, `random_l16`: the same tokens as `random_l2`, tested) on RIN anatomy, both models; FastV K = 8 / 12 / 16
+and `random_l16` on `rin_open` (K = 12 Lingshu only). C `medprune-gpu-lingshu7b` v7 (cap 2.8 h), judged in-session.
+Lingshu's last-token position share: 0.65 / 0.59 / 0.53 at layers 9 / 11 / 13, 0.38 at 15; Qwen3-VL's is flat
+(0.41-0.55 over layers 6-16) and its BRR stays 2.7-2.9 through layer 16.
+- P31 (E19, Lingshu RIN anatomy): the recovery follows the positional share — `fastv_k12` − Random ≤ −25 and
+  `fastv_k14` − `fastv_k12` ≥ +15. 45%.
+- P32 (E19, both models, RIN anatomy): at layer 16 the ranking no longer matters — `random_l16` − `fastv_k16` within
+  ±3 — and at layer 8 it still does — `random_l8` − `fastv_k8` ≥ +20. 60%.
+- P33 (E19, Lingshu `rin_open` anatomy): `fastv_k12` − Random ≤ −8 (as TransPrune, last cut at 12) and `fastv_k16`
+  within 3 of Random. 45%.
+
 **E15 result (C v5, Nov 7 05:04, ≈ 1.8 h, 10 runs × 1,000, judge-scored in-session: 1,965 verdicts merged).**
 `rin_open`, Lingshu, X − Random (seeds 0-2; Random 24.1, Full 33.2, text-only 4.0): FastV **−12.4** [−14.7, −10.0],
 Gate+FastV −9.0 (+3.4 vs FastV), Uniform +0.5, Gate+Uniform −1.0 [−2.6, +0.7], PruneSID −0.3. By template: anatomy
@@ -1255,7 +1268,32 @@ collapse that the multiple-choice column shows (MedSTP's strongest column is no 
   (`*_nomerge` − merged), and FastV's own pre-LLM keep-set gains ≥ 15 points from VScan's merge (`fastv_merge` −
   `fastv_prellm`). 50%.
 - P27 (E14o): on `rin_open` anatomy questions (Lingshu, judge), VScan and FEATHER are within 3 points of Random, and
-  CDPruner (either sign) and HiPrune lose ≥ 8. 45%.
+  CDPruner (either sign) and HiPrune lose ≥ 8. 45%. **Contradicted (Nov 7):** VScan +2.5, FEATHER +3.9; CDPruner
+  −11.3 (Eq. 5) but **+7.9** (released sign); HiPrune −0.9.
+
+**E14o result, Lingshu (C `medprune-gpu-lingshu7b` v6, Nov 7 07:12, 1.50 h, 8 runs × 1,000, 1,644 in-session
+verdicts; 11 overlap earlier verdicts by > 0.001, max 0.022, none crosses 0.5 — the stored one is kept).** `rin_open`,
+judge-scored, X − Random (seeds 0-2), anatomy half (Random 46.1 over seeds 0-2, Full 56.6, text-only 7.2) and all 1,000 (Random 24.1):
+
+| Lingshu `rin_open` | anatomy | all | RIN anatomy (MC, for comparison) |
+|---|---|---|---|
+| CDPruner (released sign) | **+7.9** [+4.5, +11.5] | +3.7 | +1.0 |
+| FEATHER | +3.9 [+0.6, +7.4] | +7.0 | +1.6 |
+| VScan | +2.5 [−0.6, +5.6] | +2.0 | +7.0 |
+| VisionZip / Gate+VisionZip | +0.3 / −0.9 | +0.3 / −0.1 | +3.3 / +3.8 |
+| HiPrune | −0.9 | −0.3 | −4.1 |
+| CDPruner (Eq. 5) | −11.3 | −5.9 | −7.1 |
+| **TransPrune** | **−11.5** [−15.3, −7.7] | −0.9 | **+6.7** |
+| FastV (E15) | −25.1 | −12.4 | −41.7 |
+
+- The multiple-choice order does not carry over to open answers (Spearman 0.30 over the nine rows). **TransPrune flips
+  from +6.7 to −11.5**: its answers collapse onto frequent labels (41 distinct answers on 500 anatomy questions vs 70
+  for Full, "abdomen." 135 times vs 67), the same fallback as FastV (21 distinct, "abdomen." 223) and as its RIN
+  abnormality yes-rate collapse. Multiple choice hides it because the options constrain the answer.
+- Post hoc reading (to be tested, E19): TransPrune's last cut is at layer 12, where Lingshu's ranking is still
+  positional (position share 0.59-0.73 through layer 12, 0.43 at 14, 0.26 at 18); FEATHER (16) and VScan (14) cut after
+  the transition and survive.
+- Released-sign CDPruner is the best pruned row on open anatomy (+7.9; Full +10.5 over Random).
 
 **Accounts.** D's two GPU notebooks were created by API on Nov 7 and have no `cvpr` secret, so D runs SLAKE and
 OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run the RadImageNet cells (both models).
@@ -2868,3 +2906,9 @@ run IDs, counts, accuracies with CIs. Template:
   PruneSID +2.9; Gate+Uniform −2.5 vs Uniform (anatomy −6.2, p 0.002) — the gate does not help coverage selectors on
   Qwen3-VL. P23's conditions replicate on the second model.
 - 07:15 E14o on Qwen3-VL (nine E14 rows + Lingshu `gate_cdpruner_neg`) on A `medprune-baselines-lingshu7b` v4. P30 first.
+- 07:12 **C `medprune-gpu-lingshu7b` v6 COMPLETE** (E14o, 1.50 h; 8 / 8 runs, 27 new files, 1,644 verdicts; 11
+  re-judged items differ by ≤ 0.022, none crosses 0.5, stored verdicts kept). P27 contradicted. Lingshu `rin_open`
+  anatomy: released-sign CDPruner +7.9, FEATHER +3.9, VScan +2.5; **TransPrune −11.5** (+6.7 on multiple choice): its
+  answers collapse onto frequent labels like FastV's. MC → open rank agreement 0.30.
+- 07:30 E19 (depth × ranking: `fastv_k10/12/14`, `random_l8/16`; 165 tests) on C `medprune-gpu-lingshu7b` v7.
+  P31-P33 written first.

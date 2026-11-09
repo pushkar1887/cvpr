@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 16:10 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-09 16:25 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1795,6 +1795,13 @@ of N (SLAKE run files).
   VScan at its budget without attention scores, beats it on Lingshu. Not claimable: beats VScan overall, beats every
   method on each model (Qwen3-VL ties), the gate beats Random + merge on average. The CIs cover question sampling, not
   the selection seed (one seed).
+- Background summary under balanced scoring (Nov 9 16:25): `gate_jitter_bgsum` − `gate_jitter_merge` nine-cell −0.0
+  [−0.6, +0.6] (Lingshu −0.3, Qwen3-VL +0.4); `_eq` rows −0.0 [−0.5, +0.5]. The recipe rule (raw accuracy, fixed
+  before the reads) picked `gate_jitter_merge` by 0.4, all of it from the RIN abnormality yes-rate; balanced, the two
+  tie. `gate_jitter_bgsum` − VisionZip +1.9 [+1.1, +2.7] (Qwen3-VL +1.1 [−0.0, +2.2]); `gate_jitter_bgsum_eq` − VScan
+  +0.6 [−0.2, +1.4]. The recipe stays `gate_jitter_merge` as registered; the paper reports both rows. Not run: the
+  fixed-grid version (gate + fixed Uniform + merge ± background), since the fixed grid aliases on 8 × 8 grids (Uniform
+  38.4 vs Random 46.0, Lingshu RIN abnormality) and P63 shows coverage barely matters once tokens are merged.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

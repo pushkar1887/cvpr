@@ -2045,7 +2045,7 @@ Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` g
 - P72 ✓ (+1.12, within 0.21 of E42a's +0.91), P73 ✓ (single-token cells +0.74, route − E42a +0.41), P74 ✗ (2A − E42a
   −0.35), P75 ✗ (Lingshu `omni_panel` −0.1 vs VScan, −1.2 vs reference; Qwen3-VL +2.0 / +2.2).
 
-**E45 — seeds 1-2 of the final row (registered Nov 10 04:30, before any E45 run; E43 rule step).** The route's
+**E45 — seeds 1-2 of the final row (registered Nov 10 04:22, git `44e0a6f`, before any E45 run; E43 rule step).** The route's
 single-token branch (`gate_jitter_merge_sched_pa`) seeds 1-2 on the five single-token cells; its generated branch
 (`gate_jitter_merge_pa_eq`) seed 2 on SLAKE and open anatomy (seed 1 exists from E44). C: the RadImageNet cells; D:
 OmniMedVQA and SLAKE.

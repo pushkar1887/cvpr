@@ -1892,6 +1892,13 @@ open answers judged in-session; 20 runs.
   5. Seeds 1-2 of the adopted row (of the reference if none) follow; the headline is the seed mean.
   - Power (one-sided 0.025): E42a (SE 0.30) Δ +0.5 → 39%, +0.84 → 80%, +1.0 → 91%; E42b (SE 0.41) +0.5 → 23%, +1.0
     → 68%, +1.15 → 80%. False adoption ≤ 0.05 for the family.
+  - Code: `medprune/adoption.py` (`python -m medprune.adoption --reference gate_jitter_merge_eq --candidate
+    gate_jitter_merge_pa_eq --candidate gate_jitter_merge_sched:0.28`), `tests/test_adoption.py`. Validated (Nov 9
+    18:30, before any E42 result) on three known E40 / E41 pairs: `gate_jitter_merge_eq` − `gate_jitter_merge` (the
+    budget gain, +65% tokens per layer) +1.18, z 2.76, p 0.003, halves +0.73 / +1.60 → adopt; `gate_jitter_bgsum_eq` −
+    `gate_jitter_merge_eq` −0.04, p 0.54, halves +0.61 / −0.68 → not adopted; `jitter_merge` − `random_merge` +0.09,
+    p 0.41 → not adopted. Calibration: an addition at zero extra tokens that reaches +1.2 is worth the whole budget
+    step from 9.9% to 16.4% of N per layer.
 - Slots (≈ 5.6 GPU-h): A `medprune-gpu-lingshu7b` E42b Lingshu SLAKE + OmniMedVQA; A `medprune-baselines-lingshu7b`
   E42r Lingshu RIN cells (both rows); B `medprune-baselines-qwen3vl8b` E42b Qwen3-VL SLAKE + OmniMedVQA; B
   `medprune-gpu-qwen3vl8b` E42r Qwen3-VL RIN cells (both rows); D `medprune-gpu-lingshu7b` and `medprune-gpu-qwen3vl8b`

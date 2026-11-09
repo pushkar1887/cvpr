@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 15:55 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-09 16:10 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1781,6 +1781,20 @@ of N (SLAKE run files).
   models). The background summary token trades abnormality for open anatomy and loses on average.
 - Paper framing: "matches or beats every same-budget baseline without attention scores; beats VScan at its own budget
   on Lingshu, ties it on Qwen3-VL." Not "beats the best method".
+- **Mean-difference CIs (the headline claim; Nov 9 16:10).** Paired per question, images resampled per dataset jointly
+  across both models, 2000 draws; Lingshu RIN abnormality in balanced accuracy (raw in brackets where it differs):
+
+  | A − B | Nine-cell | Lingshu (5) | Qwen3-VL (4) |
+  |---|---|---|---|
+  | `gate_jitter_merge` − VisionZip (best published, ~10%) | **+1.9 [+1.1, +2.7]** (raw +2.5) | +2.9 [+1.9, +4.0] | +0.7 [−0.6, +2.0] |
+  | `gate_jitter_merge` − PruneSID (2nd, ~10%) | **+2.6 [+1.7, +3.5]** (raw +3.1) | +4.5 [+3.2, +5.8] | +0.2 [−0.9, +1.4] |
+  | `gate_jitter_merge` − `random_merge` | +0.3 [−0.3, +0.9] (raw +0.8) | +0.6 [−0.3, +1.5] | 0.0 [−0.8, +0.8] |
+  | `gate_jitter_merge_eq` − VScan (~15%) | +0.6 [−0.2, +1.4] (raw +1.0) | **+1.9 [+0.8, +2.9]** | −1.0 [−2.1, +0.2] |
+
+  Claimable: best average at equal budget, +1.9 over the best published pruner, no significant loss on any cell; matches
+  VScan at its budget without attention scores, beats it on Lingshu. Not claimable: beats VScan overall, beats every
+  method on each model (Qwen3-VL ties), the gate beats Random + merge on average. The CIs cover question sampling, not
+  the selection seed (one seed).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

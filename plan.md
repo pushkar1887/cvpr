@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 00:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 01:00 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1981,7 +1981,8 @@ nine cells (B Lingshu, A Qwen3-VL), and `omni_panel` VScan + E42a for Lingshu (B
 D's queued E43.
 - P76: seed-1 E42a − VScan ≥ +1.0 on the nine-cell mean (seed 0: +1.53; selector-seed SD of the nine-cell mean ≈ 0.2).
   80%.
-- P77: Qwen3-VL four-cell mean of the seed-0 / seed-1 average ≥ VScan's 65.11 (seed 0: 65.29). 50%.
+- P77: Qwen3-VL four-cell mean of the seed-0 / seed-1 average ≥ VScan's 65.11 (seed 0: 65.29). 50%. **Contradicted (Nov 10
+  00:55):** seed 1 64.73 (63.8 / 88.9 / 63.2 / 43.0), two-seed mean **65.01** vs VScan 65.11: Qwen3-VL ties VScan.
 - P78: Lingshu `omni_panel` E42a − VScan ≥ 0 (OmniMedVQA anatomy: +4.9 [+3.8, +6.0]). 75%.
 - Launch log: 23:24 E44 on A `medprune-gpu-lingshu7b` v19 (Qwen3-VL seed 1), B `medprune-baselines-qwen3vl8b` v11
   (Lingshu seed 1), B `medprune-gpu-qwen3vl8b` v15 (E44h). 23:55 C `medprune-gpu-lingshu7b` starts E43r (queued since
@@ -1992,6 +1993,10 @@ D's queued E43.
   Lingshu `omni_panel` VScan 85.6 (Full 86.3, Random 84.9, Gate+Uniform 84.8, Gate+FastV 79.4, FastV 72.3, text-only
   66.6). The panel is near ceiling for Lingshu (VScan − Full −0.7), so P78 has little headroom. E42a's row moves to C
   after E43r (E44h2).
+- 00:54 A `medprune-gpu-lingshu7b` v19 (E44) COMPLETE (runs 23:30-00:44, `70cd2c7`): seed 1 of E42a on Qwen3-VL's
+  four cells, 0 missing verdicts (29 new). Seed 1 vs seed 0: SLAKE 63.8 / 63.7, RIN anatomy 88.9 / 89.5, OmniMedVQA
+  63.2 / 63.5, open anatomy 43.0 / 44.4; four-cell 64.73 / 65.29 (seed swing 0.56). Two-seed mean 65.01 vs VScan 65.11
+  (P77 ✗): the paper states Qwen3-VL as a tie with VScan.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

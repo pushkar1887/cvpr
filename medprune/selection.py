@@ -159,7 +159,7 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_jitter_merge_eq", "stratified", mask_from=0, gate="foreground", merge="foreground",
               match_fastv=True),
         _spec("gate_jitter_bgsum_eq", "stratified", mask_from=0, gate="foreground", merge="bgsum", match_fastv=True),
-        # E42 (registered Nov 9 18:40, plan.md): the recipe at the equal budget + the size term (E42a; same keep-set
+        # E42 (registered Nov 9 18:01, plan.md): the recipe at the equal budget + the size term (E42a; same keep-set
         # and merge as `gate_jitter_merge_eq`), on the token-matched read-then-prune schedule cut at 5/7 depth (E42b;
         # Lingshu 20, Qwen3-VL 26: E38 / E39's cut), and both (E42c, run only if E42a and E42b are both adopted).
         _spec("gate_jitter_merge_pa_eq", "stratified", mask_from=0, gate="foreground", merge="foreground",

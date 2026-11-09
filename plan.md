@@ -1726,13 +1726,15 @@ budget). Both models, five cells (SLAKE judged, RIN anatomy, RIN abnormality, Om
   nine-cell mean in E40; if both are below `jitter_merge`'s nine-cell mean, the recipe is `jitter_merge` (its
   equal-budget row then needs E42).
 - P62 (E40): `pool` within 2 of `jitter_merge` on ≥ 6 of the 9 informative cells, and ≥ 2 below it on Lingshu RIN
-  abnormality (block averaging dilutes a small finding; similarity merging does not). 40%.
+  abnormality (block averaging dilutes a small finding; similarity merging does not). 40%. **Contradicted (Nov 9):**
+  Lingshu RIN abnormality +0.1 (balanced +1.2); `pool` loses anatomy instead (RIN −7.7, open anatomy −10.4).
 - P63 (E40): `jitter_merge` within ±1.5 of `random_merge` on ≥ 7 of the 9 cells (once dropped tokens are merged, how the
   keep-set covers matters little). 60%.
 - P64 (E40): `gate_jitter_merge` − `jitter_merge` ≥ +1 on Lingshu SLAKE and Lingshu RIN abnormality, and < 0 on open
   anatomy on both models (the gate's region cost survives the merge when background is discarded). 35%.
 - P65 (E40): `gate_jitter_bgsum` recovers ≥ half of `gate_jitter_merge`'s open-anatomy cost relative to `jitter_merge`
   on both models, and stays within 1 of `gate_jitter_merge` on the seven other informative cells. 35%.
+  **Contradicted (Nov 9):** Lingshu recovers 1.6 of 3.4 (47%) and loses 4.8 on RIN abnormality (balanced −1.1).
 - P66 (E41): the recipe's equal-budget row ≥ VScan on the cell mean of both models (Lingshu 65.9 over five cells,
   Qwen3-VL 65.1 over four) and on ≥ 3 of Lingshu's 5 cells. 45%.
 - Slots: A1 `medprune-gpu-lingshu7b` (E40 Lingshu m1 m4 + Qwen3-VL bgsum), A2 `medprune-baselines-lingshu7b` (E40r +

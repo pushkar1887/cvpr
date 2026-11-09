@@ -108,12 +108,16 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 69  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
-    #                            FastV K = 3-6 (E17)
+    assert len(METHODS) == 75  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
+    #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41)
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name
-        assert spec.merge in (None, "off", "nearest"), spec.name
+        assert spec.merge in (None, "off", "nearest", "foreground", "bgsum"), spec.name
+        if spec.merge in ("foreground", "bgsum"):
+            assert spec.gate == "foreground" and spec.rule == "stratified", spec.name
+        if spec.match_fastv:
+            assert spec.mask_from == 0, spec.name
     assert METHODS["fastv"].score_layer == 1 and METHODS["fastv"].mask_from == 2
     assert METHODS["fastv_bottom"].invert and not METHODS["fastv"].invert
     assert METHODS["gate_cdpruner_neg"].invert and METHODS["gate_cdpruner_neg"].gate == "foreground"

@@ -401,3 +401,27 @@ blocks:
   - {exp: E39, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [random_sched26]}
   - {exp: E39b, tier: P0, account: A, model: qwen3vl8b, groups: [rin_anat_mc, omni_anat], methods: [random_sched24]}
   - {exp: E39b, tier: P0, account: A, model: lingshu7b, groups: [rin_open], methods: [random_sched20]}
+
+  # Nov 9 — E40: the remedy's ladder at 10% kept, selected before the LLM (the budget rule of VisionZip, PruneSID,
+  # CDPruner and Random + merge). One random token per Hilbert stratum + merge (`jitter_merge`); + the gate, dropped
+  # background discarded (`gate_jitter_merge`); + one background summary token in place of a foreground token
+  # (`gate_jitter_bgsum`); average pooling to the same k (`pool`, VTC-Bench's downsampling baseline). P62-P65.
+  # E40 = SLAKE + OmniMedVQA, E40r = the three RadImageNet cells. Slots by measured merge-run time (Lingshu SLAKE +
+  # OmniMedVQA 1.43 h per method, Qwen3-VL 1.32 h; RadImageNet 0.39 / 0.30 h): A1 Lingshu m1 m4 + Qwen3-VL m3, A2 the
+  # Lingshu RadImageNet cells, B1 Qwen3-VL m1 m4 + E41 m6, B2 the Qwen3-VL RadImageNet cells + E41b, C E41 Lingshu +
+  # Qwen3-VL m2, D1 Lingshu m2 m3 (D's 5 h quota).
+  - {exp: E40, tier: P0, account: A, model: lingshu7b, groups: [slake_en, omni_anat], methods: [jitter_merge, pool]}
+  - {exp: E40, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_bgsum]}
+  - {exp: E40, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [jitter_merge, pool]}
+  - {exp: E40, tier: P0, account: C, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge]}
+  - {exp: E40, tier: P0, account: D, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge, gate_jitter_bgsum]}
+  - {exp: E40r, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [jitter_merge, gate_jitter_merge, gate_jitter_bgsum, pool]}
+  - {exp: E40r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [jitter_merge, gate_jitter_merge, gate_jitter_bgsum, pool]}
+
+  # Nov 9 — E41: the two gated rows at FastV's mean visual tokens per layer, kept from layer 0 (VScan's budget: 16.4% of
+  # N on Lingshu, 15.0% on Qwen3-VL at 10%). E41 / E41b = SLAKE + OmniMedVQA, E41r = RadImageNet. P66.
+  - {exp: E41, tier: P0, account: C, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_eq, gate_jitter_bgsum_eq]}
+  - {exp: E41, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_bgsum_eq]}
+  - {exp: E41b, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_eq]}
+  - {exp: E41r, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_eq, gate_jitter_bgsum_eq]}
+  - {exp: E41r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_eq, gate_jitter_bgsum_eq]}

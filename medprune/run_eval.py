@@ -28,6 +28,7 @@ from PIL import Image
 
 from .data import Sample, load_manifest
 from .masks import MaskStore
+from .remedy import background_slot, fastv_matched_count, merge_plan, pool_plan, select_stratified
 from .scoring import is_correct
 from .selection import (METHODS, MethodSpec, keep_count, pdrop_schedule, rng_for, sample_map, select_divprune,
                         select_inverse, select_random, select_topk, select_uniform, select_uniform_quota)
@@ -178,6 +179,10 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
                           log_ropefree=True)
     n = len(inputs.vis_pos)
     k = keep_count(n, spec.budget)
+    if method.match_fastv:  # E41: FastV's mean visual tokens per layer, kept from layer 0 (VScan's budget)
+        if method.mask_from != 0:
+            raise ValueError(f"{method.name}: FastV-matched counts are for selections fixed before the LLM")
+        k = fastv_matched_count(n, k, adapter.num_layers)
     cells = inputs.cell_index
     allowed = None
     if method.gate == "foreground":
@@ -206,6 +211,19 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
             return np.sort(rng.choice(alive, size=max(1, min(k2, alive.size)), replace=False)).astype(np.int64)
 
         state.stages.append(Stage(layer, layer, select_later, score_kind="attn"))
+    elif rule == "stratified":  # E40: one random token per Hilbert stratum of the foreground
+        rng = rng_for(spec.seed, sample.qid)
+        emb = adapter.visual_embeddings(inputs) if method.merge in ("foreground", "bgsum") else None
+        slot = background_slot(emb, allowed) if method.merge == "bgsum" and allowed is not None and k > 1 else None
+        keep = select_stratified(inputs.rc, k - (slot is not None), rng, allowed, exclude=slot)
+        if slot is not None:
+            keep = np.sort(np.append(keep, slot))
+        state.apply_keep(keep, method.mask_from)
+        if emb is not None:  # "nearest" is built in run_one, as for every other merged keep-set
+            state.merge = merge_plan(emb, keep, allowed, summary=slot)
+    elif rule == "pool":  # E40: average pooling to k near-equal blocks (VTC-Bench's downsampling baseline)
+        keep, state.merge = pool_plan(inputs.rc, inputs.grid_hw, k)
+        state.apply_keep(keep, method.mask_from)
     elif rule == "uniform":
         if method.bg_quota > 0 and allowed is not None:  # E20: background quota for the coverage selector
             keep = select_uniform_quota(n, k, allowed, keep_count(n, method.bg_quota))

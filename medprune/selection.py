@@ -25,7 +25,7 @@ class MethodSpec:
     name: str
     rule: str  # "none" | "random" | "random_sched" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop" |
     #            "sparsevlm" | "vispruner" | "prunesid" | "btp" | "visionzip" | "hiprune" | "cdpruner" | "feather" |
-    #            "vscan" | "transprune" (medprune/baselines/)
+    #            "vscan" | "transprune" (medprune/baselines/) | "stratified" | "pool" (medprune/remedy.py)
     score: str | None = None  # None | "attn" (last prompt token) | "ropefree" | "text" (every token after the
     #                           image) | "raters" (SparseVLM text raters)
     score_layer: int | None = None
@@ -40,7 +40,10 @@ class MethodSpec:
     invert: bool = False  # keep the lowest scores instead (attention-informativeness control)
     profile: bool = False  # no pruning; log both readouts and sink scores at every layer (plan.md §A10 D1)
     merge: str | None = None  # None = the method's own; "off" = drop without merging; "nearest" = merge every dropped
-    #                           token into its most similar kept token before the LLM (VScan's token_merging; E18)
+    #                           token into its most similar kept token before the LLM (VScan's token_merging; E18);
+    #                           "foreground" = only dropped foreground tokens merge, background is discarded;
+    #                           "bgsum" = as "foreground", plus one kept background token holding the background mean
+    match_fastv: bool = False  # keep FastV's mean visual tokens per layer from layer 0 (VScan's budget; E41)
 
 
 def _spec(name: str, rule: str, **kw) -> tuple[str, MethodSpec]:
@@ -140,6 +143,18 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("random_merge", "random", mask_from=0, merge="nearest"),
         _spec("gate_fastv_merge", "topk", score="attn", score_layer=1, mask_from=0, two_pass=True, gate="foreground",
               merge="nearest"),
+        # The remedy (plan.md E40, Nov 9): one random token per Hilbert stratum (coverage without a fixed grid's
+        # aliasing) + merge, then the gate (dropped background discarded), then one background summary token in place
+        # of a foreground token; average pooling to the same k is the reviewer's baseline (VTC-Bench). Pre-LLM, 10%
+        # kept, as VisionZip / PruneSID / CDPruner / Random + merge. E41: the gated rows at FastV's mean visual tokens
+        # per layer (VScan's budget: 16.4% of N on Lingshu, 15.0% on Qwen3-VL at 10%).
+        _spec("jitter_merge", "stratified", mask_from=0, merge="nearest"),
+        _spec("gate_jitter_merge", "stratified", mask_from=0, gate="foreground", merge="foreground"),
+        _spec("gate_jitter_bgsum", "stratified", mask_from=0, gate="foreground", merge="bgsum"),
+        _spec("pool", "pool", mask_from=0),
+        _spec("gate_jitter_merge_eq", "stratified", mask_from=0, gate="foreground", merge="foreground",
+              match_fastv=True),
+        _spec("gate_jitter_bgsum_eq", "stratified", mask_from=0, gate="foreground", merge="bgsum", match_fastv=True),
     ]
 )
 

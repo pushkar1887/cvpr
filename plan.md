@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 02:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 02:52 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1984,7 +1984,8 @@ D's queued E43.
   80%. **Supported (Nov 10 01:10):** seed 1 +1.17 (SE 0.43), p 0.003, halves +1.17 / +1.21.
 - P77: Qwen3-VL four-cell mean of the seed-0 / seed-1 average ≥ VScan's 65.11 (seed 0: 65.29). 50%. **Contradicted (Nov 10
   00:55):** seed 1 64.73 (63.8 / 88.9 / 63.2 / 43.0), two-seed mean **65.01** vs VScan 65.11: Qwen3-VL ties VScan.
-- P78: Lingshu `omni_panel` E42a − VScan ≥ 0 (OmniMedVQA anatomy: +4.9 [+3.8, +6.0]). 75%.
+- P78: Lingshu `omni_panel` E42a − VScan ≥ 0 (OmniMedVQA anatomy: +4.9 [+3.8, +6.0]). 75%. **Supported (Nov 10
+  02:50):** +0.67 [−0.75, +2.00] (n.s.); E42a − Full −0.08: at ceiling on this panel (1198 unseen images).
 - Launch log: 23:24 E44 on A `medprune-gpu-lingshu7b` v19 (Qwen3-VL seed 1), B `medprune-baselines-qwen3vl8b` v11
   (Lingshu seed 1), B `medprune-gpu-qwen3vl8b` v15 (E44h). 23:55 C `medprune-gpu-lingshu7b` starts E43r (queued since
   20:41). 23:55 Lingshu `omni_panel` VScan + E42a removed from D's E43 block (B runs them). ~00:00 D's queued E43
@@ -2026,6 +2027,7 @@ Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` g
   `gate_jitter_merge`: Lingshu RIN anatomy +0.7, open anatomy +3.0, abnormality balanced −1.3; Qwen3-VL +0.9 / +1.8.
   2A (k-means) − E42a: −0.1 / −1.5 / −1.6 (Lingshu), −0.2 / −0.9 (Qwen3-VL). E42c − E42a on single-token cells: Lingshu
   RIN anatomy −0.6, abnormality balanced +2.0; Qwen3-VL RIN anatomy +0.1. 02:16 E44h2 pushed on C (v17).
+- 02:49 C v17 (E44h2) COMPLETE: Lingshu `omni_panel` E42a 1200 questions; − VScan +0.67 [−0.75, +2.00], − Full −0.08 (P78 ✓).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

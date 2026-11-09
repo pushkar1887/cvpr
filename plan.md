@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 01:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 02:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -2021,6 +2021,11 @@ Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` g
   hit the 4.5 h cap: VScan took 44 min on 1200 questions). Next: harvest, dev-half selection (E43 rule), seeds of the
   final row on C / D, then the freeze (Nov 12). OpenReview enrollment Nov 10 23:59 AoE (Nov 11 17:29 IST): abstract
   wording per the two-seed result (beats VScan on the nine-cell mean; wins Lingshu, ties Qwen3-VL).
+- 02:15 C `medprune-gpu-lingshu7b` v15 (E43r) COMPLETE: 15 RadImageNet runs × 1000, `5f58bcb`, 0 missing verdicts (111
+  new). Preliminary (vs E42a's two-seed mean; graded with the registered rule once D's cells land): 2B (10%) −
+  `gate_jitter_merge`: Lingshu RIN anatomy +0.7, open anatomy +3.0, abnormality balanced −1.3; Qwen3-VL +0.9 / +1.8.
+  2A (k-means) − E42a: −0.1 / −1.5 / −1.6 (Lingshu), −0.2 / −0.9 (Qwen3-VL). E42c − E42a on single-token cells: Lingshu
+  RIN anatomy −0.6, abnormality balanced +2.0; Qwen3-VL RIN anatomy +0.1. 02:16 E44h2 pushed on C (v17).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

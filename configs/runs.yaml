@@ -425,3 +425,15 @@ blocks:
   - {exp: E41b, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_eq]}
   - {exp: E41r, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_eq, gate_jitter_bgsum_eq]}
   - {exp: E41r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_eq, gate_jitter_bgsum_eq]}
+
+  # Nov 9 — E42 (registered 18:40, plan.md; P67-P70): the recipe at the equal budget + the size term (E42a,
+  # `gate_jitter_merge_pa_eq`: + log s on each merged token's logit) and on the token-matched read-then-prune schedule
+  # cut at 5/7 depth (E42b, `gate_jitter_merge_sched`). E42 / E42b = SLAKE + OmniMedVQA, E42r = RadImageNet. Slots: D1 /
+  # D2 E42a Lingshu / Qwen3-VL (D has no `cvpr` secret), A1 E42b Lingshu, A2 E42r Lingshu, B1 E42b Qwen3-VL, B2 E42r
+  # Qwen3-VL. E42c (`gate_jitter_merge_sched_pa`) only if E42a and E42b are both adopted.
+  - {exp: E42, tier: P0, account: D, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa_eq]}
+  - {exp: E42, tier: P0, account: D, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa_eq]}
+  - {exp: E42b, tier: P0, account: A, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_sched]}
+  - {exp: E42b, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_sched]}
+  - {exp: E42r, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa_eq, gate_jitter_merge_sched]}
+  - {exp: E42r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa_eq, gate_jitter_merge_sched]}

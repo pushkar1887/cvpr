@@ -237,3 +237,84 @@ def test_modules_without_layer_idx_pass_through():
         out, _ = hook.medprune_sdpa(Vision(), q, k, v, None)
     ref, _ = sdpa_attention_forward(Vision(), q, k, v, None)
     torch.testing.assert_close(out, ref)
+
+
+# ------------------------------------------------------------------------------------- E42a: the size term
+
+class _Decoder(torch.nn.Module):
+    layer_idx, is_causal, num_key_value_groups = 0, True, 1
+
+
+def test_size_term_reproduces_full_attention_over_duplicate_clusters():
+    """E42a's identity (plan.md): if each kept visual token stands for s identical tokens, + log s on its logit gives
+    exactly the attention over all of them (proportional attention); merging alone weights each cluster as one."""
+    torch.manual_seed(0)
+    n_tok, heads, dim = 14, 2, 8
+    vis = torch.arange(2, 10)  # 8 visual tokens in clusters of 3, 2, 1, 2
+    clusters = [[0, 1, 2], [3, 4], [5], [6, 7]]
+    q, k, v = (torch.randn(1, heads, n_tok, dim) for _ in range(3))
+    for members in clusters:  # identical keys and values inside a cluster (what a merge of duplicates produces)
+        for j in members[1:]:
+            k[:, :, vis[j]], v[:, :, vis[j]] = k[:, :, vis[members[0]]], v[:, :, vis[members[0]]]
+    full, _ = sdpa_attention_forward(_Decoder(), q, k, v, None)  # causal attention over every token
+    keep = np.array([members[0] for members in clusters])
+    after = slice(int(vis[-1]) + 1, n_tok)  # queries after the image see every cluster in full
+
+    def pruned(with_term: bool):
+        state = PruneState(vis_pos=vis)
+        state.apply_keep(keep, 0)
+        if with_term:
+            state.key_bias = (keep, np.log([len(m) for m in clusters]).astype(np.float32))
+        with pruning(state):
+            out, _ = hook.medprune_sdpa(_Decoder(), q, k, v, None)
+        return out
+
+    torch.testing.assert_close(pruned(True)[:, after], full[:, after], atol=1e-6, rtol=0)
+    assert (pruned(False)[:, after] - full[:, after]).abs().max() > 1e-2  # without the term the clusters shrink
+
+
+def test_zero_size_term_equals_boolean_masking(models):
+    """The float mask with a zero bias is the boolean mask: the numeric path changes nothing else."""
+    _, hooked, _, _ = models
+    state = preset(KEEP, 0)
+    state.key_bias = (KEEP, np.zeros(len(KEEP), dtype=np.float32))
+    torch.testing.assert_close(last_logits(hooked, IDS, state=state), last_logits(hooked, IDS, state=preset(KEEP, 0)),
+                               atol=1e-6, rtol=0)
+
+
+def _with_sizes() -> PruneState:
+    state = preset(KEEP, 0)
+    state.key_bias = (KEEP, np.log(np.arange(2, 2 + len(KEEP))).astype(np.float32))
+    state.log_share = True
+    return state
+
+
+def test_size_term_is_identical_in_cached_decoding(models):
+    """Prefill + cached decoding with the term equals a prefill of the whole sequence with it (the bias is zero-padded
+    past the prompt), and the term changes the output."""
+    _, hooked, _, _ = models
+    tokens, cached = greedy(hooked, IDS, torch.arange(T), 5, state=_with_sizes())
+    ids = torch.cat([IDS, torch.tensor(tokens)])
+    scratch = last_logits(hooked, ids, pos=torch.arange(ids.numel()), state=_with_sizes())
+    torch.testing.assert_close(cached, scratch, atol=1e-5, rtol=0)
+    _, without = greedy(hooked, IDS, torch.arange(T), 5, state=preset(KEEP, 0))
+    assert (cached - without).abs().max() > 1e-4
+
+
+def test_image_share_is_logged_with_and_without_the_size_term(models):
+    _, hooked, _, eager = models
+    state = _with_sizes()
+    last_logits(hooked, IDS, state=state)
+    shares = np.stack([state.logs[f"ishare_l{i}"] for i in range(4)])  # [layer, (with, without)]
+    assert shares.shape == (4, 2) and np.all(shares > 0) and np.all(shares < 1)
+    assert np.all(shares[:, 0] > shares[:, 1])  # positive log sizes raise the image's share in every layer
+    plain = preset(KEEP, 0)
+    plain.log_share = True
+    last_logits(hooked, IDS, state=plain)
+    with torch.no_grad():  # without a term both columns equal the eager image share of the masked model
+        attention = eager(input_ids=IDS[kept_positions()][None], position_ids=kept_positions()[None],
+                          output_attentions=True).attentions
+    for i in range(4):
+        vis_cols = torch.isin(kept_positions(), VIS)
+        expected = attention[i][0, :, -1, :].mean(0)[vis_cols].sum().item()
+        np.testing.assert_allclose(plain.logs[f"ishare_l{i}"], [expected, expected], atol=1e-5)

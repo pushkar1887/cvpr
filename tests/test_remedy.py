@@ -173,3 +173,70 @@ def test_build_state_with_background_reserves_the_summary_slot():
         else:
             assert not bg_kept and np.all(w[:, :4] == 0)  # background discarded
         assert np.allclose(w.sum(axis=1), 1)
+
+
+def test_schedule_row_is_token_matched_and_nested(tmp_path):
+    """E42b: k1 = keep_count(N, f1) from layer 0, k2 = keep_count(N, f2) of those from round(5L/7); the mean visual
+    tokens per layer equals FastV's within one token (plan.md: f1 = 3(2 + 0.1(L - 2)) / (2c + L))."""
+    from medprune.baselines.vscan import vscan_schedule
+    from medprune.run_eval import RunSpec, run_many
+    from medprune.selection import keep_count
+
+    for n, layers in ((324, 28), (256, 36), (64, 28), (64, 36)):
+        f1, cut, f2 = vscan_schedule(0.10, layers, layer=int(round(5 / 7 * layers)))
+        assert cut == {28: 20, 36: 26}[layers]
+        assert abs(f1 - 3 * (2 + 0.1 * (layers - 2)) / (2 * cut + layers)) < 2e-3  # stage-2 ratio 0.333 vs 1/3
+        k1, k2 = keep_count(n, f1), keep_count(n, f2)
+        fastv = (2 * n + (layers - 2) * keep_count(n, 0.10)) / layers
+        assert abs((cut * k1 + (layers - cut) * k2) / layers - fastv) <= 1.0
+    bundle, out = _bundle(tmp_path), tmp_path / "results"
+    spec = RunSpec("lingshu7b", "slake_en", "gate_jitter_merge_sched", 0.25)
+    run_many([spec], bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    f1, _, f2 = vscan_schedule(0.25, 28, layer=20)
+    for r in (json.loads(l) for l in open(out / "runs" / f"{spec.run_id('dryrun')}.jsonl")):
+        (l1, s1), (l2, s2) = r["keep_stages"]
+        assert (l1, l2) == (0, 20) and len(s1) == keep_count(16, f1) and len(s2) == keep_count(16, f2)
+        assert set(s2) < set(s1) and r["keep_idx"] == s2  # stage 2 is a subset of stage 1
+
+
+def test_size_term_counts_each_merged_cluster():
+    """E42a keeps the reference's keep-set and merge exactly (same rng stream) and adds log of each cluster's size;
+    with the gate, the sizes sum to the foreground (each foreground token in one cluster, background discarded)."""
+    from medprune.data import Sample
+    from medprune.run_eval import FakeAdapter, RunSpec, build_state
+    from medprune.selection import METHODS
+
+    adapter = FakeAdapter("lingshu7b")
+    sample = Sample(qid="toy/1", dataset="slake_en", image_id="toy/1", image_path="x.png", question="Is it?",
+                    answer="yes", answer_type="yesno", prompt_style="close")
+    inputs = adapter.prepare(sample, image=object())
+    gate = np.ones((4, 4), dtype=np.float32)
+    gate[0, :] = 0.0
+    states = {name: build_state(RunSpec("lingshu7b", "slake_en", name, 0.25), METHODS[name], sample, inputs, gate,
+                                None, adapter, None) for name in ("gate_jitter_merge_eq", "gate_jitter_merge_pa_eq")}
+    ref, pa = states["gate_jitter_merge_eq"], states["gate_jitter_merge_pa_eq"]
+    assert np.array_equal(ref.keep, pa.keep) and np.array_equal(ref.merge[1], pa.merge[1])
+    assert ref.key_bias is None and pa.key_bias is None  # the term is attached in run_one, after any merge
+    pa.size_term_from_merge()
+    rows, log_sizes = pa.key_bias
+    sizes = np.exp(log_sizes)
+    assert np.array_equal(rows, pa.keep) and pa.log_share
+    np.testing.assert_allclose(sizes, (pa.merge[1] > 0).sum(axis=1), rtol=1e-6)
+    assert round(float(sizes.sum())) == 12 and np.all(sizes >= 1)
+
+
+def test_e42_rows_dry_run(tmp_path):
+    from medprune.run_eval import RunSpec, run_many
+
+    bundle, out = _bundle(tmp_path), tmp_path / "results"
+    names = ("gate_jitter_merge_pa_eq", "gate_jitter_merge_sched", "gate_jitter_merge_sched_pa")
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.10) for m in names]
+    run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    rows = {s.method: [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs}
+    assert all(r["k_keep"] == fastv_matched_count(16, 2, 28) and r["keep_stages"] is None
+               for r in rows["gate_jitter_merge_pa_eq"])
+    for name in names[1:]:
+        assert all(len(r["keep_stages"]) == 2 for r in rows[name]), name
+    # the size term does not change which tokens are kept
+    assert [r["keep_stages"] for r in rows["gate_jitter_merge_sched"]] == \
+        [r["keep_stages"] for r in rows["gate_jitter_merge_sched_pa"]]

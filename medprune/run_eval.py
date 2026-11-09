@@ -213,6 +213,13 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
         state.stages.append(Stage(layer, layer, select_later, score_kind="attn"))
     elif rule == "stratified":  # E40: one random token per Hilbert stratum of the foreground
         rng = rng_for(spec.seed, sample.qid)
+        cut = None
+        if method.sched_at is not None:  # E42b: token-matched read-then-prune schedule (stage-2 ratio 1/3)
+            from .baselines.vscan import vscan_schedule
+
+            f1, cut, f2 = vscan_schedule(spec.budget, adapter.num_layers,
+                                         layer=int(round(method.sched_at * adapter.num_layers)))
+            k, k2 = keep_count(n, f1), keep_count(n, f2)
         emb = adapter.visual_embeddings(inputs) if method.merge in ("foreground", "bgsum") else None
         slot = background_slot(emb, allowed) if method.merge == "bgsum" and allowed is not None and k > 1 else None
         keep = select_stratified(inputs.rc, k - (slot is not None), rng, allowed, exclude=slot)
@@ -221,6 +228,13 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
         state.apply_keep(keep, method.mask_from)
         if emb is not None:  # "nearest" is built in run_one, as for every other merged keep-set
             state.merge = merge_plan(emb, keep, allowed, summary=slot)
+        if cut is not None:
+            rc = inputs.rc
+
+            def select_later(scores: np.ndarray, survivors: np.ndarray) -> np.ndarray:  # scores unused: no attention
+                return select_stratified(rc, min(k2, int(survivors.sum())), rng, allowed=survivors)
+
+            state.stages.append(Stage(cut, cut, select_later, score_kind="attn"))
     elif rule == "pool":  # E40: average pooling to k near-equal blocks (VTC-Bench's downsampling baseline)
         keep, state.merge = pool_plan(inputs.rc, inputs.grid_hw, k)
         state.apply_keep(keep, method.mask_from)
@@ -430,7 +444,7 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
         oracle = MaskStore.load(oracle_path) if oracle_path.exists() else None
     static_path = out / "static_maps" / f"{spec.model}__for_{spec.dataset}.npy"
     static_map = np.load(static_path) if static_path.exists() else None
-    log_diag = spec.method == "full" or method.score is not None or method.profile
+    log_diag = spec.method == "full" or method.score is not None or method.profile or method.prop_attn
     diag = DiagWriter(out / "diag" / run_id) if log_diag else None
 
     meta_path = runs_dir / f"{run_id}.meta.json"
@@ -484,6 +498,10 @@ def run_one(adapter, spec: RunSpec, bundle: Path, out: Path, profile: str, limit
                     raise ValueError(f"{method.name}: merging needs a keep-set fixed before the LLM (mask_from 0)")
                 emb = torch.as_tensor(adapter.visual_embeddings(inputs))
                 state.merge = (state.keep, merge_weights(emb, torch.as_tensor(state.keep)))
+            if method.prop_attn:  # E42a: + log s on every kept token's logit, in every layer
+                if state is None or state.merge is None:
+                    raise ValueError(f"{method.name}: the size term needs a merge plan")
+                state.size_term_from_merge()
             calls_before = hook.CALLS["decoder"]
             with pruning(state):
                 response, n_new = adapter.generate(inputs, max_new_tokens)

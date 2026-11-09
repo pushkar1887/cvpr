@@ -44,6 +44,10 @@ class MethodSpec:
     #                           "foreground" = only dropped foreground tokens merge, background is discarded;
     #                           "bgsum" = as "foreground", plus one kept background token holding the background mean
     match_fastv: bool = False  # keep FastV's mean visual tokens per layer from layer 0 (VScan's budget; E41)
+    prop_attn: bool = False  # E42a: + log s on each kept token's attention logit, s = the vision tokens its merge row
+    #                          averages (ToMe's proportional attention); needs a merge
+    sched_at: float | None = None  # E42b: second stage of the token-matched read-then-prune schedule at
+    #                                round(sched_at * L) (`vscan_schedule`); stage 2 = one survivor per Hilbert stratum
 
 
 def _spec(name: str, rule: str, **kw) -> tuple[str, MethodSpec]:
@@ -155,6 +159,15 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_jitter_merge_eq", "stratified", mask_from=0, gate="foreground", merge="foreground",
               match_fastv=True),
         _spec("gate_jitter_bgsum_eq", "stratified", mask_from=0, gate="foreground", merge="bgsum", match_fastv=True),
+        # E42 (registered Nov 9 18:40, plan.md): the recipe at the equal budget + the size term (E42a; same keep-set
+        # and merge as `gate_jitter_merge_eq`), on the token-matched read-then-prune schedule cut at 5/7 depth (E42b;
+        # Lingshu 20, Qwen3-VL 26: E38 / E39's cut), and both (E42c, run only if E42a and E42b are both adopted).
+        _spec("gate_jitter_merge_pa_eq", "stratified", mask_from=0, gate="foreground", merge="foreground",
+              match_fastv=True, prop_attn=True),
+        _spec("gate_jitter_merge_sched", "stratified", mask_from=0, gate="foreground", merge="foreground",
+              sched_at=5 / 7),
+        _spec("gate_jitter_merge_sched_pa", "stratified", mask_from=0, gate="foreground", merge="foreground",
+              sched_at=5 / 7, prop_attn=True),
     ]
 )
 

@@ -108,8 +108,8 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 75  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
-    #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41)
+    assert len(METHODS) == 78  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
+    #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41); size term / schedule (E42)
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name
@@ -118,6 +118,10 @@ def test_registry_is_consistent_with_fastv_definition():
             assert spec.gate == "foreground" and spec.rule == "stratified", spec.name
         if spec.match_fastv:
             assert spec.mask_from == 0, spec.name
+        if spec.prop_attn:  # the size term needs merged clusters
+            assert spec.merge in ("nearest", "foreground", "bgsum"), spec.name
+        if spec.sched_at is not None:  # the schedule is token-matched by itself, selected before the LLM
+            assert spec.rule == "stratified" and spec.mask_from == 0 and not spec.match_fastv, spec.name
     assert METHODS["fastv"].score_layer == 1 and METHODS["fastv"].mask_from == 2
     assert METHODS["fastv_bottom"].invert and not METHODS["fastv"].invert
     assert METHODS["gate_cdpruner_neg"].invert and METHODS["gate_cdpruner_neg"].gate == "foreground"

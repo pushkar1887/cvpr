@@ -9,6 +9,11 @@ FastV reference (third_party/FastV/src/FastV/llava-hf/.../modeling_llama.py L103
 token's attention averaged over heads, read at layer K-1; tokens are removed from layer K on. The "text" readout
 (plan.md §A10 D2) averages the attention of every token after the image instead (question and template), the FastV
 paper's wording. A profile state (D1) logs both readouts and a visual-sink score at every layer.
+
+Size term (plan.md E42a): `key_bias` adds log s_i to the logit of kept visual token i in every layer and for every
+query, s_i = the vision tokens averaged into i by the merge. For a cluster of s identical tokens this reproduces the
+attention over all of them exactly (proportional attention, Bolya et al., ICLR 2023, §3); merging alone weights the
+cluster as one token. The mask turns numeric only when a bias is set, so every other method keeps its boolean path.
 """
 
 from __future__ import annotations
@@ -66,8 +71,11 @@ class PruneState:
     keep: np.ndarray | None = None  # kept indices into 0..N-1 after the latest selection
     history: list[tuple[int, np.ndarray]] = field(default_factory=list)  # (mask_from, kept) per selection
     pre_rope: dict = field(default_factory=dict)  # {"layer": int, "q": tensor, "k": tensor}, filled by capture hooks
+    key_bias: tuple[np.ndarray, np.ndarray] | None = None  # (visual token indices, additive logit), E42a's size term
+    log_share: bool = False  # log the last prompt token's image attention share per layer, with and without key_bias
     _survivors: np.ndarray | None = None
     _drops: list[tuple[int, torch.Tensor]] = field(default_factory=list)
+    _bias: torch.Tensor | None = None
 
     @property
     def n(self) -> int:
@@ -96,8 +104,34 @@ class PruneState:
             return None
         return parts[0] if len(parts) == 1 else torch.cat(parts)
 
+    def size_term_from_merge(self) -> None:
+        """E42a: kept token i's logit gains log s_i, s_i = the vision tokens its merge row averages (1 if unmerged);
+        the image attention share is logged with and without the term."""
+        if self.merge is None:
+            raise ValueError("the size term needs a merge plan")
+        rows, weights = self.merge
+        sizes = np.maximum((np.asarray(weights) > 0).sum(axis=1), 1)
+        self.key_bias = (np.asarray(rows, dtype=np.int64), np.log(sizes).astype(np.float32))
+        self.log_share, self._bias = True, None
+
+    def key_bias_vector(self, tk: int, device) -> torch.Tensor | None:
+        """[tk] float32 additive bias over key positions: key_bias on the visual tokens, 0 elsewhere (and on tokens
+        generated after the prompt)."""
+        if self.key_bias is None:
+            return None
+        if self._bias is None or self._bias.device != torch.device(device):
+            rows, values = self.key_bias
+            bias = torch.zeros(int(self.vis_pos.max()) + 1, dtype=torch.float32)
+            bias[self.vis_pos[torch.as_tensor(rows, dtype=torch.long)]] = torch.as_tensor(values, dtype=torch.float32)
+            self._bias = bias.to(device)
+        bias = self._bias
+        if tk > bias.numel():
+            bias = torch.cat([bias, bias.new_zeros(tk - bias.numel())])
+        return bias[:tk]
+
 
 ACTIVE: PruneState | None = None
+NO_DROPS = torch.empty(0, dtype=torch.long)
 CALLS = {"decoder": 0}  # hook invocations on decoder layers; the smoke test checks it is > 0
 
 
@@ -113,15 +147,18 @@ def pruning(state: PruneState | None) -> Iterator[PruneState | None]:
 
 
 def last_token_attention(query: torch.Tensor, key: torch.Tensor, scaling: float,
-                         exclude: torch.Tensor | None = None) -> torch.Tensor:
+                         exclude: torch.Tensor | None = None, bias: torch.Tensor | None = None) -> torch.Tensor:
     """Head-mean softmax attention of the last query over all keys, [Tk] float32.
 
     query [1, Hq, Tq, D], key [1, Hk, Tk, D] (after RoPE). `exclude` key positions get zero weight (keys already
-    masked by an earlier stage), so later stages score exactly the attention the model computes.
+    masked by an earlier stage) and `bias` [Tk] is added to the logits (the size term), so later stages score exactly
+    the attention the model computes.
     """
     n_rep = query.shape[1] // key.shape[1]
     k = key[0].repeat_interleave(n_rep, dim=0) if n_rep > 1 else key[0]  # [Hq, Tk, D], same order as repeat_kv
     logits = torch.einsum("hd,htd->ht", query[0, :, -1, :].float(), k.float()) * scaling
+    if bias is not None:
+        logits = logits + bias.to(logits.device, torch.float32)[None, :]
     if exclude is not None:
         logits[:, exclude.to(logits.device)] = float("-inf")
     return logits.softmax(dim=-1).mean(dim=0)
@@ -318,7 +355,8 @@ def _prefill_step(state: PruneState, module, layer: int, query: torch.Tensor, ke
 
     def attention_scores() -> np.ndarray:
         if "attn" not in cache:
-            cache["attn"] = last_token_attention(query, key, scaling, state.dropped_at(layer))[vis].cpu().numpy()
+            bias = state.key_bias_vector(key.shape[2], query.device)
+            cache["attn"] = last_token_attention(query, key, scaling, state.dropped_at(layer), bias)[vis].cpu().numpy()
         return cache["attn"]
 
     def ropefree_scores() -> np.ndarray:
@@ -351,6 +389,12 @@ def _prefill_step(state: PruneState, module, layer: int, query: torch.Tensor, ke
         state.logs[f"lp_last_l{layer}"] = np.log(attention_scores() + 1e-30)
         if state.text_pos is not None and state.text_pos.numel():
             state.logs[f"lp_text_l{layer}"] = np.log(text_scores() + 1e-30)
+    if state.log_share:  # E42a mechanism check: the image's attention share with and without the size term
+        dropped = state.dropped_at(layer)
+        with_term = last_token_attention(query, key, scaling, dropped, state.key_bias_vector(key.shape[2], query.device))
+        without = last_token_attention(query, key, scaling, dropped)
+        state.logs[f"ishare_l{layer}"] = np.array([float(with_term[vis].sum()), float(without[vis].sum())],
+                                                  dtype=np.float32)
     for stage in state.stages:
         if stage.done or stage.score_layer != layer:
             continue
@@ -378,7 +422,12 @@ def medprune_sdpa(module, query, key, value, attention_mask, **kwargs):
         scaling = kwargs.get("scaling") or getattr(module, "scaling", None) or query.shape[-1] ** -0.5
         _prefill_step(state, module, layer, query, key, scaling)
     dropped = state.dropped_at(layer)
-    if dropped is not None:
+    bias = state.key_bias_vector(key.shape[2], query.device)
+    if bias is not None:  # E42a: additive float mask, -inf on dropped / future keys, + log s on merged keys
+        allowed = allow_mask(attention_mask, query, key, dropped if dropped is not None else NO_DROPS)
+        attention_mask = torch.zeros(allowed.shape, dtype=query.dtype, device=query.device) \
+            .masked_fill(~allowed, float("-inf")) + bias.to(query.dtype)[None, None, None, :]
+    elif dropped is not None:
         attention_mask = allow_mask(attention_mask, query, key, dropped)
     return sdpa_attention_forward(module, query, key, value, attention_mask, **kwargs)
 

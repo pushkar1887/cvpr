@@ -2052,7 +2052,7 @@ OmniMedVQA and SLAKE.
 - P79: route (three-seed mean) − VScan ≥ +1.0 on the nine-cell mean. 80%.
 - P80: route (three-seed mean) Qwen3-VL four-cell ≥ VScan's 65.11. 55%.
 
-**E46 — repairing the two dropped pieces, pilot first (registered Nov 10 05:30, before any E46 run; approved in chat).**
+**E46 — repairing the two dropped pieces, pilot first (registered Nov 10 05:25, git `710a24a`, before any E46 run; approved in chat).**
 Diagnosis (laptop, saved keep-sets + gates): k-means (2A) − E42a: SLAKE +0.4 / +1.3, open anatomy −1.6 / −1.6; its kept
 tokens cover the image ≈ 10% worse in every cell (normalized nearest-kept distance 0.39-0.49 vs 0.36-0.44: content-only
 clusters span the image, the merged token sits at one point). Background summary − none: no k-dependence (10%: small-k

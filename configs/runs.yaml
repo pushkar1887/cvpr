@@ -437,3 +437,7 @@ blocks:
   - {exp: E42b, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_sched]}
   - {exp: E42r, tier: P0, account: A, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa_eq, gate_jitter_merge_sched]}
   - {exp: E42r, tier: P0, account: B, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa_eq, gate_jitter_merge_sched]}
+  # 19:15 fallback: D's two E42a kernels sat in Kaggle's T4 queue for 65 min; the same runs on C (same code, seed and
+  # hardware); whichever copy finishes first is merged, the other is skipped.
+  - {exp: E42, tier: P0, account: C, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa_eq]}
+  - {exp: E42, tier: P0, account: C, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa_eq]}

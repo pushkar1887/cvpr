@@ -30,6 +30,20 @@ CELLS: tuple[tuple[str, str], ...] = (
     ("lingshu7b", "omni_anat"), ("lingshu7b", "rin_open"),
     ("qwen3vl8b", "slake_en"), ("qwen3vl8b", "rin_anat_mc"), ("qwen3vl8b", "omni_anat"), ("qwen3vl8b", "rin_open"))
 BALANCED: frozenset = frozenset({("lingshu7b", "rin_abn_closed")})
+SINGLE_TOKEN: frozenset = frozenset({"mc", "judgement"})  # instructions whose answer is one token (E43 route)
+
+
+def prompt_style(dataset: str, answer_type: str) -> str:
+    """The MedEvalKit instruction a question gets (medprune.data.make_prompt): "mc" (answer with the option's letter),
+    "judgement" (output 'yes' or 'no': RadImageNet abnormality and natural yes / no), "open" (answer concisely),
+    "close" (a single word or phrase: SLAKE's closed questions, natural's closed ones)."""
+    if answer_type == "mc":
+        return "mc"
+    if answer_type == "open":
+        return "open"
+    if answer_type == "yesno" and (dataset.startswith("rin_") or dataset == "natural"):
+        return "judgement"
+    return "close"
 
 
 def image_half(image_id: str) -> int:
@@ -141,6 +155,18 @@ def load_cell(results: Path, model: str, dataset: str, method: str, verdicts: di
     from .analysis import parse_run_id, rescore_open
     from .judge import apply_judge
 
+    if method.startswith("route:"):  # E43: "route:A|B" = A's answer where the instruction asks for one token, else B's
+        single, generated = method[len("route:"):].split("|")
+        out = load_cell(results, model, dataset, generated, verdicts)
+        pick = out["atype"].map(lambda a: prompt_style(dataset, a)).isin(SINGLE_TOKEN)
+        if pick.any():
+            a = load_cell(results, model, dataset, single, verdicts)
+            idx = pick.index[pick]
+            if not idx.isin(a.index).all():
+                raise ValueError(f"{single} lacks single-token questions of {model} {dataset}")
+            out = out.copy()
+            out.loc[idx, ["c", "yes"]] = a.loc[idx, ["c", "yes"]].to_numpy()
+        return out
     budget = "r100" if method == "full" else "r010"
     rows = []
     for path in sorted((Path(results) / "runs").glob(f"{model}__{dataset}__{method}__{budget}__s*__t4x2.jsonl")):
@@ -154,7 +180,7 @@ def load_cell(results: Path, model: str, dataset: str, method: str, verdicts: di
     df["gold"] = df["answer"].str.strip().str.lower().str.startswith("yes")
     df["yes"] = df["response"].fillna("").str.strip().str.lower().str.match(r"\W*yes")
     return df.groupby("qid").agg(c=("correct", "mean"), image=("image_id", "first"), gold=("gold", "first"),
-                                 yes=("yes", "mean"))
+                                 yes=("yes", "mean"), atype=("answer_type", "first"))
 
 
 def paired_cells(results: Path, candidate: str, reference: str, verdicts: dict) -> dict[tuple[str, str], Cell]:

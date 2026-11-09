@@ -25,7 +25,7 @@ class MethodSpec:
     name: str
     rule: str  # "none" | "random" | "random_sched" | "uniform" | "topk" | "static" | "inverse" | "divprune" | "pdrop" |
     #            "sparsevlm" | "vispruner" | "prunesid" | "btp" | "visionzip" | "hiprune" | "cdpruner" | "feather" |
-    #            "vscan" | "transprune" (medprune/baselines/) | "stratified" | "pool" (medprune/remedy.py)
+    #            "vscan" | "transprune" (medprune/baselines/) | "stratified" | "pool" | "kmeans" (medprune/remedy.py)
     score: str | None = None  # None | "attn" (last prompt token) | "ropefree" | "text" (every token after the
     #                           image) | "raters" (SparseVLM text raters)
     score_layer: int | None = None
@@ -168,6 +168,11 @@ METHODS: dict[str, MethodSpec] = dict(
               sched_at=5 / 7),
         _spec("gate_jitter_merge_sched_pa", "stratified", mask_from=0, gate="foreground", merge="foreground",
               sched_at=5 / 7, prop_attn=True),
+        # E43 (plan.md): the size term at 10% kept (2B), and merge clusters chosen by k-means++ + Lloyd inside the gate,
+        # kept at their medoids, with the size term at the equal budget (2A).
+        _spec("gate_jitter_merge_pa", "stratified", mask_from=0, gate="foreground", merge="foreground", prop_attn=True),
+        _spec("gate_kmeans_merge_pa_eq", "kmeans", mask_from=0, gate="foreground", merge="foreground", match_fastv=True,
+              prop_attn=True),
     ]
 )
 

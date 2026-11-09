@@ -68,3 +68,33 @@ def test_holm_step_down():
     assert holm({"a": 0.01, "b": 0.04}) == {"a": True, "b": True}
     assert holm({"a": 0.03, "b": 0.04}) == {"a": False, "b": False}  # 0.03 > 0.05 / 2: nothing is rejected
     assert holm({"a": 0.02, "b": 0.06}) == {"a": True, "b": False}
+
+
+def test_prompt_style_matches_the_instructions():
+    from medprune.adoption import SINGLE_TOKEN, prompt_style
+
+    assert prompt_style("omni_anat", "mc") == "mc" and prompt_style("rin_abn_closed", "yesno") == "judgement"
+    assert prompt_style("slake_en", "yesno") == "close" and prompt_style("slake_en", "open") == "open"
+    assert prompt_style("natural", "yesno") == "judgement" and prompt_style("natural", "closed") == "close"
+    assert {prompt_style(d, a) for d, a in (("rin_anat_mc", "mc"), ("rin_abn_closed", "yesno"))} <= SINGLE_TOKEN
+    assert not {prompt_style(d, a) for d, a in (("slake_en", "closed"), ("rin_open", "open"))} & SINGLE_TOKEN
+
+
+def test_route_takes_single_token_answers_from_the_first_row(tmp_path, monkeypatch):
+    import pandas as pd
+
+    from medprune import adoption
+
+    frames = {
+        "A": pd.DataFrame({"c": [1.0, 1.0, 1.0], "image": ["i0", "i1", "i2"], "gold": [True] * 3, "yes": [1.0] * 3,
+                           "atype": ["mc", "open", "yesno"]}, index=["q0", "q1", "q2"]),
+        "B": pd.DataFrame({"c": [0.0, 0.0, 0.0], "image": ["i0", "i1", "i2"], "gold": [True] * 3, "yes": [0.0] * 3,
+                           "atype": ["mc", "open", "yesno"]}, index=["q0", "q1", "q2"]),
+    }
+    real = adoption.load_cell
+    monkeypatch.setattr(adoption, "load_cell", lambda r, m, d, meth, v: frames[meth] if meth in frames
+                        else real(r, m, d, meth, v))
+    rin = adoption.load_cell(tmp_path, "lingshu7b", "rin_abn_closed", "route:A|B", {})
+    assert list(rin["c"]) == [1.0, 0.0, 1.0]  # mc and judgement from A, open from B
+    slake = adoption.load_cell(tmp_path, "lingshu7b", "slake_en", "route:A|B", {})
+    assert list(slake["c"]) == [1.0, 0.0, 0.0]  # SLAKE's yes / no questions get "close": B

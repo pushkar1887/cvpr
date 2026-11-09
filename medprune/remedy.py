@@ -12,6 +12,8 @@ carries the mean of itself and the tokens assigned to it (VScan's `token_merging
   tokens are discarded (`allowed` given) or join the background summary token (`summary` given).
 - `background_slot`: the background token most similar to the background's mean embedding; its row becomes the mean
   of every dropped background token.
+- `kmeans_plan` (E43): k-means++ + spherical Lloyd clusters of the foreground, each kept at its medoid with the
+  cluster mean (minimizes the merge's averaging error, the residual once the size term restores the attention mass).
 - `pool_plan`: exactly k near-equal-area rectangular blocks; each block's mean sits at its central token.
 - `fastv_matched_count`: tokens kept from layer 0 so the mean visual tokens per decoder layer equal FastV's at the same
   budget (all N tokens in the first `first` layers, k after) — VScan's budget (plan.md §C3).
@@ -123,6 +125,93 @@ def merge_plan(emb: np.ndarray, keep: np.ndarray, allowed: np.ndarray | None = N
             raise ValueError("the summary token must be kept")
         weights[np.searchsorted(keep, summary), np.flatnonzero(~fg & ~kept)] = 1.0
     return keep, weights / weights.sum(axis=1, keepdims=True)
+
+
+def kmeans_plan(emb: np.ndarray, rc: np.ndarray, k: int, rng: np.random.Generator, allowed: np.ndarray | None = None,
+                iters: int = 2, device: str | None = None) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    """E43 (2A): k clusters of the `allowed` tokens chosen to minimize the averaging error of the merge.
+
+    With the size term the merged cluster's attention mass is exact for duplicates, and the residual error of its value
+    term is bounded (Cauchy-Schwarz, values linear in the input) by sqrt(sum_C ||x_j - mean_C||^2): the k-means
+    objective. Seeding is k-means++ (D^2 sampling on unit vectors, ||x - c||^2 = 2 - 2 cos; E[cost] <= 8(ln k + 2) OPT,
+    Arthur & Vassilvitskii, SODA 2007), followed by `iters` spherical Lloyd steps (each never increases the cost).
+    Each cluster is kept at its medoid (the member most similar to the cluster mean) and carries the uniform mean of its
+    members; tokens outside `allowed` are discarded. Exactly min(k, n) tokens are kept: empty clusters are refilled by
+    splitting off the worst-fitting member of the largest cluster. When fewer than k tokens are allowed, all of them
+    are kept and the rest is topped up from outside by Hilbert strata, unmerged. Computed on the Gram matrix (one
+    n x n product) on `device` (CUDA when available). Returns (keep, (rows, weights [k, n])).
+    """
+    import torch
+
+    n = len(emb)
+    k = max(1, min(int(k), n))
+    inside = np.ones(n, dtype=bool) if allowed is None else np.asarray(allowed, dtype=bool)
+    cand = np.flatnonzero(inside)
+    if cand.size <= k:  # nothing to cluster: every allowed token kept as itself, topped up by strata, unmerged
+        keep = select_stratified(rc, k, rng, inside)
+        weights = np.zeros((keep.size, n))
+        weights[np.arange(keep.size), keep] = 1.0
+        return keep, (keep, weights)
+    dev = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    x = torch.as_tensor(_unit(emb[cand]), dtype=torch.float32, device=dev)
+    gram = (x @ x.T).clamp_(-1.0, 1.0)  # cosine similarities, [m, m]
+    m = cand.size
+    # k-means++ seeding: first centre uniform, then each next centre with probability proportional to D^2
+    first = int(rng.integers(m))
+    centres = [first]
+    d2 = (2 - 2 * gram[first]).clamp_(min=0)
+    taken = torch.zeros(m, dtype=torch.bool, device=dev)
+    taken[first] = True
+    draws = rng.random(k)
+    for t in range(1, k):
+        w = torch.where(taken, torch.zeros_like(d2), d2)
+        total = float(w.sum())
+        if total <= 0:  # remaining points coincide with centres: uniform over the untaken ones
+            w = (~taken).float()
+            total = float(w.sum())
+        c = int(torch.searchsorted(torch.cumsum(w, 0), torch.tensor(draws[t] * total, device=dev)).clamp(max=m - 1))
+        while taken[c]:  # float edge case at the CDF boundary
+            c = (c + 1) % m
+        centres.append(c)
+        taken[c] = True
+        d2 = torch.minimum(d2, (2 - 2 * gram[c]).clamp_(min=0))
+    # spherical Lloyd on the Gram matrix: a point's cosine to a cluster mean is its summed Gram column / ||sum||
+    member = torch.zeros(m, k, device=dev)
+    member[torch.arange(m, device=dev), gram[:, centres].argmax(dim=1)] = 1.0
+    for _ in range(iters):
+        sizes = member.sum(dim=0)
+        sim = gram @ member  # [m, k]: sum of similarities to each cluster's members
+        norm = torch.sqrt(torch.clamp((member * sim).sum(dim=0), min=1e-12))  # ||sum of members|| per cluster
+        score = torch.where(sizes > 0, sim / norm, torch.full_like(sim, -2.0))  # cosine to the cluster mean
+        new = torch.zeros_like(member)
+        new[torch.arange(m, device=dev), score.argmax(dim=1)] = 1.0
+        member = new
+    sizes = member.sum(dim=0)
+    sim = gram @ member
+    norm = torch.sqrt(torch.clamp((member * sim).sum(dim=0), min=1e-12))
+    fit = (sim / norm)  # cosine of each point to each cluster mean
+    label = member.argmax(dim=1)
+    while int((sizes == 0).sum()):  # refill an empty cluster with the worst-fitting member of the largest cluster
+        empty, big = int((sizes == 0).nonzero()[0]), int(sizes.argmax())
+        in_big = (label == big).nonzero().flatten()
+        worst = int(in_big[fit[in_big, big].argmin()])
+        label[worst] = empty
+        sizes[big] -= 1
+        sizes[empty] += 1
+    label = label.cpu().numpy()
+    fit = fit.cpu().numpy()
+    keep, groups = [], []
+    for j in range(k):
+        members = np.flatnonzero(label == j)
+        medoid = members[np.argmax(fit[members, j])] if members.size > 1 else members[0]
+        keep.append(int(cand[medoid]))
+        groups.append(cand[members])
+    order = np.argsort(keep)
+    keep = np.asarray(keep, dtype=np.int64)[order]
+    weights = np.zeros((k, n))
+    for row, j in enumerate(order):
+        weights[row, groups[j]] = 1.0 / groups[j].size
+    return keep, (keep, weights)
 
 
 def pool_plan(rc: np.ndarray, grid_hw: tuple[int, int], k: int) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:

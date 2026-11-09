@@ -240,3 +240,91 @@ def test_e42_rows_dry_run(tmp_path):
     # the size term does not change which tokens are kept
     assert [r["keep_stages"] for r in rows["gate_jitter_merge_sched"]] == \
         [r["keep_stages"] for r in rows["gate_jitter_merge_sched_pa"]]
+
+
+# ------------------------------------------------------------------------------- E43 (2A): k-means merge clusters
+
+def _distortion(emb: np.ndarray, weights: np.ndarray) -> float:
+    """Sum over merged rows of ||x_j - row mean||^2 on unit vectors (the k-means objective of the merge)."""
+    from medprune.remedy import _unit
+
+    x = _unit(emb)
+    total = 0.0
+    for row in weights:
+        members = np.flatnonzero(row > 0)
+        total += float(((x[members] - x[members].mean(axis=0)) ** 2).sum())
+    return total
+
+
+def test_kmeans_plan_partitions_the_gate_into_exactly_k_clusters():
+    from medprune.remedy import kmeans_plan
+
+    rng = np.random.default_rng(3)
+    rc = grid_rc(8, 8)
+    emb = rng.normal(size=(64, 12))
+    allowed = rc[:, 0] >= 2  # 48 foreground tokens
+    for seed in range(5):
+        keep, (rows, w) = kmeans_plan(emb, rc, 9, np.random.default_rng(seed), allowed, device="cpu")
+        assert len(keep) == 9 == len(set(keep)) and np.array_equal(rows, keep) and allowed[keep].all()
+        assert np.allclose(w.sum(axis=1), 1) and np.all(w[:, ~allowed] == 0)
+        assert np.all((w[:, allowed] > 0).sum(axis=0) == 1)  # every foreground token in exactly one cluster
+        assert all(w[i, keep[i]] > 0 for i in range(9))  # each kept token is a member of its own cluster
+    a = kmeans_plan(emb, rc, 9, np.random.default_rng(7), allowed, device="cpu")
+    b = kmeans_plan(emb, rc, 9, np.random.default_rng(7), allowed, device="cpu")
+    assert np.array_equal(a[0], b[0]) and np.array_equal(a[1][1], b[1][1])  # same seed, same clusters
+
+
+def test_kmeans_recovers_separated_groups_and_lowers_the_merge_distortion():
+    """Six tight groups scattered across the grid (not aligned with the Hilbert strata): k-means recovers them and
+    its merge distortion is below the stratified recipe's on every seed."""
+    from medprune.remedy import kmeans_plan, merge_plan, select_stratified
+
+    rng = np.random.default_rng(0)
+    rc = grid_rc(8, 8)
+    centres = rng.normal(size=(6, 16))
+    group = rng.integers(0, 6, 64)
+    emb = centres[group] + 0.05 * rng.normal(size=(64, 16))
+    pure, better = 0, 0
+    for seed in range(10):
+        keep, (_, w) = kmeans_plan(emb, rc, 6, np.random.default_rng(seed), device="cpu")
+        pure += all(len(set(group[np.flatnonzero(row > 0)])) == 1 for row in w)
+        ref_keep = select_stratified(rc, 6, np.random.default_rng(seed))
+        _, w_ref = merge_plan(emb, ref_keep)
+        better += _distortion(emb, w) < _distortion(emb, w_ref)
+    assert pure >= 8 and better == 10
+
+
+def test_d2_seeding_keeps_an_isolated_token():
+    """D^2 sampling picks a lone distinctive token (a small lesion) as a centre with high probability; one random token
+    per stratum keeps it about k / n of the time."""
+    from medprune.remedy import kmeans_plan, select_stratified
+
+    rng = np.random.default_rng(1)
+    rc = grid_rc(8, 8)
+    emb = np.tile(rng.normal(size=(1, 16)), (64, 1)) + 0.05 * rng.normal(size=(64, 16))
+    emb[27] = rng.normal(size=16) * 3  # the outlier
+    kept = sum(27 in kmeans_plan(emb, rc, 6, np.random.default_rng(s), device="cpu")[0] for s in range(40))
+    strat = sum(27 in select_stratified(rc, 6, np.random.default_rng(s)) for s in range(40))
+    assert kept >= 38 and strat <= 15
+
+
+def test_kmeans_small_gate_keeps_every_allowed_token_and_tops_up():
+    from medprune.remedy import kmeans_plan
+
+    rc = grid_rc(8, 8)
+    allowed = np.zeros(64, dtype=bool)
+    allowed[[3, 9, 40]] = True
+    keep, (rows, w) = kmeans_plan(np.random.default_rng(0).normal(size=(64, 8)), rc, 6, np.random.default_rng(0),
+                                  allowed, device="cpu")
+    assert len(keep) == 6 and {3, 9, 40} <= set(keep) and np.allclose(w, np.eye(64)[keep])
+
+
+def test_e43_rows_dry_run(tmp_path):
+    from medprune.run_eval import RunSpec, run_many
+
+    bundle, out = _bundle(tmp_path), tmp_path / "results"
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.10) for m in ("gate_jitter_merge_pa", "gate_kmeans_merge_pa_eq")]
+    run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    rows = {s.method: [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs}
+    assert all(r["k_keep"] == 2 for r in rows["gate_jitter_merge_pa"])  # keep_count(16, 0.10)
+    assert all(r["k_keep"] == fastv_matched_count(16, 2, 28) for r in rows["gate_kmeans_merge_pa_eq"])

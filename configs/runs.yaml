@@ -444,3 +444,17 @@ blocks:
   # 19:45: C queued too (Kaggle T4 x2 capacity); B's two notebooks are free and got machines at once at 18:10.
   - {exp: E42, tier: P0, account: B, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa_eq]}
   - {exp: E42, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa_eq]}
+
+  # Nov 9 — E43 (registered 20:50, plan.md; P72-P75): E42c on the single-token cells (the route's schedule branch),
+  # the size term at 10% kept (2B), k-means merge clusters + the size term at the equal budget (2A), and the held-out
+  # `omni_panel` (reference, VScan, E42a, E42c). D = SLAKE / OmniMedVQA / omni_panel, C = RadImageNet (E43r).
+  - {exp: E43, tier: P0, account: D, model: lingshu7b, groups: [omni_anat], methods: [gate_jitter_merge_sched_pa]}
+  - {exp: E43, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [gate_jitter_merge_sched_pa]}
+  - {exp: E43, tier: P0, account: D, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}
+  - {exp: E43, tier: P0, account: D, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}
+  - {exp: E43, tier: P0, account: D, model: lingshu7b, groups: [omni_panel], methods: [gate_jitter_merge_eq, vscan, gate_jitter_merge_pa_eq, gate_jitter_merge_sched_pa]}
+  - {exp: E43, tier: P0, account: D, model: qwen3vl8b, groups: [omni_panel], methods: [gate_jitter_merge_eq, vscan, gate_jitter_merge_pa_eq, gate_jitter_merge_sched_pa]}
+  - {exp: E43r, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed], methods: [gate_jitter_merge_sched_pa]}
+  - {exp: E43r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_jitter_merge_sched_pa]}
+  - {exp: E43r, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}
+  - {exp: E43r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}

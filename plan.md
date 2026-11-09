@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 20:10 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-09 20:50 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -31,6 +31,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2); Nov 7 06:56 A v11 E17 ✅ (1.22 h; P24 ✗, P25 ✓, **CDPruner's released sign +26.5 / +8.1 → reported row**); 07:00 E17b on A + B; 07:09 A E15b ✅ (P23 replicates on Qwen3-VL); 07:12 C E14o-Lingshu ✅ (P27 ✗; TransPrune collapses on open anatomy); 07:30 E19 on C; 08:51 A E14o-Qwen3-VL ✅ (P30 ✗; FEATHER collapses on Qwen3-VL; gate costs coverage selectors 12.6 on region-asking questions); 09:03 E20 on A; 09:04 B E18 ✅ (P26 ✗; **VScan's merge on FastV's keep-set +39.0 / +35.3**, beats Gate+FastV by 21-24); 09:12 E21 on B; 09:15 B E17b-Qwen3-VL ✅ (P28 / P29 Qwen3-VL halves hold); 09:22 E22 on B; 09:22 C E19 ✅ (P31 ✗, P32 ✓, P33 ✓: the ranking's cost ends at K ≈ 10-12 on multiple choice, later on open answers, with BRR unchanged); 09:28 E19b on C; 09:34 A E17b-Lingshu ✅ (P28 ✗, P29 ✗; the gate helps released CDPruner where its BRR > 1); 09:40 E23 on A; 10:14 A E20 ✅ (P34 ✗: a 3% background quota restores +8.1 of Gate+Uniform's −12.6 on region-asking questions but costs multiple choice 4-6); 10:17 E24 on A; 10:21 C E19b ✅ (P39 ✗ as registered, P40 ✓: open answers recover at about half the depth, multiple choice at a third); 10:24 E25 on C; 10:43 A E23 ✅ (P41 ✓, P42 ✗ as registered: merge and a layer-16 cut hold at 5% / 25%; the cut keeps Full at 5%); 10:45 E26 on A; 11:20 D E14-Qwen3-VL SLAKE + OmniMedVQA ✅ (15 / 16; late-LLM-attention methods lead OmniMedVQA +5.5 to +5.9, SLAKE separates nothing); 11:23 E27 on D; 11:25 B E22 ✅ (P38 ✗: the merge brings Lingshu OmniMedVQA to Random, +29.2, but leaves RIN abnormality at the language prior); 11:28 E28 on B; 11:43 D E14-Lingshu SLAKE + OmniMedVQA ✅ (**E14 complete**; consolidated table: every gated coverage selector is safe on all eight cells); 11:48 E29 on D; 12:31 A E24 ✅ (P43 ✗, 12 / 14; **VScan at 5% = Full** with FastV's token count); 12:35 E30 on A; 12:51 B E21 ✅ (P35 ✗, P36 ✓, P37 ✗ as registered: the merge lifts every keep-set on anatomy, Random + merge is the best open-anatomy row; gate and merge compose on Lingshu); 12:55 E31 on B; 12:57 A E26 ✅ 9 / 16 (Lingshu three-seed Random at 5% / 25%: every delta moves ≤ 0.9); 12:59 E26b on A; 13:22 C E25 ✅ (P44 ✗, P45 ✗: the one-third depth was RIN anatomy's; a cut at about half the depth is safe on every anatomy / SLAKE cell, not on findings); 13:26 E32 on C; 13:31 D E27 ✅ 4 / 5 (OmniMedVQA Random seeds: deltas move ≤ 0.5; Qwen3-VL Gate+VisionZip +1.6); 13:35 E27b on D; 13:44 A E30 ✅ (P49 ✓: VScan's multiple-choice lead is its front-loaded schedule — Random's tokens on it +13.9 / +11.7 at 5%); 13:47 E33 on A; 14:15 B E31 ✅ (P50 ✓, P51 ✗: merging a covering keep-set keeps findings near Random — the merge cannot restore a lesion FastV dropped); 14:19 E34 on B; 14:20 B E28 ✅ (P46 ✓: Random + merge +7.3 on Lingshu OmniMedVQA, the best row there); 14:22 E35 on B; 14:23 A E26b ✅ (three-seed Random everywhere at 5% / 25%; Gate+Uniform fails at 5% on both models); 14:28 D E29 ✅ (P48 ✗: the gate adds on top of the merge only where FastV + merge stays below Random); 14:30 C E32 ✅ (P52 ✓, P53 ✗, P54 ✓: findings are read between layers 16 and 20; a cut inside that window is worse than an early one); 14:34 E36 on C; 14:59 D E27b ✅ (P55 ✗: Random + merge +1.5 on Qwen3-VL OmniMedVQA; three Random seeds everywhere); 15:17 C E36 ✅ (P57 ✓: the depth curve for the same tokens is U-shaped — a cut during reading is the worst); 15:20 E37 on C + D; 15:26 B E35 ✅ (Random + merge row complete: within 2 of Random on all eight cells); 15:54 A E33 ✅ (P56 ✗: the schedule's cut at layer 14 sits in Lingshu's findings window, −7.2); 15:58 E38 on A; 16:44 B E34 ✅ (selector-seed SD 0.0-1.0 for Random + merge and Random on VScan's schedule); 17:27 A E38 ✅ (P59 ✓: the same token-matched schedule with the cut after the reading window is +1.2 to +8.3 on all four Lingshu cells); 17:30 E39 / E39b on A; 17:39 C E37-Lingshu ✅ (P58 ✗: no mid-depth dip on OmniMedVQA; the dip is a RadImageNet observation); 17:43 D E37-Qwen3-VL ✅ (monotone too; P58 ✗ on both models); 18:30 A E39b ✅ (P61 ✗: the late cut costs Lingshu open anatomy 4.2 — a trade, not a free gain); 18:45 A E39 ✅ (P60 ✗ as registered by 0.2; on Qwen3-VL the cut position does not matter). All seven slots idle at 18:45 | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
 | 7c | **E40 / E41 the remedy** (`jitter_merge`, `gate_jitter_merge`, `gate_jitter_bgsum`, `pool` at 10% kept; the two gated rows at VScan's budget), both models, five cells; budget audit | ✅ DONE Nov 9 15:28: 60 / 60 runs on six slots, 0 missing verdicts; P62-P66 registered first | ≈ 17.1 | 0 | Nov 9 | **Recipe `gate_jitter_merge`** (nine-cell 65.4; best published at ~10% VisionZip 62.9). At VScan's budget 66.5 vs VScan 65.5: Lingshu 68.4 vs 65.9, Qwen3-VL 64.2 vs 65.1. P63, P64 supported; P62, P65, P66 contradicted |
 | 7d | **E42** size-aware attention (`gate_jitter_merge_pa_eq`) and the read-then-prune schedule (`gate_jitter_merge_sched`) on the recipe at the equal budget, both models, five cells | 🔄 RUNNING. Registered Nov 9 18:01 (`c2199f7`; P67-P70, confirmatory adoption rule); 18:10: 20 runs on A1, A2, B1, B2, D1, D2; 19:00 B2 ✅, 19:12 A2 ✅, 19:17 B1 ✅ (14 / 20); P68 contradicted; A1, D1, D2 queued on Kaggle's T4 capacity; 19:20 E42a SLAKE + OmniMedVQA also queued on C; 19:45 pushed to B, RUNNING | ≈ 2.8 | ≈ 3.9 (A1 1.3, E42a on D or C 2.6) | Nov 9 | Adopt by a Holm-controlled one-sided test + two-halves replication + no significant cell loss; seeds of the adopted row follow |
+| 7e | **E43** the size term at 10% (`gate_jitter_merge_pa`), k-means merge clusters + size term at the equal budget (`gate_kmeans_merge_pa_eq`), the schedule routed to single-token answers (`gate_jitter_merge_sched_pa` on the single-token cells), held-out `omni_panel` | ⏳ REGISTERED Nov 9 20:50 (P72-P75; selection on the dev half, confirmation on the test half + `omni_panel`) | 0 | ≈ 9.4 (C 1.8, D 7.6) | Nov 9-10 | Final row = best dev-half nine-cell mean; Holm-controlled confirmation; seeds 1-2 of the final row follow |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Nov 7, 03:20:** E14–E16 launched (Stage 7b): ≈ 21 GPU-h planned, within every account's free hours (C 2.8 h left
@@ -1911,6 +1912,59 @@ open answers judged in-session; 20 runs.
   E42r Lingshu RIN cells (both rows); B `medprune-baselines-qwen3vl8b` E42b Qwen3-VL SLAKE + OmniMedVQA; B
   `medprune-gpu-qwen3vl8b` E42r Qwen3-VL RIN cells (both rows); D `medprune-gpu-lingshu7b` and `medprune-gpu-qwen3vl8b`
   E42a SLAKE + OmniMedVQA (D has no `cvpr` secret, so no RadImageNet). C stays free for the seeds.
+
+**E43 — what the E42 failures leave to exploit (registered Nov 9 20:50, before any E43 run; approved in chat).**
+Facts it rests on (E42 cells in, laptop probes Nov 9 20:00): (F1) the size term restores the deep-layer image share to
+the duplicate-algebra prediction (0.0094 vs 0.0091, 0.037 vs 0.041); (F2) within cells the gain does not track cluster
+size (Spearman(s, gain) −0.08 to +0.00 on the four RadImageNet cells) and concentrates where the reference is weakest,
+so the residual error is content (averaging), not mass; (F3) the schedule helps every single-token-format cell and hurts
+every generated-format cell (closed +0.0 to +2.0, 5 of 6 > 0; open −1.2 / −4.2 / −6.0; inside Qwen3-VL SLAKE closed +0.2,
+open −1.2); (F4) the size term moves Lingshu's RIN abnormality yes-rate 34.1% → 30.5%, toward Full's 26.9%; (F5) SE of
+the nine-cell Δ 0.27-0.33 on all questions, 0.38-0.48 on one image half; selector-seed SD 0.39-0.67 per cell.
+- **2A `gate_kmeans_merge_pa_eq`** (`kmeans_plan`): k clusters of the gate's foreground by k-means++ seeding (D²
+  sampling on unit vectors) + 2 spherical Lloyd steps, each kept at its medoid with the uniform cluster mean, + the size
+  term, at the equal budget. Why: with the mass exact, a merged cluster's value error is bounded by ‖W_v‖·‖w‖₂·√(Σ_C
+  ‖x_j − x̄‖²) (Cauchy-Schwarz, values linear in the input at layer 0) — the k-means objective, which the stratified
+  recipe does not control. Guarantee: E[cost] ≤ 8(ln k + 2)·OPT for the seeding (Arthur & Vassilvitskii, SODA 2007);
+  Lloyd steps never increase it. D² sampling keeps an isolated distinctive token (a small lesion) with probability ∝
+  its squared distance (tests: 38+ / 40 seeds vs ≤ 15 / 40 for one token per stratum), the E31 failure ("the merge cannot
+  restore a dropped lesion"). Same seed stream as the reference.
+- **2B `gate_jitter_merge_pa`**: the size term on the 10%-kept recipe (`gate_jitter_merge`), the pre-LLM budget rule of
+  the published comparison (+1.9 [+1.1, +2.7] over VisionZip).
+- **Route `route:gate_jitter_merge_sched_pa|gate_jitter_merge_pa_eq`** (`medprune.adoption.prompt_style`): the
+  instruction decides the allocation. A single-token answer (MedEvalKit "mc": answer with the option's letter;
+  "judgement": output 'yes' or 'no') is computed in the one prefill pass, so tokens cut after the reading window reach it
+  only through layers ≥ c of the last prompt position: the schedule (+25% tokens before the cut) plus the size term. A
+  generated answer ("close": a single word or phrase; "open": answer concisely) re-reads the image at every layer for
+  every generated token: flat budget + size term. Both are token-matched, so the route keeps the budget. It needs E42c
+  (`gate_jitter_merge_sched_pa`) only on the single-token cells (Lingshu RIN anatomy, RIN abnormality, OmniMedVQA;
+  Qwen3-VL RIN anatomy, OmniMedVQA) and is evaluated exactly from per-question outputs (the rule is a deterministic
+  function of the prompt). If E42a is not adopted, the generated branch is the reference (`gate_jitter_merge_eq`).
+- **Held-out confirmation `omni_panel`**: 1200 multiple-choice questions on 1198 images (21 shared with the nine cells),
+  150 per modality incl. OCT (absent from the nine cells); rule-scored. Rows: reference, VScan, E42a, E42c (Full on
+  disk); the final row if it is 2A. `slake_zh` dropped (SLAKE-EN's images; Chinese open answers need an unvalidated
+  judge).
+- Not run (pruned by F1-F3): a second-order Jensen term (log s + σ²/2: F1 leaves ≤ 10% of the mass), a tuned exponent on
+  log s (same, and test-set tuning), mass-preserving or re-merged stage 2 (under the route stage 2 only touches
+  single-token answers, read before the cut), centroid RoPE positions (needs patching `get_rope_index`).
+- Predictions (all questions, nine-cell mean with Lingshu RIN abnormality balanced):
+  - P72 (2B): `gate_jitter_merge_pa` − `gate_jitter_merge` ≥ +0.5 and within ±0.75 of E42a's equal-budget gain (F2:
+    no cluster-size dependence, so no larger gain at 10%). 45%.
+  - P73 (route): E42c − E42a ≥ +0.5 averaged over the five single-token cells, and the route ≥ E42a + 0.3 on the
+    nine-cell mean (schedule gain on single-token cells so far: +1.2 / +0.1 / +0.3 / +2.0, Lingshu OmniMedVQA pending).
+    40%.
+  - P74 (2A): 2A − E42a ≥ +0.3 on the nine-cell mean and ≥ +2.0 on Lingshu SLAKE's abnormality questions (n 130). 25%.
+  - P75 (held-out): the final row − VScan ≥ 0 and final − reference > 0 on `omni_panel`, both models. 50%.
+- **Selection and confirmation rule (fixed now).** Candidates at the equal budget: reference, E42a (if adopted by the E42
+  rule), 2A, route. Final row = the highest dev-half nine-cell mean (dev: int(sha1(image_id)[:8], 16) even). Expected
+  winner's-curse inflation of the dev score ≈ 0.85 × 0.4 ≈ 0.34 for the best of three; the test half carries no
+  selection. Confirmatory family, one-sided, Holm at 0.05: (i) final − reference on the test half; (ii) final − VScan on
+  the test half; (iii) final − VScan on `omni_panel` (both models, images resampled). 2B is tested separately against
+  `gate_jitter_merge` with the E42 rule. Seeds 1-2 of the final row (nine cells + `omni_panel`) follow; the headline is
+  the seed mean.
+- Slots (≈ 9.4 GPU-h): D `medprune-gpu-lingshu7b` / `medprune-gpu-qwen3vl8b` E43 (SLAKE + OmniMedVQA of 2A and 2B,
+  E42c OmniMedVQA, `omni_panel` × 4 rows; ≈ 3.8 h each); C `medprune-gpu-lingshu7b` E43r (the RadImageNet cells of 2A,
+  2B and E42c; ≈ 1.8 h).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

@@ -28,7 +28,7 @@ from PIL import Image
 
 from .data import Sample, load_manifest
 from .masks import MaskStore
-from .remedy import background_slot, fastv_matched_count, merge_plan, pool_plan, select_stratified
+from .remedy import background_slot, fastv_matched_count, kmeans_plan, merge_plan, pool_plan, select_stratified
 from .scoring import is_correct
 from .selection import (METHODS, MethodSpec, keep_count, pdrop_schedule, rng_for, sample_map, select_divprune,
                         select_inverse, select_random, select_topk, select_uniform, select_uniform_quota)
@@ -235,6 +235,10 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
                 return select_stratified(rc, min(k2, int(survivors.sum())), rng, allowed=survivors)
 
             state.stages.append(Stage(cut, cut, select_later, score_kind="attn"))
+    elif rule == "kmeans":  # E43 (2A): k-means++ + Lloyd clusters inside the gate, each kept at its medoid
+        keep, state.merge = kmeans_plan(adapter.visual_embeddings(inputs), inputs.rc, k, rng_for(spec.seed, sample.qid),
+                                        allowed)
+        state.apply_keep(keep, method.mask_from)
     elif rule == "pool":  # E40: average pooling to k near-equal blocks (VTC-Bench's downsampling baseline)
         keep, state.merge = pool_plan(inputs.rc, inputs.grid_hw, k)
         state.apply_keep(keep, method.mask_from)

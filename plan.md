@@ -3786,3 +3786,9 @@ run IDs, counts, accuracies with CIs. Template:
   `fastv_matched_count`), rules `stratified` and `pool`, `MethodSpec.match_fastv`, six specs, `tests/test_remedy.py`.
   188 CPU tests. Merge runs take ≈ 1.8× the rate table (measured on `random_merge`: Lingshu SLAKE 0.61 h, OmniMedVQA
   0.82 h), so ≈ 21 GPU-h for 60 runs.
+- 12:10 launched (git `c373898`; P62-P66 registered first): A `medprune-gpu-lingshu7b` v17 (E40, Lingshu `jitter_merge` +
+  `pool`, then Qwen3-VL `gate_jitter_bgsum`; MAX_HOURS 4.3), A `medprune-baselines-lingshu7b` v11 (E40r + E41r, Lingshu
+  RadImageNet; 2.8), B `medprune-baselines-qwen3vl8b` v8 (E40 + E41, Qwen3-VL; 4.3), B `medprune-gpu-qwen3vl8b` v12
+  (E40r + E41r + E41b, Qwen3-VL; 3.4), C `medprune-gpu-lingshu7b` v13 (E41 Lingshu, then E40 Qwen3-VL
+  `gate_jitter_merge`; 4.5), D `medprune-gpu-lingshu7b` v5 (E40 Lingshu gate rows; 3.0). Every open answer judged
+  in-session. D slot 2 idle (D's ≈ 5 h quota). Expected ≈ 2.9-4.5 h wall per slot.

@@ -465,3 +465,5 @@ blocks:
   - {exp: E44, tier: P0, account: B, model: lingshu7b, groups: [slake_en, omni_anat, rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa_eq], seeds: [1]}
   - {exp: E44, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, omni_anat, rin_anat_mc, rin_open], methods: [gate_jitter_merge_pa_eq], seeds: [1]}
   - {exp: E44h, tier: P0, account: B, model: lingshu7b, groups: [omni_panel], methods: [vscan, gate_jitter_merge_pa_eq]}
+  # 00:20: E44h stopped after VScan (44 min for 1200 questions, past its 0.8 h cap); the E42a row runs on C after E43r.
+  - {exp: E44h2, tier: P0, account: C, model: lingshu7b, groups: [omni_panel], methods: [gate_jitter_merge_pa_eq]}

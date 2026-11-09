@@ -145,3 +145,31 @@ def test_remedy_methods_dry_run(tmp_path):
     # without a gate file the gate keeps everything: the gated rows choose the same tokens as jitter_merge
     assert [r["keep_idx"] for r in rows["jitter_merge"]] == [r["keep_idx"] for r in rows["gate_jitter_merge"]]
     assert [r["keep_idx"] for r in rows["gate_jitter_merge"]] == [r["keep_idx"] for r in rows["gate_jitter_bgsum"]]
+
+
+def test_build_state_with_background_reserves_the_summary_slot():
+    from medprune.data import Sample
+    from medprune.run_eval import FakeAdapter, RunSpec, build_state
+    from medprune.selection import METHODS
+
+    adapter = FakeAdapter("lingshu7b")
+    sample = Sample(qid="toy/0", dataset="slake_en", image_id="toy/0", image_path="x.png", question="Is it?",
+                    answer="yes", answer_type="yesno", prompt_style="close")
+    inputs = adapter.prepare(sample, image=object())
+    gate = np.ones((4, 4), dtype=np.float32)
+    gate[0, :] = 0.0  # the top row is background
+    background = set(range(4))
+    for name, k in (("gate_jitter_merge", 4), ("gate_jitter_bgsum", 4), ("gate_jitter_bgsum_eq", 5)):
+        spec = RunSpec("lingshu7b", "slake_en", name, 0.25)
+        state = build_state(spec, METHODS[name], sample, inputs, gate, None, adapter, None)
+        keep = state.keep
+        rows, w = state.merge
+        assert len(keep) == k and np.array_equal(rows, keep), name
+        bg_kept = [i for i in keep if i in background]
+        if "bgsum" in name:
+            assert len(bg_kept) == 1, name  # exactly one summary token, the rest foreground
+            r = int(np.searchsorted(rows, bg_kept[0]))
+            assert np.allclose(w[r, :4], 0.25) and np.all(w[r, 4:] == 0)
+        else:
+            assert not bg_kept and np.all(w[:, :4] == 0)  # background discarded
+        assert np.allclose(w.sum(axis=1), 1)

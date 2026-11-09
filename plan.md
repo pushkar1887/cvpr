@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 23:25 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 00:07 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1983,6 +1983,11 @@ D's queued E43.
   80%.
 - P77: Qwen3-VL four-cell mean of the seed-0 / seed-1 average ≥ VScan's 65.11 (seed 0: 65.29). 50%.
 - P78: Lingshu `omni_panel` E42a − VScan ≥ 0 (OmniMedVQA anatomy: +4.9 [+3.8, +6.0]). 75%.
+- Launch log: 23:24 E44 on A `medprune-gpu-lingshu7b` v19 (Qwen3-VL seed 1), B `medprune-baselines-qwen3vl8b` v11
+  (Lingshu seed 1), B `medprune-gpu-qwen3vl8b` v15 (E44h). 23:55 C `medprune-gpu-lingshu7b` starts E43r (queued since
+  20:41). 23:55 Lingshu `omni_panel` VScan + E42a removed from D's E43 block (B runs them). ~00:00 D's queued E43
+  versions cancelled in the Kaggle UI; 00:05 E43 re-pushed on D (`medprune-gpu-lingshu7b` v8, 7 runs;
+  `medprune-gpu-qwen3vl8b` v7, 9 runs), both RUNNING at once.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

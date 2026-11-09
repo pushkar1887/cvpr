@@ -452,7 +452,8 @@ blocks:
   - {exp: E43, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [gate_jitter_merge_sched_pa]}
   - {exp: E43, tier: P0, account: D, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}
   - {exp: E43, tier: P0, account: D, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}
-  - {exp: E43, tier: P0, account: D, model: lingshu7b, groups: [omni_panel], methods: [gate_jitter_merge_eq, vscan, gate_jitter_merge_pa_eq, gate_jitter_merge_sched_pa]}
+  # 23:55: Lingshu omni_panel VScan + E42a run on B (E44h); D keeps the reference and E42c.
+  - {exp: E43, tier: P0, account: D, model: lingshu7b, groups: [omni_panel], methods: [gate_jitter_merge_eq, gate_jitter_merge_sched_pa]}
   - {exp: E43, tier: P0, account: D, model: qwen3vl8b, groups: [omni_panel], methods: [gate_jitter_merge_eq, vscan, gate_jitter_merge_pa_eq, gate_jitter_merge_sched_pa]}
   - {exp: E43r, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed], methods: [gate_jitter_merge_sched_pa]}
   - {exp: E43r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_jitter_merge_sched_pa]}

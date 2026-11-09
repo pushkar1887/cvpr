@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 03:50 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 04:30 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -2031,6 +2031,26 @@ Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` g
 - 03:46 D `medprune-gpu-lingshu7b` v8 (E43 Lingshu) COMPLETE: 7 runs, 0 missing verdicts. Preliminary: 2B − 10% recipe
   SLAKE +0.9, OmniMedVQA +1.1 [+0.3, +2.0]; 2A − E42a SLAKE +0.1, OmniMedVQA +0.6; E42c − E42a OmniMedVQA +1.5 [+0.8,
   +2.1] (E42c − VScan +6.3), held-out `omni_panel` −0.75 (E42c − VScan −0.1). Qwen3-VL's cells (D v7) pending.
+- 04:19 D `medprune-gpu-qwen3vl8b` v7 (E43 Qwen3-VL) COMPLETE: 9 runs incl. 4 `omni_panel` rows, 0 missing verdicts.
+
+**E43 result (registered rule, Nov 10 04:25; seed 0).**
+- Dev-half selection (candidate − reference, nine-cell): **route +1.62**, 2A k-means +1.26, E42a +1.23 (all questions:
+  +1.32 / +0.56 / +0.91). **Final equal-budget row: `route:gate_jitter_merge_sched_pa|gate_jitter_merge_pa_eq`.**
+- Confirmation (one-sided, Holm at 0.05, all three rejected): (i) route − reference, test half **+1.02 (SE 0.40), p
+  0.005**; (ii) route − VScan, test half **+1.82 (SE 0.58), p 0.0008** (Lingshu OmniMedVQA +6.5, open anatomy +5.4,
+  abnormality +3.8; Qwen3-VL OmniMedVQA +3.2, SLAKE −1.8); (iii) route − VScan, held-out `omni_panel` **+0.96 (SE 0.54),
+  p 0.038** (Qwen3-VL +2.0, Lingshu −0.1). Route − reference on `omni_panel` +0.50 (Qwen3-VL +2.2, Lingshu −1.2).
+- **2B (`gate_jitter_merge_pa`) adopted** by the E42 rule: − `gate_jitter_merge` nine-cell **+1.12 (SE 0.32), p 0.0002**,
+  halves +1.36 / +0.84, no significant loss; − VisionZip **+3.04 (SE 0.46)** (the 10%-kept headline was +1.9).
+- P72 ✓ (+1.12, within 0.21 of E42a's +0.91), P73 ✓ (single-token cells +0.74, route − E42a +0.41), P74 ✗ (2A − E42a
+  −0.35), P75 ✗ (Lingshu `omni_panel` −0.1 vs VScan, −1.2 vs reference; Qwen3-VL +2.0 / +2.2).
+
+**E45 — seeds 1-2 of the final row (registered Nov 10 04:30, before any E45 run; E43 rule step).** The route's
+single-token branch (`gate_jitter_merge_sched_pa`) seeds 1-2 on the five single-token cells; its generated branch
+(`gate_jitter_merge_pa_eq`) seed 2 on SLAKE and open anatomy (seed 1 exists from E44). C: the RadImageNet cells; D:
+OmniMedVQA and SLAKE.
+- P79: route (three-seed mean) − VScan ≥ +1.0 on the nine-cell mean. 80%.
+- P80: route (three-seed mean) Qwen3-VL four-cell ≥ VScan's 65.11. 55%.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

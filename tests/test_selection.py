@@ -108,14 +108,14 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 80  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
-    #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41); size term / schedule (E42); 10% size term, k-means (E43)
+    assert len(METHODS) == 82  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
+    #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41); size term / schedule (E42); 10% size term, k-means (E43); bgsum + size term, SLIC (E46)
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name
         assert spec.merge in (None, "off", "nearest", "foreground", "bgsum"), spec.name
         if spec.merge in ("foreground", "bgsum"):
-            assert spec.gate == "foreground" and spec.rule in ("stratified", "kmeans"), spec.name
+            assert spec.gate == "foreground" and spec.rule in ("stratified", "kmeans", "slic"), spec.name
         if spec.match_fastv:
             assert spec.mask_from == 0, spec.name
         if spec.prop_attn:  # the size term needs merged clusters

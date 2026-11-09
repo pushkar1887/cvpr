@@ -478,3 +478,12 @@ blocks:
   - {exp: E45, tier: P0, account: D, model: qwen3vl8b, groups: [omni_anat], methods: [gate_jitter_merge_sched_pa], seeds: [1, 2]}
   - {exp: E45, tier: P0, account: D, model: lingshu7b, groups: [slake_en], methods: [gate_jitter_merge_pa_eq], seeds: [2]}
   - {exp: E45, tier: P0, account: D, model: qwen3vl8b, groups: [slake_en], methods: [gate_jitter_merge_pa_eq], seeds: [2]}
+
+  # Nov 10 05:30 - E46 pilot (plan.md; P81-P82): the background summary + size term and SLIC clusters + size term.
+  # E46p = SLAKE on F (no RadImageNet secret needed), E46pr = RadImageNet cells on C.
+  - {exp: E46p, tier: P0, account: F, model: lingshu7b, groups: [slake_en], methods: [gate_slic_merge_pa_eq]}
+  - {exp: E46p, tier: P0, account: F, model: qwen3vl8b, groups: [slake_en], methods: [gate_slic_merge_pa_eq]}
+  - {exp: E46pr, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [gate_slic_merge_pa_eq]}
+  - {exp: E46pr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [gate_slic_merge_pa_eq]}
+  - {exp: E46pr, tier: P0, account: C, model: lingshu7b, groups: [rin_abn_closed, rin_open], methods: [gate_jitter_bgsum_pa_eq]}
+  - {exp: E46pr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [gate_jitter_bgsum_pa_eq]}

@@ -328,3 +328,95 @@ def test_e43_rows_dry_run(tmp_path):
     rows = {s.method: [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs}
     assert all(r["k_keep"] == 2 for r in rows["gate_jitter_merge_pa"])  # keep_count(16, 0.10)
     assert all(r["k_keep"] == fastv_matched_count(16, 2, 28) for r in rows["gate_kmeans_merge_pa_eq"])
+
+
+
+# ---------------------------------------------------------------- E46: SLIC merge clusters, background + size term
+
+def _spread(rc, weights):
+    """Mean squared spatial distance of members to their cluster's centroid (cluster compactness)."""
+    out = []
+    for row in weights:
+        members = np.flatnonzero(row > 0)
+        out.append(((rc[members] - rc[members].mean(axis=0)) ** 2).sum(axis=1).mean())
+    return float(np.mean(out))
+
+
+def test_slic_plan_partitions_the_gate_into_exactly_k_clusters():
+    from medprune.remedy import slic_plan
+
+    rng = np.random.default_rng(3)
+    rc, emb = grid_rc(8, 8), rng.normal(size=(64, 12))
+    allowed = rc[:, 0] >= 2
+    for seed in range(5):
+        keep, (rows, w) = slic_plan(emb, rc, 9, np.random.default_rng(seed), allowed, device="cpu")
+        assert len(keep) == 9 == len(set(keep)) and np.array_equal(rows, keep) and allowed[keep].all()
+        assert np.allclose(w.sum(axis=1), 1) and np.all(w[:, ~allowed] == 0)
+        assert np.all((w[:, allowed] > 0).sum(axis=0) == 1) and all(w[i, keep[i]] > 0 for i in range(9))
+    a = slic_plan(emb, rc, 9, np.random.default_rng(7), allowed, device="cpu")
+    assert np.array_equal(a[0], slic_plan(emb, rc, 9, np.random.default_rng(7), allowed, device="cpu")[0])
+
+
+def test_slic_is_spatially_compact_where_kmeans_is_not_and_purer_than_strata():
+    """Two content classes in vertical stripes: k-means groups by content across the whole image (wide clusters), the
+    stratified merge mixes classes inside its regions; SLIC keeps clusters compact and at least as pure in content."""
+    from medprune.remedy import kmeans_plan, merge_plan, select_stratified, slic_plan
+
+    rng = np.random.default_rng(0)
+    rc = grid_rc(12, 12)
+    cls = ((rc[:, 1] // 3) % 2).astype(int)
+    emb = np.array([[4.0, 0], [0, 4.0]])[cls] + 0.3 * rng.normal(size=(144, 2))
+    emb = np.hstack([emb, 0.3 * rng.normal(size=(144, 6))])
+    spread_s, spread_k, pure_s, pure_r = [], [], [], []
+    purity = lambda w: np.mean([np.bincount(cls[w[i] > 0]).max() / (w[i] > 0).sum() for i in range(len(w))])
+    for seed in range(8):
+        _, (_, w_s) = slic_plan(emb, rc, 12, np.random.default_rng(seed), device="cpu")
+        _, (_, w_k) = kmeans_plan(emb, rc, 12, np.random.default_rng(seed), device="cpu")
+        _, w_r = merge_plan(emb, select_stratified(rc, 12, np.random.default_rng(seed)))
+        spread_s.append(_spread(rc, w_s)); spread_k.append(_spread(rc, w_k))
+        pure_s.append(purity(w_s)); pure_r.append(purity(w_r))
+    assert np.mean(spread_s) < 0.5 * np.mean(spread_k)
+    assert np.mean(pure_s) >= np.mean(pure_r)
+
+
+def test_slic_small_gate_keeps_every_allowed_token():
+    from medprune.remedy import slic_plan
+
+    rc = grid_rc(8, 8)
+    allowed = np.zeros(64, dtype=bool)
+    allowed[[3, 9, 40]] = True
+    keep, (_, w) = slic_plan(np.random.default_rng(0).normal(size=(64, 8)), rc, 6, np.random.default_rng(0), allowed,
+                             device="cpu")
+    assert len(keep) == 6 and {3, 9, 40} <= set(keep) and np.allclose(w, np.eye(64)[keep])
+
+
+def test_background_summary_gets_the_size_of_the_whole_background():
+    """BG-PA: with the size term, the summary row stands for every background token."""
+    from medprune.data import Sample
+    from medprune.run_eval import FakeAdapter, RunSpec, build_state
+    from medprune.selection import METHODS
+
+    adapter = FakeAdapter("lingshu7b")
+    sample = Sample(qid="toy/0", dataset="slake_en", image_id="toy/0", image_path="x.png", question="Is it?",
+                    answer="yes", answer_type="yesno", prompt_style="close")
+    inputs = adapter.prepare(sample, image=object())
+    gate = np.ones((4, 4), dtype=np.float32)
+    gate[0, :] = 0.0
+    state = build_state(RunSpec("lingshu7b", "slake_en", "gate_jitter_bgsum_pa_eq", 0.25),
+                        METHODS["gate_jitter_bgsum_pa_eq"], sample, inputs, gate, None, adapter, None)
+    state.size_term_from_merge()
+    rows, log_sizes = state.key_bias
+    sizes = dict(zip(rows.tolist(), np.round(np.exp(log_sizes)).astype(int).tolist()))
+    bg_kept = [i for i in rows if i < 4]
+    assert len(bg_kept) == 1 and sizes[bg_kept[0]] == 4 and sum(sizes.values()) == 16
+
+
+def test_e46_rows_dry_run(tmp_path):
+    from medprune.run_eval import RunSpec, run_many
+
+    bundle, out = _bundle(tmp_path), tmp_path / "results"
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.10) for m in ("gate_jitter_bgsum_pa_eq", "gate_slic_merge_pa_eq")]
+    run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    for s in specs:
+        rows = [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")]
+        assert all(r["k_keep"] == fastv_matched_count(16, 2, 28) for r in rows), s.method

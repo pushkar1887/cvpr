@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 04:30 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 05:30 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -2051,6 +2051,38 @@ single-token branch (`gate_jitter_merge_sched_pa`) seeds 1-2 on the five single-
 OmniMedVQA and SLAKE.
 - P79: route (three-seed mean) − VScan ≥ +1.0 on the nine-cell mean. 80%.
 - P80: route (three-seed mean) Qwen3-VL four-cell ≥ VScan's 65.11. 55%.
+
+**E46 — repairing the two dropped pieces, pilot first (registered Nov 10 05:30, before any E46 run; approved in chat).**
+Diagnosis (laptop, saved keep-sets + gates): k-means (2A) − E42a: SLAKE +0.4 / +1.3, open anatomy −1.6 / −1.6; its kept
+tokens cover the image ≈ 10% worse in every cell (normalized nearest-kept distance 0.39-0.49 vs 0.36-0.44: content-only
+clusters span the image, the merged token sits at one point). Background summary − none: no k-dependence (10%: small-k
++0.35, large-k −0.45; equal budget: −0.26 / +0.24), but a consistent shift of Lingshu's yes-rate toward Full's 26.9
+(35.6 → 26.6 at 10%, 34.1 → 29.9 at the equal budget); without the size term the summary weighs as one token while it
+stands for 30-150.
+- **BG-PA `gate_jitter_bgsum_pa_eq`**: the background summary token with the size term (its row is the mean of the dropped
+  background, log-size = all background tokens). By the duplicate identity (air tokens are near-duplicates) it restores
+  the background's attention mass, so the image share returns from F / (F + 1 − I) toward Full's I.
+- **SLIC-PA `gate_slic_merge_pa_eq`** (`slic_plan`): seeds = the strata (the recipe's coverage), Lloyd on d² = ‖u − m‖² / s_f²
+  + ‖p − c‖² / S², S = √(n_fg / k), s_f² = median squared feature distance to the spatially nearest seed; medoid kept,
+  uniform mean, + size term. Between pooling (spatial only) and k-means (content only). Tests: clusters < 0.5 × k-means'
+  spread and at least as content-pure as the stratified merge.
+- **Pilot (4 cells per row, full cell sizes).** SLIC-PA: SLAKE (both models, F) + open anatomy (both, C). BG-PA: Lingshu
+  RIN abnormality, Qwen3-VL RIN anatomy, open anatomy (both) — all on C. ≈ 1.7 GPU-h.
+- **Go / no-go gates (fixed now; mechanism checks, lenient on accuracy):**
+  - SLIC-PA → full run iff (a) normalized coverage distance on every pilot cell ≤ E42a's + 0.01 (E42a: SLAKE 0.364 /
+    0.374, open anatomy 0.432 / 0.437); (b) open anatomy Δ vs E42a seed 0, mean of the two models, ≥ −0.5; (c) SLAKE Δ,
+    mean of the two models, ≥ 0.
+  - BG-PA → full run iff (a) Lingshu RIN abnormality yes-rate ≤ 29.5 (E42a 30.5, Full 26.9); (b) mean Δ vs E42a seed 0
+    over its four pilot cells (abnormality balanced) ≥ 0; (c) logged deep-layer image share on Qwen3-VL RIN anatomy ≥
+    1.5 × E42a's 0.0094 (toward Full's total 0.018).
+- If a row passes: its remaining five cells run, and it is tested against E42a on all nine cells by the E42 rule (seed
+  term 0.28, Holm over the passing rows); an adopted row replaces E42a in the route's generated branch and the route is
+  re-chosen on the dev half and confirmed on the test half (the test half's second use: Holm count raised to five).
+- P81 (BG-PA): passes its gates and, if run in full, − E42a ≥ +0.3 nine-cell. 35%.
+- P82 (SLIC-PA): passes its gates and, if run in full, − E42a ≥ +0.3 nine-cell with open anatomy ≥ −0.5 on both models.
+  35%.
+- Accounts: F (`abdullah4152`, new; data bundle built on F; the `cvpr` secret is attached by the user for later
+  RadImageNet cells) runs the SLAKE pilot; C runs the RadImageNet pilot after E45r. E's token returned 401 (Nov 10 05:10).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

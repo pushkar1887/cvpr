@@ -12,6 +12,7 @@ carries the mean of itself and the tokens assigned to it (VScan's `token_merging
   tokens are discarded (`allowed` given) or join the background summary token (`summary` given).
 - `background_slot`: the background token most similar to the background's mean embedding; its row becomes the mean
   of every dropped background token.
+- `slic_plan` (E46): SLIC clusters in token space (content + position), seeded by the strata.
 - `kmeans_plan` (E43): k-means++ + spherical Lloyd clusters of the foreground, each kept at its medoid with the
   cluster mean (minimizes the merge's averaging error, the residual once the size term restores the attention mass).
 - `pool_plan`: exactly k near-equal-area rectangular blocks; each block's mean sits at its central token.
@@ -204,6 +205,78 @@ def kmeans_plan(emb: np.ndarray, rc: np.ndarray, k: int, rng: np.random.Generato
     for j in range(k):
         members = np.flatnonzero(label == j)
         medoid = members[np.argmax(fit[members, j])] if members.size > 1 else members[0]
+        keep.append(int(cand[medoid]))
+        groups.append(cand[members])
+    order = np.argsort(keep)
+    keep = np.asarray(keep, dtype=np.int64)[order]
+    weights = np.zeros((k, n))
+    for row, j in enumerate(order):
+        weights[row, groups[j]] = 1.0 / groups[j].size
+    return keep, (keep, weights)
+
+
+def slic_plan(emb: np.ndarray, rc: np.ndarray, k: int, rng: np.random.Generator, allowed: np.ndarray | None = None,
+              iters: int = 3, device: str | None = None) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    """E46: k compact, content-coherent merge clusters of the `allowed` tokens (SLIC, Achanta et al., TPAMI 2012, in
+    token space) — between block pooling (spatial only; lost anatomy) and k-means (content only; lost layout).
+
+    Seeds are the recipe's coverage (`select_stratified`: one random token per Hilbert stratum). Lloyd steps minimize
+    d^2 = ||u_i - m_j||^2 / s_f^2 + ||p_i - c_j||^2 / S^2 (u: unit embeddings, p: grid positions, m_j / c_j: the cluster's
+    mean embedding / position) with S = sqrt(n_allowed / k), the expected cluster spacing, and s_f^2 = the median squared
+    feature distance of each token to the seed nearest in space: both terms on their natural scale, no tuned weight.
+    Each cluster is kept at its medoid under d and carries the uniform mean of its members; tokens outside `allowed`
+    are discarded; exactly min(k, n) tokens are kept (empty clusters refilled as in `kmeans_plan`). Returns
+    (keep, (rows, weights [k, n])).
+    """
+    import torch
+
+    n = len(emb)
+    k = max(1, min(int(k), n))
+    inside = np.ones(n, dtype=bool) if allowed is None else np.asarray(allowed, dtype=bool)
+    cand = np.flatnonzero(inside)
+    if cand.size <= k:
+        keep = select_stratified(rc, k, rng, inside)
+        weights = np.zeros((keep.size, n))
+        weights[np.arange(keep.size), keep] = 1.0
+        return keep, (keep, weights)
+    dev = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    seeds = select_stratified(rc, k, rng, inside)
+    local = np.searchsorted(cand, seeds)
+    x = torch.as_tensor(_unit(emb[cand]), dtype=torch.float32, device=dev)
+    p = torch.as_tensor(np.asarray(rc)[cand], dtype=torch.float32, device=dev)
+    m, c = x[local].clone(), p[local].clone()
+    spacing2 = float(cand.size) / k  # S^2
+    pd = torch.cdist(p, c) ** 2  # [n_allowed, k]
+    nearest = pd.argmin(dim=1)
+    s_f2 = float(torch.median(((x - m[nearest]) ** 2).sum(dim=1)).clamp(min=1e-6))
+
+    def distance(m, c):
+        fd = (x * x).sum(1, keepdim=True) + (m * m).sum(1)[None, :] - 2 * x @ m.T
+        return fd.clamp(min=0) / s_f2 + torch.cdist(p, c) ** 2 / spacing2
+
+    label = distance(m, c).argmin(dim=1)
+    for _ in range(iters):
+        onehot = torch.zeros(cand.size, k, device=dev)
+        onehot[torch.arange(cand.size, device=dev), label] = 1.0
+        sizes = onehot.sum(dim=0)
+        filled = sizes > 0
+        m = torch.where(filled[:, None], (onehot.T @ x) / sizes.clamp(min=1)[:, None], m)
+        c = torch.where(filled[:, None], (onehot.T @ p) / sizes.clamp(min=1)[:, None], c)
+        label = distance(m, c).argmin(dim=1)
+    d = distance(m, c)
+    sizes = torch.bincount(label, minlength=k).float()
+    while int((sizes == 0).sum()):  # refill an empty cluster with the worst-fitting member of the largest cluster
+        empty, big = int((sizes == 0).nonzero()[0]), int(sizes.argmax())
+        in_big = (label == big).nonzero().flatten()
+        worst = int(in_big[d[in_big, big].argmax()])
+        label[worst] = empty
+        sizes[big] -= 1
+        sizes[empty] += 1
+    label, d = label.cpu().numpy(), d.cpu().numpy()
+    keep, groups = [], []
+    for j in range(k):
+        members = np.flatnonzero(label == j)
+        medoid = members[np.argmin(d[members, j])]
         keep.append(int(cand[medoid]))
         groups.append(cand[members])
     order = np.argsort(keep)

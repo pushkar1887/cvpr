@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 20:45 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-09 21:00 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1875,9 +1875,11 @@ open answers judged in-session; 20 runs.
   - P68 (E42b): E42b − reference ≥ +1.0 on Qwen3-VL RIN anatomy, Qwen3-VL OmniMedVQA and Lingshu SLAKE, and ≤ −2.0
     on Lingshu open anatomy. 30%. **Contradicted (Nov 9):** Qwen3-VL RIN anatomy +0.3 (OmniMedVQA +2.0, Lingshu
     open anatomy −6.0 hold).
-  - P69: E42a or E42b reaches a Qwen3-VL four-cell mean ≥ VScan's 65.1. 35%.
+  - P69: E42a or E42b reaches a Qwen3-VL four-cell mean ≥ VScan's 65.1. 35%. **Supported (Nov 9):** E42a 65.29 (63.7 / 89.5 / 63.5 / 44.4) vs
+    VScan 65.11; one seed, margin +0.18.
   - P70 (mechanism, E42a): on ≥ 3 of the 4 profiled cells, the median deep-layer (≥ L/2) image share with the term is
-    within a factor 1.5 of the Full-derived F / (F + 1 − I) on the same questions. 55%.
+    within a factor 1.5 of the Full-derived F / (F + 1 − I) on the same questions. 55%. **Supported (Nov 9):** 3 / 3 cells measured so far (with term / predicted: Lingshu
+    RIN anatomy 0.037 / 0.041, Qwen3-VL RIN anatomy 0.0094 / 0.0091, Qwen3-VL SLAKE 0.056 / 0.039).
   - P71 (added Nov 9 20:10, before E42a's SLAKE / OmniMedVQA results, from its five cells already in): the gain
     tracks the reference's gap to Full (least-squares slope through the origin over the five cells: 0.32; gaps 2.9 /
     5.6 / 1.0 / 10.6 / 0.0 → gains +1.5 / +3.4 / +0.8 / +2.4 / −1.5). Predicted for the pending cells (gap → gain):
@@ -4110,3 +4112,8 @@ run IDs, counts, accuracies with CIs. Template:
 - 19:45 D (both) and C still QUEUED (no cancel in this Kaggle CLI): E42a SLAKE + OmniMedVQA pushed to B's two free
   notebooks (`medprune-baselines-qwen3vl8b` v10 Lingshu, `medprune-gpu-qwen3vl8b` v13 → v14 Qwen3-VL), both RUNNING at
   once. The first copy of each run to finish is merged; later copies on D / C are skipped.
+- 20:35 the D and C copies show CANCEL_REQUESTED (cancelled in the Kaggle UI): no duplicate spend.
+- 20:53 B `medprune-gpu-qwen3vl8b` v14 COMPLETE (runs 19:46-20:47, `a244720`): E42a Qwen3-VL SLAKE 1061, OmniMedVQA
+  3329, 0 missing verdicts. − reference: SLAKE −1.0 [−2.3, +0.4], **OmniMedVQA +2.3 [+1.5, +3.2]**; − VScan:
+  OmniMedVQA +1.5 [+0.3, +2.8], SLAKE −1.4 [−3.5, +0.9]. Qwen3-VL four-cell: E42a 65.29 vs VScan 65.11 (P69 ✓), the
+  reference 64.16. P71 so far: Qwen3-VL OmniMedVQA +2.3 (predicted +2.6), SLAKE −1.0 (predicted +0.4).

@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 19:50 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-09 20:10 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1877,6 +1877,13 @@ open answers judged in-session; 20 runs.
   - P69: E42a or E42b reaches a Qwen3-VL four-cell mean ≥ VScan's 65.1. 35%.
   - P70 (mechanism, E42a): on ≥ 3 of the 4 profiled cells, the median deep-layer (≥ L/2) image share with the term is
     within a factor 1.5 of the Full-derived F / (F + 1 − I) on the same questions. 55%.
+  - P71 (added Nov 9 20:10, before E42a's SLAKE / OmniMedVQA results, from its five cells already in): the gain
+    tracks the reference's gap to Full (least-squares slope through the origin over the five cells: 0.32; gaps 2.9 /
+    5.6 / 1.0 / 10.6 / 0.0 → gains +1.5 / +3.4 / +0.8 / +2.4 / −1.5). Predicted for the pending cells (gap → gain):
+    Lingshu SLAKE 5.3 → +1.7, Lingshu OmniMedVQA 2.3 → +0.7, Qwen3-VL SLAKE 1.2 → +0.4, Qwen3-VL OmniMedVQA 8.1 →
+    +2.6. P71: the four gains sum to ≥ +2.0, and Qwen3-VL OmniMedVQA + Lingshu SLAKE (larger gaps) > Lingshu
+    OmniMedVQA + Qwen3-VL SLAKE. 45%. Within cells the gain does not track cluster size (Spearman(s, gain) −0.08 to
+    +0.00 on the four RadImageNet cells): the attention mass is restored (P70 cells), the residual is content.
 - **Adoption rule (fixed now; replaces the half-sample threshold proposed in chat).** Measured on five within-family
   E40 / E41 pairs: SE of the nine-cell Δ 0.27-0.33 on all questions, 0.38-0.48 on one image half. A half-sample rule
   fails on our own data: `gate_jitter_bgsum_eq` − `gate_jitter_merge_eq` (all questions −0.04) splits +0.61 (dev) /

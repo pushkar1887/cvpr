@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 22:35 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-09 22:45 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1971,6 +1971,18 @@ the nine-cell Δ 0.27-0.33 on all questions, 0.38-0.48 on one image half; select
 - Slots (≈ 9.4 GPU-h): D `medprune-gpu-lingshu7b` / `medprune-gpu-qwen3vl8b` E43 (SLAKE + OmniMedVQA of 2A and 2B,
   E42c OmniMedVQA, `omni_panel` × 4 rows; ≈ 3.8 h each); C `medprune-gpu-lingshu7b` E43r (the RadImageNet cells of 2A,
   2B and E42c; ≈ 1.8 h).
+
+**E44 — seed 1 of the adopted row and the Lingshu held-out check (registered Nov 9 22:45, before any E44 run).** Kaggle
+reports a platform incident ("an issue preventing notebooks from starting or staying connected"); E43 has been queued
+on D and C since 20:41, and D's cancelled duplicate (`medprune-gpu-qwen3vl8b` v5) still showed "Running 3h". A (2 h) and
+B (3 h) take what the E42a headline needs most, ahead of E43's selection (the selection uses seed 0 only, so seeds run
+early bias nothing; if E43 picks another row, its seeds follow on C / D): seed 1 of `gate_jitter_merge_pa_eq` on the
+nine cells (B Lingshu, A Qwen3-VL), and `omni_panel` VScan + E42a for Lingshu (B). Qwen3-VL's `omni_panel` rows stay in
+D's queued E43.
+- P76: seed-1 E42a − VScan ≥ +1.0 on the nine-cell mean (seed 0: +1.53; selector-seed SD of the nine-cell mean ≈ 0.2).
+  80%.
+- P77: Qwen3-VL four-cell mean of the seed-0 / seed-1 average ≥ VScan's 65.11 (seed 0: 65.29). 50%.
+- P78: Lingshu `omni_panel` E42a − VScan ≥ 0 (OmniMedVQA anatomy: +4.9 [+3.8, +6.0]). 75%.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

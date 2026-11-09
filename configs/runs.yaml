@@ -458,3 +458,9 @@ blocks:
   - {exp: E43r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_jitter_merge_sched_pa]}
   - {exp: E43r, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}
   - {exp: E43r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa, gate_kmeans_merge_pa_eq]}
+
+  # Nov 9 22:45 — E44 (plan.md): Kaggle's platform incident holds E43 in the queue (D, C); A (2 h) and B (3 h) take the
+  # runs the headline needs most: seed 1 of the adopted E42a row (nine cells) and the held-out omni_panel for Lingshu.
+  - {exp: E44, tier: P0, account: B, model: lingshu7b, groups: [slake_en, omni_anat, rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_merge_pa_eq], seeds: [1]}
+  - {exp: E44, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, omni_anat, rin_anat_mc, rin_open], methods: [gate_jitter_merge_pa_eq], seeds: [1]}
+  - {exp: E44h, tier: P0, account: B, model: lingshu7b, groups: [omni_panel], methods: [vscan, gate_jitter_merge_pa_eq]}

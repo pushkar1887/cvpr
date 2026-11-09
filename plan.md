@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 01:00 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 01:15 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1980,7 +1980,7 @@ early bias nothing; if E43 picks another row, its seeds follow on C / D): seed 1
 nine cells (B Lingshu, A Qwen3-VL), and `omni_panel` VScan + E42a for Lingshu (B). Qwen3-VL's `omni_panel` rows stay in
 D's queued E43.
 - P76: seed-1 E42a − VScan ≥ +1.0 on the nine-cell mean (seed 0: +1.53; selector-seed SD of the nine-cell mean ≈ 0.2).
-  80%.
+  80%. **Supported (Nov 10 01:10):** seed 1 +1.17 (SE 0.43), p 0.003, halves +1.17 / +1.21.
 - P77: Qwen3-VL four-cell mean of the seed-0 / seed-1 average ≥ VScan's 65.11 (seed 0: 65.29). 50%. **Contradicted (Nov 10
   00:55):** seed 1 64.73 (63.8 / 88.9 / 63.2 / 43.0), two-seed mean **65.01** vs VScan 65.11: Qwen3-VL ties VScan.
 - P78: Lingshu `omni_panel` E42a − VScan ≥ 0 (OmniMedVQA anatomy: +4.9 [+3.8, +6.0]). 75%.
@@ -1997,6 +1997,18 @@ D's queued E43.
   four cells, 0 missing verdicts (29 new). Seed 1 vs seed 0: SLAKE 63.8 / 63.7, RIN anatomy 88.9 / 89.5, OmniMedVQA
   63.2 / 63.5, open anatomy 43.0 / 44.4; four-cell 64.73 / 65.29 (seed swing 0.56). Two-seed mean 65.01 vs VScan 65.11
   (P77 ✗): the paper states Qwen3-VL as a tie with VScan.
+- 01:06 B `medprune-baselines-qwen3vl8b` v11 (E44) COMPLETE (runs 23:29-00:57, `70cd2c7`): seed 1 of E42a on
+  Lingshu's five cells, 0 missing verdicts (36 new). Lingshu seed 1 / seed 0: 75.9 / 75.3, 87.8 / 87.6, 46.9 / 47.2,
+  79.6 / 79.8, 54.2 / 54.4; five-cell 68.87 / 68.86.
+
+**E42a over two seeds — the equal-budget headline (Nov 10 01:10).** `gate_jitter_merge_pa_eq` (seeds 0-1) − VScan,
+paired, images resampled jointly (`python -m medprune.adoption --reference vscan --candidate gate_jitter_merge_pa_eq`):
+nine-cell **+1.35 (SE 0.40), z 3.35, p 0.0004**, halves +1.42 / +1.30; seed 0 +1.53, seed 1 +1.17 (seed SD of the
+difference ≈ 0.25; with the residual seed term of a two-seed mean, ≈ 0.18, SE 0.44, z 3.1). Per model: **Lingshu +2.5**,
+**Qwen3-VL −0.1 (a tie)**. Per cell: Lingshu SLAKE −0.4, RIN anatomy +0.9, abnormality balanced +1.6, OmniMedVQA
+**+4.8**, open anatomy **+5.7**; Qwen3-VL SLAKE −1.4, RIN anatomy −1.1 (p 0.04, not significant after Bonferroni),
+OmniMedVQA +1.3, open anatomy +0.7. Absolute two-seed nine-cell (raw abnormality): E42a 67.15 (Lingshu 68.86,
+Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` gained "name@sN" (one seed only).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

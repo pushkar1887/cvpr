@@ -167,9 +167,10 @@ def load_cell(results: Path, model: str, dataset: str, method: str, verdicts: di
             out = out.copy()
             out.loc[idx, ["c", "yes"]] = a.loc[idx, ["c", "yes"]].to_numpy()
         return out
+    method, _, seed = method.partition("@s")  # "name@s1" = that seed only; plain names average every seed on disk
     budget = "r100" if method == "full" else "r010"
     rows = []
-    for path in sorted((Path(results) / "runs").glob(f"{model}__{dataset}__{method}__{budget}__s*__t4x2.jsonl")):
+    for path in sorted((Path(results) / "runs").glob(f"{model}__{dataset}__{method}__{budget}__s{seed or '*'}__t4x2.jsonl")):
         info = parse_run_id(path.stem)
         rows += [{**json.loads(line), **info} for line in path.open(encoding="utf-8") if line.strip()]
     if not rows:

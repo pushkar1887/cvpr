@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-09 16:25 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-09 16:50 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -1802,6 +1802,26 @@ of N (SLAKE run files).
   +0.6 [−0.2, +1.4]. The recipe stays `gate_jitter_merge` as registered; the paper reports both rows. Not run: the
   fixed-grid version (gate + fixed Uniform + merge ± background), since the fixed grid aliases on 8 × 8 grids (Uniform
   38.4 vs Random 46.0, Lingshu RIN abnormality) and P63 shows coverage barely matters once tokens are merged.
+
+**Where the recipe still loses (laptop, Nov 9 16:50; judged, X − Full; Sched = Random on the token-matched schedule
+cut after the reading window, no merge; R+m = Random + merge; eq = `gate_jitter_merge_eq`).**
+- Lingshu SLAKE by question type: abnormality (n 130, Full 73.1) eq −13.1, VScan −8.5, Sched −10.8, R+m −20.8, Random
+  −20.5 — the merge adds nothing on findings, keeping tokens through the reading window does (E31, E32). Position (n
+  272, Full 66.2) eq −7.7, VScan −7.0, R+m −12.1, Random −11.6 — the merge adds nothing on position either; coverage
+  does (`jitter_merge` −9.2) and the gate (−7.4). Organ (n 379) eq −4.0, VScan −2.9. Qwen3-VL Full is 43.0 on
+  position (no laterality to lose).
+- OmniMedVQA by modality: Lingshu ultrasound (n 2040, 61% of the cell) eq −2.5 vs VScan −9.6 (the Lingshu win).
+  Qwen3-VL ultrasound eq −9.6 vs VScan −11.4; microscopy (n 422) −8.5 vs **+2.1**, fundus (n 87) −8.0 vs **+3.4**,
+  X-ray −4.8 vs −3.5: Qwen3-VL's gap to VScan on OmniMedVQA is the full-frame texture modalities (no background, the
+  gate is idle; VScan's vision-encoder selection wins there).
+- Depth: Qwen3-VL OmniMedVQA recovers only when tokens are kept deep (cut at 12 / 16 / 20: 60.7 / 66.0 / 68.9, Full
+  69.3); every row at ~15% per layer stalls near 62 (VScan 62.0, eq 61.2, TransPrune 62.0 at 36%). The largest
+  remaining gaps are depth-bound: Qwen3-VL open anatomy −10.6, OmniMedVQA −8.1; Lingshu open anatomy −5.6.
+- Open anatomy, Lingshu: R+m −3.9, `jitter_merge` −3.8, `gate_jitter_merge` −7.2, eq −5.6, VScan −8.0, Sched −13.2 —
+  the gate's field-of-view cost (E20) and the schedule's late-cut cost (E39b) both land here.
+- Proposed next (not registered): size-aware attention for merged tokens (log cluster size on each merged key; ToMe's
+  proportional attention) for the depth-bound cells; the recipe on the read-then-prune schedule (stage 2 at 0.7 depth)
+  for findings and Qwen3-VL multiple choice; 2-3 background summary tokens for the field of view.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

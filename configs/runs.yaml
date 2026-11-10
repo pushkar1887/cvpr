@@ -516,7 +516,7 @@ blocks:
   - {exp: E47r, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [vispruner, divprune]}
   - {exp: E47r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [vispruner, divprune]}
   # Nov 10 22:55 - E47s: seeds 1-2 of 2B (nine cells) and of S10 (its seven cells), launched as E47 slots free.
-  - {exp: E47s, tier: P0, account: E, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa], seeds: [1, 2]}
+  - {exp: E47s, tier: P0, account: F, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa], seeds: [1, 2]}  # moved from E, 00:46 (F's slot free first)
   - {exp: E47s, tier: P0, account: E, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_pa], seeds: [1, 2]}
   - {exp: E47s, tier: P0, account: D, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_sched10_pa], seeds: [1, 2]}  # moved from F, 00:18 (D's slot free first)
   - {exp: E47s, tier: P0, account: D, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_sched10_pa], seeds: [1, 2]}  # moved from F, 00:15 (D's slot free first)

@@ -108,15 +108,15 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 87  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
+    assert len(METHODS) == 89  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
     #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41); size term / schedule (E42); 10% size term, k-means (E43); bgsum + size term, SLIC (E46);
-    #                            10% schedule, SLIC flat / scheduled, sink, null background (E47)
+    #                            10% schedule, SLIC flat / scheduled, sink, null background (E47); ScanPrune at 10% and at the equal budget
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name
         assert spec.merge in (None, "off", "nearest", "foreground", "bgsum"), spec.name
         if spec.merge in ("foreground", "bgsum"):
-            assert spec.gate == "foreground" and spec.rule in ("stratified", "kmeans", "slic"), spec.name
+            assert spec.gate == "foreground" and spec.rule in ("stratified", "kmeans", "slic", "route"), spec.name
         if spec.match_fastv:
             assert spec.mask_from == 0, spec.name
         if spec.prop_attn:  # the size term needs merged clusters
@@ -128,6 +128,14 @@ def test_registry_is_consistent_with_fastv_definition():
         if spec.sink or spec.bg_null:  # E47 background variants: one slot of the recipe's budget each
             assert spec.rule == "stratified" and spec.gate == "foreground" and spec.prop_attn, spec.name
             assert spec.merge == ("bgsum" if spec.bg_null else "foreground"), spec.name
+        if spec.route is not None:  # ScanPrune: both branches exist, select before the LLM, merge and add the size term
+            assert spec.rule == "route", spec.name
+            for branch in spec.route:
+                b = METHODS[branch]
+                assert b.route is None and b.mask_from == 0 and b.gate == "foreground" and b.prop_attn, (spec.name, branch)
+            assert METHODS[spec.route[0]].sched_at is not None and METHODS[spec.route[1]].sched_at is None, spec.name
+    assert METHODS["scanprune"].route == ("gate_jitter_merge_sched10_pa", "gate_jitter_merge_pa")
+    assert METHODS["scanprune_eq"].route == ("gate_jitter_merge_sched_pa", "gate_jitter_merge_pa_eq")
     assert METHODS["fastv"].score_layer == 1 and METHODS["fastv"].mask_from == 2
     assert METHODS["fastv_bottom"].invert and not METHODS["fastv"].invert
     assert METHODS["gate_cdpruner_neg"].invert and METHODS["gate_cdpruner_neg"].gate == "foreground"

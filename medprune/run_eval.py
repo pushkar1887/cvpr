@@ -171,6 +171,11 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
     """The PruneState for one question (None = no pruning and no logging)."""
     from .attention_hook import PruneState, Stage
 
+    if method.route is not None:  # ScanPrune: the instruction picks the branch; the branch builds the whole state
+        from .adoption import SINGLE_TOKEN, prompt_style
+
+        single, generated = method.route
+        method = METHODS[single if prompt_style(sample.dataset, sample.answer_type) in SINGLE_TOKEN else generated]
     if not method.image:
         return None
     if method.rule == "none":

@@ -505,3 +505,55 @@ def test_bg_null_row_zeroes_the_summary_value_and_keeps_its_mass():
     assert np.count_nonzero(w[np.searchsorted(rows, slot)]) == 4  # itself + the three dropped background tokens
     state.size_term_from_merge()
     np.testing.assert_allclose(state.key_bias[1][np.searchsorted(rows, slot)], np.log(4), rtol=1e-6)
+
+
+# --------------------------------------------------------------------------------------- ScanPrune (final method)
+
+def test_scanprune_takes_exactly_its_branch_per_question():
+    """ScanPrune routes each question by its instruction: one-token answers (mc, judgement) get the schedule branch,
+    generated answers (close, open) the flat branch, with identical keep-set, merge and stages (same rng stream)."""
+    from medprune.data import Sample
+    from medprune.run_eval import FakeAdapter, RunSpec, build_state
+    from medprune.selection import METHODS
+
+    adapter = FakeAdapter("lingshu7b")
+    gate = np.ones((4, 4), dtype=np.float32)
+    gate[0, :] = 0.0
+    cases = [("rin_anat_mc", "mc", "mc", 0), ("rin_abn_closed", "yesno", "judgement", 0), ("slake_en", "yesno", "close", 1),
+             ("slake_en", "open", "open", 1), ("omni_anat", "mc", "mc", 0)]
+    for name in ("scanprune", "scanprune_eq"):
+        for ds, atype, style, branch in cases:
+            sample = Sample(qid=f"{ds}/7", dataset=ds, image_id=f"{ds}/7", image_path="x.png", question="Q?", answer="a",
+                            answer_type=atype, prompt_style=style, choices=["a", "b"] if atype == "mc" else None)
+            inputs = adapter.prepare(sample, image=object())
+            routed = build_state(RunSpec("lingshu7b", ds, name, 0.10), METHODS[name], sample, inputs, gate, None,
+                                 adapter, None)
+            target = METHODS[name].route[branch]
+            direct = build_state(RunSpec("lingshu7b", ds, target, 0.10), METHODS[target], sample, inputs, gate, None,
+                                 adapter, None)
+            assert np.array_equal(routed.keep, direct.keep), (name, ds, style)
+            assert np.array_equal(routed.merge[1], direct.merge[1]), (name, ds, style)
+            assert [(s.score_layer, s.mask_from) for s in routed.stages] == \
+                [(s.score_layer, s.mask_from) for s in direct.stages], (name, ds, style)
+            assert bool(routed.stages) == (branch == 0)  # only one-token answers are scheduled
+
+
+def test_scanprune_names_resolve_to_the_route_rows(tmp_path, monkeypatch):
+    import pandas as pd
+
+    from medprune import adoption
+
+    seen = []
+    real = adoption.load_cell
+
+    def fake(r, m, d, meth, v):
+        if meth.startswith("route:") or meth in adoption.ALIASES:
+            return real(r, m, d, meth, v)
+        seen.append(meth)
+        return pd.DataFrame({"c": [1.0], "image": ["i"], "gold": [True], "yes": [1.0], "atype": ["mc"]}, index=["q"])
+
+    monkeypatch.setattr(adoption, "load_cell", fake)
+    adoption.load_cell(tmp_path, "qwen3vl8b", "rin_anat_mc", "scanprune", {})
+    adoption.load_cell(tmp_path, "qwen3vl8b", "rin_anat_mc", "scanprune_eq", {})
+    assert seen == ["gate_jitter_merge_pa", "gate_jitter_merge_sched10_pa", "gate_jitter_merge_pa_eq",
+                    "gate_jitter_merge_sched_pa"]

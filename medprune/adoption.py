@@ -31,6 +31,12 @@ CELLS: tuple[tuple[str, str], ...] = (
     ("qwen3vl8b", "slake_en"), ("qwen3vl8b", "rin_anat_mc"), ("qwen3vl8b", "omni_anat"), ("qwen3vl8b", "rin_open"))
 BALANCED: frozenset = frozenset({("lingshu7b", "rin_abn_closed")})
 SINGLE_TOKEN: frozenset = frozenset({"mc", "judgement"})  # instructions whose answer is one token (E43 route)
+# ScanPrune (the final method; `selection.METHODS["scanprune"]`, `["scanprune_eq"]`): per question, exactly the branch
+# row's answer, so its scores are read from the two branch runs on disk
+ALIASES: dict[str, str] = {
+    "scanprune": "route:gate_jitter_merge_sched10_pa|gate_jitter_merge_pa",
+    "scanprune_eq": "route:gate_jitter_merge_sched_pa|gate_jitter_merge_pa_eq",
+}
 
 
 def prompt_style(dataset: str, answer_type: str) -> str:
@@ -155,6 +161,7 @@ def load_cell(results: Path, model: str, dataset: str, method: str, verdicts: di
     from .analysis import parse_run_id, rescore_open
     from .judge import apply_judge
 
+    method = ALIASES.get(method, method)  # ScanPrune's names -> the route rows its outputs were computed from
     if method.startswith(("route:", "routec:")):  # E43: "route:A|B" = A's answer where the instruction asks for one
         # token, else B's; E47: "routec:A|B" also sends "close" (a single word or phrase) to A
         prefix, _, branches = method.partition(":")

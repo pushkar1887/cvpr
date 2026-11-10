@@ -66,8 +66,9 @@ full 63.7) and HuatuoGPT-Vision-7B (55.3 vs 55.5–56.8); on OmniMedVQA FastV al
 | **H3** | Artifact tokens: high-norm tokens on flat background attract the scoring attention | No outliers, or selected at base rate |
 | **H4** | Small evidence: the remaining loss grows as the evidence region shrinks (SLAKE organ masks) | Flat across evidence sizes |
 
-## 6. Method — gate, coverage, merge, size-aware attention, routed schedule
+## 6. Method — ScanPrune: gate, coverage, merge, size-aware attention, routed schedule
 
+**ScanPrune** (`medprune.selection.METHODS["scanprune"]` at 10% kept, `["scanprune_eq"]` at VScan's tokens per layer).
 Training-free and without attention scores; selection happens before the LLM, plus one attention bias inside it.
 
 1. **Foreground gate** — a zero-parameter body mask (near-black/white pixels connected to the image edge = background
@@ -101,16 +102,16 @@ abnormality in balanced accuracy (its gold answers are 71.9% "yes"). Judged open
 | HiPrune | ViT hierarchical attention | 10% kept | 9.5 / 9.6% | 58.35 | 63.08 | 55.64 |
 | Pool (VTC-Bench) | block average | 10% kept | 9.5 / 9.6% | 62.14 | 64.35 | 62.39 |
 | Random + merge | none + merge | 10% kept | 9.5 / 9.6% | 64.66 | 68.25 | 63.11 |
-| **Ours: gate + coverage + merge + size term (3 seeds)** | gate, strata, log s | 10% kept | 9.5 / 9.6% | **66.17** | **69.43** | **64.53** |
-| **Ours, final 10%: + schedule for one-token answers (3 seeds)** | + read-then-prune | ≤ the 10% count | 9.4 / 9.5% | **66.41** | **69.71** | **64.79** |
-| Ours + sink token kept (BG-S; seed 0, not adopted: +0.66, p 0.08) | + token 0 unmerged | 10% kept | 9.4 / 9.4% | 66.81 | 69.51 | 66.26 |
+| ScanPrune without the schedule (gate + coverage + merge + size term; 3 seeds) | gate, strata, log s | 10% kept | 9.5 / 9.6% | **66.17** | **69.43** | **64.53** |
+| **ScanPrune, 10% (3 seeds)** | + read-then-prune | ≤ the 10% count | 9.4 / 9.5% | **66.41** | **69.71** | **64.79** |
+| ScanPrune flat + sink token kept (BG-S ablation; seed 0, not adopted: +0.66, p 0.08) | + token 0 unmerged | 10% kept | 9.4 / 9.4% | 66.81 | 69.51 | 66.26 |
 | *FastV's tokens per layer (all tokens to layer 2, then 10%)* | | | | | | |
 | Random (K = 2) | none | FastV rule | 16.0 / 14.6% | 61.33 | 64.27 | 60.31 |
 | FastV | LLM attention, layer 2 | FastV rule | 16.0 / 14.6% | 40.89 | 41.50 | 45.27 |
 | VScan | ViT + LLM attention, merge | FastV-matched, 2 stages | 16.4 / 14.9% | 65.53 | 68.23 | 65.11 |
 | SparseVLM ¹ | LLM attention, text raters | FastV-matched, 3 stages | 16.2 / 15.0% | 51.91 ¹ | | |
 | BTP ¹ | LLM attention + spatial | FastV-matched, 4 stages | 16.0 / 15.1% | 63.02 ¹ | | |
-| **Ours, final equal budget: + routed schedule (3 seeds)** | gate, strata, log s, schedule | FastV-matched | 16.3 / 15.2% | **67.62** | **71.21** | **65.41** |
+| **ScanPrune, equal budget (3 seeds)** | gate, strata, log s, schedule | FastV-matched | 16.3 / 15.2% | **67.62** | **71.21** | **65.41** |
 | *Larger budgets (own rules)* | | | | | | |
 | FEATHER | RoPE-free LLM attention | 2 stages | 46.0 / 37.9% | 61.21 | 65.43 | 60.57 |
 | TransPrune | token transition | multi-stage | 43.4 / 35.9% | 60.91 | 62.50 | 64.27 |
@@ -118,9 +119,9 @@ abnormality in balanced accuracy (its gold answers are 71.9% "yes"). Judged open
 ¹ No RadImageNet open-anatomy runs: mean over the seven other cells (same cells: Full 74.75, VScan 71.17, ours at the
 equal budget 73.06, ours at 10% 71.89). PDrop (Lingshu only, three cells) is in plan.md.
 
-Paired, images resampled jointly across models, three-seed means: final 10% row − VisionZip **+3.16 (SE 0.42)**, −
+Paired, images resampled jointly across models, three-seed means: ScanPrune (10%) − VisionZip **+3.16 (SE 0.42)**, −
 PruneSID +3.86 (SE 0.43), − 2B +0.27 (SE 0.20 with the residual seed term, p 0.08; held-out `omni_panel` +1.08, p 0.009);
-2B − VisionZip +2.89 (SE 0.42); final equal-budget row − VScan **+1.79 (SE 0.39)**. Qwen3-VL's equal-budget route spends 15.2% per layer against VScan's 14.9%
+ScanPrune without the schedule − VisionZip +2.89 (SE 0.42); ScanPrune (equal budget) − VScan **+1.79 (SE 0.39)**. Qwen3-VL's equal-budget route spends 15.2% per layer against VScan's 14.9%
 (integer rounding of the schedule on 64-token images), 2% more tokens for a +0.3 Qwen3-VL margin.
 
 Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).

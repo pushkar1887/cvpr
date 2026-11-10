@@ -4589,3 +4589,12 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
   equal-budget route 15.2% vs VScan 14.9%.
 - Untouched: the frozen predictions; the equal-budget headline (+1.79 vs VScan). Remaining: BG-S seeds (descriptive),
   T11 latency, the paper.
+- **Name (Nov 11, user): the final method is ScanPrune.** Code: `METHODS["scanprune"]` (10% kept: routed
+  `gate_jitter_merge_sched10_pa` | `gate_jitter_merge_pa`) and `METHODS["scanprune_eq"]` (FastV-matched: routed
+  `gate_jitter_merge_sched_pa` | `gate_jitter_merge_pa_eq`); `MethodSpec.route` picks the branch per question from the
+  instruction (`adoption.prompt_style`), so one run reproduces the route rows exactly (test: identical keep-set, merge
+  and stages per prompt style); `adoption.ALIASES` reads ScanPrune's scores from the branch runs on disk (10%: 66.41;
+  equal budget: 67.62, − VScan +1.79). Kept: gate, Hilbert coverage, foreground merge, size term, format-routed
+  schedule. Not in ScanPrune (ablations, code kept to reproduce them): background summary (E40, E46), k-means (E43),
+  SLIC (E46, E47), `routec`, BG-N, BG-S (E47). 228 CPU tests. [FLAG] "ScanPrune" sits next to VScan, the main
+  equal-budget baseline, in every table; no prior method of that name was found (web search, Nov 11).

@@ -54,6 +54,8 @@ class MethodSpec:
     #                     unmerged (s = 1) in place of one foreground stratum
     bg_null: bool = False  # E47 BG-N: with merge "bgsum", the summary token's value vector is zeroed in every layer, so
     #                        it carries the background's attention mass (+ log s with prop_attn) but no content
+    route: tuple[str, str] | None = None  # ScanPrune: (branch for one-token answers, branch for generated answers);
+    #                                       the instruction picks the branch per question (`adoption.prompt_style`)
 
 
 def _spec(name: str, rule: str, **kw) -> tuple[str, MethodSpec]:
@@ -197,6 +199,15 @@ METHODS: dict[str, MethodSpec] = dict(
               prop_attn=True),
         _spec("gate_jitter_bgnull_pa", "stratified", mask_from=0, gate="foreground", merge="bgsum", bg_null=True,
               prop_attn=True),
+        # ScanPrune, the final method (plan.md E43 / E47): foreground gate -> Hilbert-stratified coverage -> foreground
+        # merge -> size term (+ log s), routed by the answer format. One-token answers (mc, judgement) take the
+        # read-then-prune schedule cut at 5/7 depth; generated answers keep the flat count. Two operating points:
+        # `scanprune` at 10% kept (schedule matched to the flat 10% count) and `scanprune_eq` at FastV's mean visual
+        # tokens per layer (VScan's budget). Each question gets exactly its branch's keep-set, merge and stages.
+        _spec("scanprune", "route", mask_from=0, gate="foreground", merge="foreground", prop_attn=True,
+              route=("gate_jitter_merge_sched10_pa", "gate_jitter_merge_pa")),
+        _spec("scanprune_eq", "route", mask_from=0, gate="foreground", merge="foreground", prop_attn=True,
+              route=("gate_jitter_merge_sched_pa", "gate_jitter_merge_pa_eq")),
     ]
 )
 

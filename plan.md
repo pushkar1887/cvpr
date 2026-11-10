@@ -2322,6 +2322,15 @@ Rows (10% kept per image, 2B's rng stream; open answers judged in-session; code:
   three-seed S10 88.83 vs 2B 88.90 — S10's seed-0 +0.8 there was 2B's low seed 0 (88.3 vs 89.4 / 89.0); Qwen3-VL
   OmniMedVQA S10 62.8 / 63.1 / 62.8 (2B seeds 1-2 pending). 02:20 C Qwen3-VL → E47bsr (BG-S RadImageNet seeds), D
   Qwen3-VL → Lingshu BG-S SLAKE + OmniMedVQA seeds (E's copy later is skipped at merge).
+- **E47s complete (Nov 11 03:15): the 10% headline over three seeds** (2B and S10 seeds 1-2 on every cell they serve; 0
+  missing verdicts). Nine-cell raw: 2B **66.17** (Lingshu 69.43, Qwen3-VL 64.53; seed 0 was 66.31), final 10% route
+  **66.41** (69.71 / 64.79), VisionZip 62.91, PruneSID 62.30, Full 70.27. Paired: route − VisionZip **+3.16 (SE 0.42)**,
+  − PruneSID +3.86 (0.43), − 2B +0.27 (bootstrap SE 0.11; with the residual seed term of a three-seed mean, 0.28/√3,
+  SE 0.20, p 0.08), − Full −4.05 (0.33); 2B − VisionZip **+2.89 (SE 0.42)** (the single-seed +3.04 is superseded). Per
+  cell, route − 2B over three seeds: Lingshu RIN anatomy +0.43, abnormality balanced +0.44, OmniMedVQA +0.53; Qwen3-VL
+  RIN anatomy −0.07, OmniMedVQA +1.1; SLAKE and open anatomy 0 (flat branch). Seed check on SLAKE: 2B Lingshu 75.2 /
+  74.0 / 74.5 (seed 0 high). Paper: the 10% row is the route (66.4); claim "+3.2 over VisionZip at 9.4-9.6% tokens per
+  layer" and "+1.1 on held-out multiple choice"; the route's nine-cell gain over 2B (+0.3) is not significant.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

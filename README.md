@@ -101,8 +101,8 @@ abnormality in balanced accuracy (its gold answers are 71.9% "yes"). Judged open
 | HiPrune | ViT hierarchical attention | 10% kept | 9.5 / 9.6% | 58.35 | 63.08 | 55.64 |
 | Pool (VTC-Bench) | block average | 10% kept | 9.5 / 9.6% | 62.14 | 64.35 | 62.39 |
 | Random + merge | none + merge | 10% kept | 9.5 / 9.6% | 64.66 | 68.25 | 63.11 |
-| **Ours: gate + coverage + merge + size term** | gate, strata, log s | 10% kept | 9.5 / 9.6% | **66.31** | **69.73** | **64.50** |
-| **Ours, final 10%: + schedule for one-token answers** | + read-then-prune | ≤ the 10% count | 9.4 / 9.5% | **66.51** | **69.84** | **64.90** |
+| **Ours: gate + coverage + merge + size term (3 seeds)** | gate, strata, log s | 10% kept | 9.5 / 9.6% | **66.17** | **69.43** | **64.53** |
+| **Ours, final 10%: + schedule for one-token answers (3 seeds)** | + read-then-prune | ≤ the 10% count | 9.4 / 9.5% | **66.41** | **69.71** | **64.79** |
 | *FastV's tokens per layer (all tokens to layer 2, then 10%)* | | | | | | |
 | Random (K = 2) | none | FastV rule | 16.0 / 14.6% | 61.33 | 64.27 | 60.31 |
 | FastV | LLM attention, layer 2 | FastV rule | 16.0 / 14.6% | 40.89 | 41.50 | 45.27 |
@@ -117,9 +117,9 @@ abnormality in balanced accuracy (its gold answers are 71.9% "yes"). Judged open
 ¹ No RadImageNet open-anatomy runs: mean over the seven other cells (same cells: Full 74.75, VScan 71.17, ours at the
 equal budget 73.06, ours at 10% 71.89). PDrop (Lingshu only, three cells) is in plan.md.
 
-Paired, images resampled jointly across models: final 10% row − VisionZip **+3.28 (SE 0.46)**, − PruneSID +3.98, − 2B
-+0.24 (SE 0.19; held-out `omni_panel` +1.08, p 0.009); final equal-budget row − VScan **+1.79 (SE 0.39, three seeds)**.
-The 10% rows have one seed until E47s lands. Qwen3-VL's equal-budget route spends 15.2% per layer against VScan's 14.9%
+Paired, images resampled jointly across models, three-seed means: final 10% row − VisionZip **+3.16 (SE 0.42)**, −
+PruneSID +3.86 (SE 0.43), − 2B +0.27 (SE 0.20 with the residual seed term, p 0.08; held-out `omni_panel` +1.08, p 0.009);
+2B − VisionZip +2.89 (SE 0.42); final equal-budget row − VScan **+1.79 (SE 0.39)**. Qwen3-VL's equal-budget route spends 15.2% per layer against VScan's 14.9%
 (integer rounding of the schedule on 64-token images), 2% more tokens for a +0.3 Qwen3-VL margin.
 
 Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).

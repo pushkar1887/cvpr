@@ -71,3 +71,58 @@ def test_layer_loop_matches_model_forward_with_and_without_removal():
         late = prefill(lm, embeds, pos, seq, switch=2)  # layers 0-1 see every token, so it is neither of the above
         assert late.shape == ref0.shape
         assert not torch.allclose(late, ref0, atol=1e-3) and not torch.allclose(late, ref[:, idx], atol=1e-3)
+
+
+# ------------------------------------------------------------------------------------- T11: ScanPrune's own path
+
+def test_masked_layer_loop_equals_the_causal_loop_and_the_bias_matters():
+    """A zero key bias through the explicit causal mask reproduces the is_causal loop (with and without removal and
+    with two stages); a nonzero bias on kept visual keys changes the output; a later stage cannot re-add a token."""
+    import pytest
+
+    lm = _tiny_qwen25_text_model()
+    L = 14
+    embeds = torch.randn(1, L, 32)
+    pos = torch.arange(L).view(1, 1, L).expand(3, 1, L).clone()
+    with torch.inference_mode():
+        assert torch.allclose(prefill(lm, embeds, pos, key_bias=torch.zeros(L)), prefill(lm, embeds, pos), atol=1e-5)
+        s1 = kept_sequence(L, np.arange(3, 9), np.array([0, 2, 4, 5]))
+        s2 = kept_sequence(L, np.arange(3, 9), np.array([2, 5]))
+        two = [(0, s1), (2, s2)]
+        assert torch.allclose(prefill(lm, embeds, pos, stages=two, key_bias=torch.zeros(L)),
+                              prefill(lm, embeds, pos, stages=two), atol=1e-5)
+        bias = torch.zeros(L)
+        bias[torch.as_tensor([3, 5, 7, 8])] = torch.log(torch.tensor([3.0, 2.0, 4.0, 1.0]))
+        diff = (prefill(lm, embeds, pos, stages=two, key_bias=bias) - prefill(lm, embeds, pos, stages=two)).abs().max()
+        assert diff > 1e-4
+        with pytest.raises(ValueError):
+            prefill(lm, embeds, pos, stages=[(0, s2), (2, s1)])
+
+
+def test_scanprune_plan_matches_the_run_rows():
+    """The timed selection is the accuracy runs' selection: same counts as `run_eval` at both operating points, nested
+    stages, sizes summing to the foreground."""
+    from medprune.baselines.vscan import vscan_schedule
+    from medprune.latency import scanprune_plan
+    from medprune.remedy import fastv_matched_count, flat_sched_counts
+    from medprune.selection import keep_count
+
+    side = 18
+    rc = np.stack(np.divmod(np.arange(side * side), side), axis=1)
+    allowed = (np.abs(rc - side / 2) < 6).all(axis=1)
+    emb = np.random.default_rng(0).normal(size=(side * side, 16))
+    n, L = side * side, 28
+    k = keep_count(n, 0.10)
+    for point, branch in (("10", "flat"), ("10", "sched"), ("eq", "flat"), ("eq", "sched")):
+        stages, rows, w, log_s = scanprune_plan(emb, rc, allowed, L, point, branch, np.random.default_rng(1))
+        if branch == "flat":
+            want = [k if point == "10" else fastv_matched_count(n, k, L)]
+        elif point == "10":
+            want = list(flat_sched_counts(k, n, L, 20))
+        else:
+            f1, _, f2 = vscan_schedule(0.10, L, layer=20)
+            want = [keep_count(n, f1), keep_count(n, f2)]
+        assert [len(kept) for _, kept in stages] == want, (point, branch)
+        if branch == "sched":
+            assert stages[1][0] == 20 and set(stages[1][1]) <= set(stages[0][1])
+        assert np.array_equal(rows, stages[0][1]) and round(float(np.exp(log_s).sum())) == int(allowed.sum())

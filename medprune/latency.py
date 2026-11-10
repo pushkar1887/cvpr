@@ -16,6 +16,7 @@ Time depends on how many tokens are kept, not which, so the 10% schedules keep e
 features inside its first layers, which this loop does not reproduce.
 
     python -m medprune.latency measure --model lingshu7b --bundle $DATA --out $RES --n 200      # GPU
+    python -m medprune.latency measure-scanprune --model lingshu7b --bundle $DATA --out $RES --n 200  # GPU, T11
     python -m medprune.latency prompt-tokens --model qwen3vl8b --bundle $DATA --bundle $RIN --out $RES   # CPU
     python -m medprune.latency flops --results results/all                                       # laptop
 
@@ -160,21 +161,82 @@ def kept_sequence(seq_len: int, vis_pos: np.ndarray, keep: np.ndarray) -> np.nda
     return np.flatnonzero(alive)
 
 
-def prefill(lm, embeds, position_ids, keep_seq: np.ndarray | None = None, switch: int | None = None):
-    """Run a Qwen2.5-VL text decoder layer by layer on `embeds` [1, L, d] with M-RoPE `position_ids` [3, 1, L]; from
-    layer `switch` on, only the sequence positions `keep_seq` are computed. Returns the final normed hidden states."""
+def causal_bias_mask(n: int, key_bias: "torch.Tensor | None", dtype, device):
+    """[1, 1, n, n] additive mask: 0 on allowed (causal) keys, -inf above the diagonal, plus `key_bias` [n] on every
+    key (ScanPrune's size term, + log s on merged visual tokens, 0 elsewhere)."""
     import torch
 
+    mask = torch.full((n, n), float("-inf"), device=device).triu(1)
+    if key_bias is not None:
+        mask = mask + key_bias.to(device=device, dtype=torch.float32)[None, :]
+    return mask.to(dtype)[None, None]
+
+
+def prefill(lm, embeds, position_ids, keep_seq: np.ndarray | None = None, switch: int | None = None,
+            stages: list | None = None, key_bias=None):
+    """Run a Qwen2.5-VL text decoder layer by layer on `embeds` [1, L, d] with M-RoPE `position_ids` [3, 1, L].
+
+    Physical removal: from layer `switch` on, only the sequence positions `keep_seq` are computed; or, for multi-stage
+    schedules, `stages` = [(layer, sequence positions kept from that layer on), ...] (nested, increasing layers).
+    `key_bias` [L] (float, over the original sequence) is added to every key's attention logit through an explicit
+    causal mask, sliced with the sequence at every stage (ScanPrune's size term). Returns the final normed hidden."""
+    import torch
+
+    if stages is None:
+        stages = [] if switch is None else [(switch, keep_seq)]
+    stages = {int(layer): np.asarray(seq, dtype=np.int64) for layer, seq in stages}
     hidden = embeds
     cos, sin = lm.rotary_emb(hidden, position_ids)
+    cur = np.arange(embeds.shape[1])
+    bias = None if key_bias is None else torch.as_tensor(key_bias, dtype=torch.float32)
+    mask = None if bias is None else causal_bias_mask(len(cur), bias, hidden.dtype, hidden.device)
     for i, layer in enumerate(lm.layers):
-        if switch is not None and i == switch:
-            idx = torch.as_tensor(keep_seq, dtype=torch.long)
+        if i in stages:
+            local = np.searchsorted(cur, stages[i])
+            if not np.array_equal(cur[local], stages[i]):
+                raise ValueError(f"stage at layer {i} keeps positions an earlier stage removed")
+            idx = torch.as_tensor(local, dtype=torch.long)
             hidden = hidden[:, idx.to(hidden.device)]
             cos, sin = cos[..., idx.to(cos.device), :], sin[..., idx.to(sin.device), :]
-        out = layer(hidden, attention_mask=None, position_ids=None, position_embeddings=(cos, sin), use_cache=False)
+            cur = stages[i]
+            if bias is not None:
+                mask = causal_bias_mask(len(cur), bias[torch.as_tensor(cur)], hidden.dtype, hidden.device)
+        out = layer(hidden, attention_mask=None if mask is None else mask.to(hidden.device), position_ids=None,
+                    position_embeddings=(cos, sin), use_cache=False)
         hidden = out[0] if isinstance(out, tuple) else out
     return lm.norm(hidden)
+
+
+def scanprune_plan(emb: np.ndarray, rc: np.ndarray, allowed: np.ndarray, n_layers: int, point: str, branch: str,
+                   rng: np.random.Generator, budget: float = 0.10):
+    """ScanPrune's selection for one image, exactly as `run_eval.build_state` builds it: `point` "10" (10% kept) or
+    "eq" (FastV's mean visual tokens per layer); `branch` "flat" (generated answers) or "sched" (one-token answers).
+    Returns (stages [(layer, visual indices kept from that layer on)], merge rows, merge weights [rows, N], log sizes)."""
+    from .baselines.vscan import vscan_schedule
+    from .remedy import fastv_matched_count, flat_sched_counts, merge_plan, select_stratified
+    from .selection import keep_count
+
+    n = len(rc)
+    k = keep_count(n, budget)
+    if point == "eq" and branch == "flat":
+        k = fastv_matched_count(n, k, n_layers)
+    stages = []
+    if branch == "sched":
+        cut = int(round(5 / 7 * n_layers))
+        if point == "10":
+            k, k2 = flat_sched_counts(k, n, n_layers, cut)
+        else:
+            f1, cut, f2 = vscan_schedule(budget, n_layers, layer=cut)
+            k, k2 = keep_count(n, f1), keep_count(n, f2)
+    keep = select_stratified(rc, k, rng, allowed)
+    rows, weights = merge_plan(emb, keep, allowed)
+    stages.append((0, keep))
+    if branch == "sched":
+        survivors = np.zeros(n, dtype=bool)
+        survivors[keep] = True
+        stages.append((cut, select_stratified(rc, min(k2, int(survivors.sum())), rng, allowed=survivors)))
+    sizes = np.maximum((weights > 0).sum(axis=1), 1)
+    return stages, rows, weights, np.log(sizes).astype(np.float32)
 
 
 def _embed(adapter, inputs):
@@ -291,9 +353,145 @@ def measure(model: str, bundle: Path, out: Path, n: int = 200, warmup: int = 10,
     return report
 
 
+SCANPRUNE_SCHEDULES = ("full", "prellm_10", "fastv_10", "vscan_counts", "sp10_flat_nobias", "sp10_flat", "sp10_sched",
+                       "speq_flat", "speq_sched")
+
+
+def measure_scanprune(model: str, bundle: Path, out: Path, n: int = 200, warmup: int = 10, budget: float = 0.10,
+                      tau: float = 0.5, dataset: str = "slake_en") -> dict:
+    """T11: ScanPrune's real cost on the E9 protocol (Lingshu, `dataset`, physical removal, shuffled order, device-wide
+    syncs). Per question and schedule: selection time (gate lookup, Hilbert strata, merge plan, merged rows and the
+    size-term vector; reusing the vision output the model computes anyway) and prefill time (merged embeddings,
+    + log s through an explicit causal mask, the schedule's second cut). Reference schedules keep evenly spaced tokens
+    and include no selection cost: `prellm_10` (10% kept before the LLM), `fastv_10` (FastV's), `vscan_counts`
+    (VScan's two-stage counts, cut at L/2). `sp10_flat_nobias` isolates the mask's cost."""
+    import torch
+    import transformers
+    from PIL import Image
+
+    from .baselines.vscan import vscan_schedule
+    from .data import load_manifest
+    from .env import detect_profile
+    from .masks import MaskStore
+    from .models import load_adapter
+    from .selection import keep_count, rng_for
+
+    if model != "lingshu7b":
+        raise NotImplementedError("measured prefill is implemented for Lingshu (Qwen2.5-VL) only")
+    adapter = load_adapter(model, detect_profile())
+    lm = adapter.base.language_model
+    n_layers = len(lm.layers)
+    samples = load_manifest(bundle, dataset)[: n + warmup]
+    gates = MaskStore.load(bundle / "masks" / f"{dataset}__{model}.npz")
+    prefill_ms = {name: [] for name in SCANPRUNE_SCHEDULES}
+    select_ms = {name: [] for name in SCANPRUNE_SCHEDULES}
+    tokens = {name: [] for name in SCANPRUNE_SCHEDULES}
+    vision_ms, equivalence = [], None
+    order_rng = np.random.default_rng(0)
+    with torch.inference_mode():
+        for qi, s in enumerate(samples):
+            image = Image.open(bundle / s.image_path).convert("RGB")
+            inputs = adapter.prepare(s, image)
+            _sync()
+            t0 = time.perf_counter()
+            embeds, position_ids = _embed(adapter, inputs)
+            _sync()
+            t_vision = (time.perf_counter() - t0) * 1e3
+            vis = inputs.vis_pos.numpy()
+            seq_len, n_vis = embeds.shape[1], len(vis)
+            vis_t = torch.as_tensor(vis, device=embeds.device)
+            k = keep_count(n_vis, budget)
+            even = np.unique(np.linspace(0, n_vis - 1, k).round().astype(np.int64))
+            f1, half, f2 = vscan_schedule(budget, n_layers)
+            v1 = np.unique(np.linspace(0, n_vis - 1, keep_count(n_vis, f1)).round().astype(np.int64))
+            v2 = v1[np.unique(np.linspace(0, len(v1) - 1, keep_count(n_vis, f2)).round().astype(np.int64))]
+            if qi == 0:
+                ref = lm(inputs_embeds=embeds, position_ids=position_ids, use_cache=False).last_hidden_state
+                mine = prefill(lm, embeds, position_ids, key_bias=torch.zeros(seq_len))
+                equivalence = float((mine.float() - ref.float().to(mine.device)).abs().max()
+                                    / ref.float().abs().max().clamp_min(1e-6))
+                if equivalence > 1e-2:
+                    raise RuntimeError(f"masked layer loop differs from the model forward ({equivalence:.2e})")
+            row_p, row_s, row_t = {}, {}, {}
+            order = list(SCANPRUNE_SCHEDULES)
+            order_rng.shuffle(order)
+            for name in order:
+                seq_stages, bias, emb_in, t_sel = None, None, embeds, 0.0
+                if name == "prellm_10":
+                    seq_stages = [(0, kept_sequence(seq_len, vis, even))]
+                elif name == "fastv_10":
+                    seq_stages = [(2, kept_sequence(seq_len, vis, even))]
+                elif name == "vscan_counts":
+                    seq_stages = [(0, kept_sequence(seq_len, vis, v1)), (half, kept_sequence(seq_len, vis, v2))]
+                elif name != "full":  # ScanPrune: the real selection, timed
+                    point = "10" if name.startswith("sp10") else "eq"
+                    branch = "sched" if name.endswith("sched") else "flat"
+                    _sync()
+                    t0 = time.perf_counter()
+                    feats = embeds[0, vis_t]  # the vision output, already computed for the prompt
+                    _, frac = gates.get(s.image_id)
+                    allowed = frac.reshape(-1)[inputs.cell_index] >= tau
+                    stages, rows, weights, log_s = scanprune_plan(feats.float().cpu().numpy(), inputs.rc, allowed,
+                                                                  n_layers, point, branch, rng_for(0, s.qid), budget)
+                    w = torch.as_tensor(weights, dtype=torch.float32, device=feats.device)
+                    merged = (w @ feats.float()).to(feats.dtype)
+                    emb_in = embeds.clone()
+                    emb_in[0, vis_t[torch.as_tensor(rows, device=vis_t.device)]] = merged
+                    if name != "sp10_flat_nobias":
+                        bias = torch.zeros(seq_len)
+                        bias[torch.as_tensor(vis[rows])] = torch.as_tensor(log_s)
+                    seq_stages = [(layer, kept_sequence(seq_len, vis, kept)) for layer, kept in stages]
+                    _sync()
+                    t_sel = (time.perf_counter() - t0) * 1e3
+                _sync()
+                t0 = time.perf_counter()
+                prefill(lm, emb_in, position_ids, stages=seq_stages, key_bias=bias)
+                _sync()
+                row_p[name], row_s[name] = (time.perf_counter() - t0) * 1e3, t_sel
+                per_layer = np.full(n_layers, float(n_vis))
+                for layer, seq in seq_stages or []:
+                    per_layer[layer:] = len(seq) - (seq_len - n_vis)
+                row_t[name] = float(per_layer.mean() / n_vis)
+            if qi < warmup:
+                continue
+            vision_ms.append(t_vision)
+            for name in SCANPRUNE_SCHEDULES:
+                prefill_ms[name].append(row_p[name])
+                select_ms[name].append(row_s[name])
+                tokens[name].append(row_t[name])
+    full = np.asarray(prefill_ms["full"])
+    vision = np.asarray(vision_ms)
+    report = {
+        "model": model, "dataset": dataset, "n": len(full), "warmup": warmup, "budget": budget, "tau": tau,
+        "gpu": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+        "torch": torch.__version__, "transformers": transformers.__version__, "python": platform.python_version(),
+        "equivalence_rel_max_diff": equivalence,
+        "vision_and_embed_ms": {"median": float(np.median(vision)), "p25": float(np.percentile(vision, 25)),
+                                "p75": float(np.percentile(vision, 75))},
+        "schedules": {},
+    }
+    for name in SCANPRUNE_SCHEDULES:
+        t, sel = np.asarray(prefill_ms[name]), np.asarray(select_ms[name])
+        report["schedules"][name] = {
+            "visual_tokens_per_layer_frac": float(np.mean(tokens[name])),
+            "prefill_median_ms": float(np.median(t)), "prefill_p25_ms": float(np.percentile(t, 25)),
+            "prefill_p75_ms": float(np.percentile(t, 75)), "select_median_ms": float(np.median(sel)),
+            "prefill_speedup_vs_full": float(np.median(full) / np.median(t)),
+            "prefill_median_paired_ratio": float(np.median(t / full)),
+            "with_selection_median_paired_ratio": float(np.median((t + sel) / full)),
+            "first_token_path_median_paired_ratio": float(np.median((vision + sel + t) / (vision + full))),
+        }
+    dest = out / "latency" / f"{model}__{dataset}__scanprune__{detect_profile().name}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(json.dumps(report["schedules"], indent=2))
+    print("wrote", dest)
+    return report
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("command", choices=["measure", "prompt-tokens", "flops"])
+    p.add_argument("command", choices=["measure", "measure-scanprune", "prompt-tokens", "flops"])
     p.add_argument("--model", default="lingshu7b")
     p.add_argument("--bundle", type=Path, action="append", default=None)
     p.add_argument("--out", type=Path, default=None)
@@ -304,6 +502,8 @@ def main() -> None:
     args = p.parse_args()
     if args.command == "measure":
         measure(args.model, args.bundle[0], args.out, n=args.n, warmup=args.warmup)
+    elif args.command == "measure-scanprune":
+        measure_scanprune(args.model, args.bundle[0], args.out, n=args.n, warmup=args.warmup)
     elif args.command == "prompt-tokens":
         counts = prompt_tokens(args.model, args.bundle, args.datasets.split(","))
         dest = args.out / "latency" / f"prompt_tokens__{args.model}.json"

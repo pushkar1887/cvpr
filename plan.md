@@ -4604,3 +4604,16 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
   Qwen3-VL RIN anatomy **89.97 vs 88.90 (every BG-S seed above every 2B seed)**, open anatomy **47.93 vs 43.47 (47.4-48.8
   vs 43.0-44.2)**. BG-S's Qwen3-VL effect is robust across seeds and its Lingshu cost was seed noise. The registered
   decision stands (not adopted, seed-0 test p 0.08); SLAKE / OmniMedVQA seeds still on D and E.
+- **T11 — ScanPrune's latency and FLOPs (registered Nov 11 05:20, before the run; requested in chat).**
+  `medprune.latency measure-scanprune` on the E9 protocol: Lingshu, the first 200 SLAKE questions after 10 warm-up,
+  2 × T4, tokens physically removed, schedules timed in shuffled order between device-wide syncs. New over E9: the
+  real selection, timed separately (gate lookup, Hilbert strata, merge plan, merged rows, size-term vector; reusing
+  the vision output); merged embeddings; + log s through an explicit causal mask; the schedule's second cut. Schedules:
+  Full; count-only references `prellm_10`, `fastv_10` and `vscan_counts` (VScan's two-stage counts, cut at L/2; no
+  selection cost, so they flatter VisionZip / FastV / VScan); ScanPrune 10% flat (with and without the mask) and
+  scheduled; ScanPrune equal-budget flat and scheduled. FLOPs for both models from the runs' keep schedules (laptop).
+  Tests: the zero-bias mask path equals the causal loop (one and two stages); the bias changes outputs; the timed
+  selection has the runs' counts. 230 CPU tests.
+  - P93: ScanPrune 10% (flat branch, selection included) prefill paired speed-up ≥ 2.8× (E9's pre-LLM 10%: 3.27×). 60%.
+  - P94: the size-term mask costs ≤ 10% of ScanPrune 10%'s prefill (`sp10_flat` vs `sp10_flat_nobias`). 70%.
+  - P95: ScanPrune at the equal budget, first-token path within 0.1× of `fastv_10`'s. 55%.

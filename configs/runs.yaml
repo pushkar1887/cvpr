@@ -524,3 +524,8 @@ blocks:
   - {exp: E47sr, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed], methods: [gate_jitter_merge_sched10_pa], seeds: [1, 2]}
   - {exp: E47sr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [gate_jitter_merge_pa], seeds: [1, 2]}
   - {exp: E47sr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_jitter_merge_sched10_pa], seeds: [1, 2]}
+  # Nov 11 01:15 - E47b: BG-S passed its pilot gates (plan.md E47); its five other cells. Lingshu RIN anatomy on C, the
+  # SLAKE / OmniMedVQA cells on F; the Qwen3-VL RadImageNet seeds (E47sr) follow on C's Qwen3-VL notebook.
+  - {exp: E47b, tier: P0, account: F, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_sink_merge_pa]}
+  - {exp: E47b, tier: P0, account: F, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_sink_merge_pa]}
+  - {exp: E47br, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc], methods: [gate_jitter_sink_merge_pa]}

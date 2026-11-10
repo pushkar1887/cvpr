@@ -2278,6 +2278,19 @@ Rows (10% kept per image, 2B's rng stream; open answers judged in-session; code:
   not a yes-rate shift. Rows that keep more tokens through the reading window restore sensitivity: VScan 96.3, FastV
   cut at 16 94.4, the E42b schedule 88.9 (equal-budget flat E42a 77.8). This is what `routec` (close → schedule) and P84
   test.
+- **Background pilot result (Nov 11 01:10; C E47r × 2, 8 runs, 0 missing verdicts; registered gates).**
+  - BG-S − 2B: Lingshu RIN abnormality balanced −2.43 (yes-rate 26.0; 2B 30.2, Full 26.9), Qwen3-VL RIN anatomy
+    +1.50, Lingshu open anatomy +1.20 (region −0.45, organ +2.52), Qwen3-VL open anatomy **+4.60 (region +13.06,
+    organ −2.16)**. Gates (a) pass, (b) mean +1.22 pass, (c) region mean +6.31 pass → **GO: full run of its five other
+    cells (E47b)**. P88 ✓. P87 ✗ as registered (region +6.3 holds; organ +0.2, not ≤ 0: on Lingshu the trade of F6
+    does not appear).
+  - BG-N − 2B: −2.26 (yes-rate 27.3) / +1.70 / −2.80 / +2.80; mean −0.14 → gate (b) fails → **NO-GO**; (a) and (c)
+    pass (deep image share 0.0474 vs 2B 0.0086: a zero-value key absorbs 5.5× the image mass, an artificial sink).
+    P89 ✗ (fails by 0.14). Mechanism read: restoring the background's mass without content moves the yes-rate to
+    Full's (as BG-S does) but costs open anatomy on Lingshu; the region gain on Qwen3-VL needs token 0's content.
+- 00:10-01:05 harvested: D × 2 (`omni_panel` S10 + SL-S10), F × 2 (SL-S10, `omni_panel` 2B + VisionZip), E Lingshu (S10
+  + SL), C × 2 (every RadImageNet cell); all full length, 0 missing verdicts. Freed slots took E47s: D (S10 seeds,
+  both models), F Lingshu (2B seeds), E Lingshu notebook (Qwen3-VL 2B seeds), C Lingshu (RadImageNet seeds).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

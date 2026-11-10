@@ -35,7 +35,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 7f | **E44** seed 1 of the adopted E42a row (nine cells) + Lingshu held-out `omni_panel` | ✅ DONE Nov 10 01:06 (registered Nov 9 23:23, `70cd2c7`). P76 ✓ (seed 1 − VScan +1.17), P77 ✗ (Qwen3-VL two-seed 65.01 vs VScan 65.11: a tie); E44h ran VScan only (`omni_panel` Lingshu 85.6, Full 86.3), E42a's row moved to C (E44h2) | ≈ 4.4 | ≈ 0.3 (E44h2) | Nov 9-10 | **Two-seed headline: E42a − VScan +1.35 nine-cell (SE 0.40, p 0.0004); Lingshu +2.5, Qwen3-VL −0.1** |
 | 7g | **E45** seeds 1-2 of the final route row (single-token branch seeds 1-2 on its five cells, generated branch seed 2 on SLAKE + open anatomy) | ✅ DONE Nov 10 06:14 (registered 04:22, `44e0a6f`); 14 runs. P79 ✓, P80 ✓ | ≈ 4.8 | 0 | Nov 10 | **Three-seed headline: route − VScan +1.79 (SE 0.39), Lingshu +3.0, Qwen3-VL +0.3; 67.6 vs 65.5 (Full 70.3)** |
 | 7h | **E46** background summary + size term (`gate_jitter_bgsum_pa_eq`), SLIC clusters + size term (`gate_slic_merge_pa_eq`) | ✅ DONE Nov 10 07:40 (registered 05:25, `710a24a`). Pilot: BG-PA fails its gates (no full run); SLIC-PA passes. SLIC full nine cells − E42a −0.06 (SE 0.40, p 0.56) → not adopted. P81 ✗, P82 ✗ | ≈ 4.4 | 0 | Nov 10 | Neither piece joins the final row; SLIC − VScan +1.47 (a valid but not better row) |
-| 7i | **E47** the 10% push: schedule matched to the flat 10% count (S10), SLIC flat and scheduled, sink token kept (BG-S), background mass without content (BG-N); VisPruner / DivPrune on `rin_open`; `omni_panel` at 10% | 🔄 RUNNING (registered Nov 10 23:50, before any E47 run; launched on C, D, E, F) | 0 | ≈ 16 | Nov 10-12 | P83-P92; final 10% row by the dev half, confirmed on the test half + `omni_panel` |
+| 7i | **E47** the 10% push: schedule matched to the flat 10% count (S10), SLIC flat and scheduled, sink token kept (BG-S), background mass without content (BG-N); VisPruner / DivPrune on `rin_open`; `omni_panel` at 10% | 🔄 RUNNING (registered Nov 10 22:47, git `4c1e974`, before any E47 run; launched 22:48 on C, D, E, F: 8 notebooks, 43 runs) | 0 | ≈ 16 | Nov 10-12 | P83-P92; final 10% row by the dev half, confirmed on the test half + `omni_panel` |
 | 8 | Analysis and writing | 🔄 CURRENT (Nov 10: every registered run complete, E0-E46; no paper draft in the repo yet) | 0 | ≈ 0.3 (final-row latency, T11, before the Nov 12 freeze) | Nov 10–23 | OpenReview enrollment **Nov 11, 17:29 IST**; **paper Nov 16 AoE** (Nov 17, 17:29 IST); supplementary Nov 23 AoE; tasks T7, T11-T14 (§F4) |
 
 **Totals (Nov 10, 16:00 IST):** ≈ 204 GPU-h over Stages 3-7h (sum of the Spent column: 72.8 to Nov 5, E14-E39 ≈ 82, E40-E46 ≈ 49) · running 0 · all twelve slots (A-F × 2) idle. The per-session sums in the ledger approximate Kaggle's quota page, which rules where they differ (D's sums exceed its 30 h weekly quota: they overcount or span a quota reset). The Nov 3 whole-project estimate was ≈ 61 GPU-h; the method experiments (E40-E46) and the E14-E39 follow-ups account for the difference. At the Nov 3 T4-to-A100 ratio (≈ 4×, Part E) the same work would be ≈ 50 A100 hours.
@@ -2185,8 +2185,8 @@ stands for 30-150.
   repair worked as a repair (coverage restored, k-means' −1.6 open-anatomy loss mostly gone) but adds nothing over the
   stratified merge: with the size term, how clusters are formed no longer moves accuracy (as P63 found for selection).
 
-**E47 — the 10% push: the schedule, SLIC and two background mechanisms at 10% kept (registered Nov 10 23:50, before
-any E47 run; requested in chat: "at 10% tokens, as close to Full as possible").** Reference: 2B (`gate_jitter_merge_pa`,
+**E47 — the 10% push: the schedule, SLIC and two background mechanisms at 10% kept (registered Nov 10 22:47, git `4c1e974`,
+before any E47 run; launched 22:48; requested in chat: "at 10% tokens, as close to Full as possible").** Reference: 2B (`gate_jitter_merge_pa`,
 seed 0; nine-cell raw 66.31, Full 70.27). Facts from the laptop audit of the run files (Nov 10 22:40-23:30; scripts
 `audit.py`, `slake_audit.py`, `splits.py`, `sink_audit.py`, `tok0_natural.py` in the session scratchpad; aggregates only):
 - (F1) 2B − Full per cell: Lingshu SLAKE −5.0, RIN anatomy −2.6, abnormality balanced −2.2, OmniMedVQA −3.9, open
@@ -2264,6 +2264,20 @@ Rows (10% kept per image, 2B's rng stream; open answers judged in-session; code:
 - Slots (≈ 16 GPU-h): E `medprune-gpu-lingshu7b` / `-qwen3vl8b` S10 + SL on SLAKE + OmniMedVQA; F SL-S10 on SLAKE +
   OmniMedVQA and `omni_panel` 2B + VisionZip; D `omni_panel` S10 + SL-S10; C (E47r) every RadImageNet cell, the
   background pilot cells first (Lingshu in `medprune-gpu-lingshu7b`, Qwen3-VL in `medprune-gpu-qwen3vl8b`).
+- Launch log: 22:48 pushed C `medprune-gpu-lingshu7b` v21 + `medprune-gpu-qwen3vl8b` v2 (E47r; the Qwen3-VL notebook's
+  `cvpr` secret is untested: if its RadImageNet build fails, its block moves to the Lingshu notebook), E v2 × 2, F v2 ×
+  2, D v10 / v9; 22:50 C × 2, E1, F1 RUNNING, E2, F2, D × 2 QUEUED (Kaggle capacity).
+- Added 22:55, before any E47 result: (1) **E47s** — seeds 1-2 of 2B on its nine cells and of S10 on its seven, launched
+  as slots free (the selection uses seed 0 only, so early seeds bias nothing; 2B's 10% headline has one seed today); the
+  final row's other components get seeds after the selection. (2) Secondary, reported beside the confirmatory family:
+  the final row − 2B on all questions by the E42 rule (seed term 0.28). Power note: on the test half (SE ≈ 0.43) with
+  Holm over three tests, 80% power needs Δ ≈ +1.3; the expected gain is +0.5 to +0.8, so test (i) is underpowered and
+  a non-rejection there is not evidence of no gain.
+- SLAKE abnormality mechanism (laptop, 22:52; SLAKE's 98 closed yes / no abnormality questions, gold yes 55.1%):
+  Lingshu Full sensitivity 94.4 / specificity 63.6; 2B 77.8 / 54.5 — the lesion becomes invisible (sensitivity −16.6),
+  not a yes-rate shift. Rows that keep more tokens through the reading window restore sensitivity: VScan 96.3, FastV
+  cut at 16 94.4, the E42b schedule 88.9 (equal-budget flat E42a 77.8). This is what `routec` (close → schedule) and P84
+  test.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

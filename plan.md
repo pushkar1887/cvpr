@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 06:15 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 06:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -33,7 +33,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 7d | **E42** size-aware attention (`gate_jitter_merge_pa_eq`) and the read-then-prune schedule (`gate_jitter_merge_sched`) on the recipe at the equal budget, both models, five cells | ✅ DONE Nov 9 22:27. E42a ADOPTED 21:00 (registered rule: +0.91, z 3.62, p 0.0001, halves +1.23 / +0.59, no significant cell loss); E42b fails the loss guard (nine-cell −0.66, p 0.94; open anatomy −6.0 / −4.2 significant). 20 / 20 runs. P67, P69, P70 supported; P68, P71 contradicted | ≈ 8.6 | 0 | Nov 9 | **E42a − VScan +1.53 [SE 0.42] nine-cell (67.3 vs 65.5); Qwen3-VL 65.29 vs 65.11** |
 | 7e | **E43** the size term at 10% (`gate_jitter_merge_pa`), k-means merge clusters + size term (`gate_kmeans_merge_pa_eq`), the schedule routed to single-token answers (`gate_jitter_merge_sched_pa`), held-out `omni_panel` | ✅ DONE Nov 10 04:19 (registered Nov 9 20:40, `b512b3e`). **Final equal-budget row = the route** (dev +1.62 vs E42a +1.23, k-means +1.26); Holm-confirmed on the test half (+1.02 vs reference, +1.82 vs VScan) and `omni_panel` (+0.96 vs VScan); 2B adopted (+1.12; +3.04 vs VisionZip). P72 ✓, P73 ✓, P74 ✗, P75 ✗ | ≈ 9.5 | 0 | Nov 9-10 | Route − VScan, all questions, seed 0: +1.94 (SE 0.41); 67.71 vs 65.53 (Full 70.27) |
 | 7f | **E44** seed 1 of the adopted E42a row (nine cells) + Lingshu held-out `omni_panel` | ✅ DONE Nov 10 01:06 (registered Nov 9 23:23, `70cd2c7`). P76 ✓ (seed 1 − VScan +1.17), P77 ✗ (Qwen3-VL two-seed 65.01 vs VScan 65.11: a tie); E44h ran VScan only (`omni_panel` Lingshu 85.6, Full 86.3), E42a's row moved to C (E44h2) | ≈ 4.4 | ≈ 0.3 (E44h2) | Nov 9-10 | **Two-seed headline: E42a − VScan +1.35 nine-cell (SE 0.40, p 0.0004); Lingshu +2.5, Qwen3-VL −0.1** |
-| 7g | **E45** seeds 1-2 of the final route row (single-token branch seeds 1-2 on its five cells, generated branch seed 2 on SLAKE + open anatomy) | 🔄 RUNNING. Registered Nov 10 04:22 (`44e0a6f`); C E45r ✅ 05:40 (8 runs); D OmniMedVQA + SLAKE running | ≈ 1.2 | ≈ 3.6 (D) | Nov 10 | P79 (three-seed route − VScan ≥ +1.0), P80 (Qwen3-VL ≥ 65.11) |
+| 7g | **E45** seeds 1-2 of the final route row (single-token branch seeds 1-2 on its five cells, generated branch seed 2 on SLAKE + open anatomy) | ✅ DONE Nov 10 06:14 (registered 04:22, `44e0a6f`); 14 runs. P79 ✓, P80 ✓ | ≈ 4.8 | 0 | Nov 10 | **Three-seed headline: route − VScan +1.79 (SE 0.39), Lingshu +3.0, Qwen3-VL +0.3; 67.6 vs 65.5 (Full 70.3)** |
 | 7h | **E46** pilot: background summary + size term (`gate_jitter_bgsum_pa_eq`), SLIC clusters + size term (`gate_slic_merge_pa_eq`) | 🔄 RUNNING. Registered Nov 10 05:25 (`710a24a`); C E46pr (RadImageNet, since 05:42), F E46p (SLAKE, since 05:50) | 0 | ≈ 1.7 pilot; full runs only for rows passing their gates | Nov 10 | Go / no-go gates fixed in the E46 card; P81-P82 |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
@@ -2021,12 +2021,13 @@ Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` g
   gate + Hilbert coverage + foreground merge + size term, with the read-then-prune schedule only where the instruction
   asks for one token. Seed 0, all questions: nine-cell 67.71 vs VScan 65.53, **+1.94 (SE 0.41)**; test half +1.82 (p
   0.0008); held-out `omni_panel` +0.96 (p 0.038). Lingshu 69.47 vs 65.87 (+3.2), Qwen3-VL 65.50 vs 65.11 (+0.4); Full
-  70.27. Seeds 1-2 (E45): RadImageNet cells in, OmniMedVQA + SLAKE on D (≈ 06:15).
+  70.27. **Three seeds (E45, P79 ✓): +1.79 (SE 0.39), Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan);
+  67.62 vs 65.53.**
 - Size term alone over two seeds: − VScan +1.35 (SE 0.40); Lingshu +2.5, Qwen3-VL −0.1.
 - **10% kept (pre-LLM budget):** `gate_jitter_merge_pa` − VisionZip **+3.04 (SE 0.46)**; − the 10% recipe +1.12.
 - Predictions since Nov 9 18:00: P67 ✓, P68 ✗, P69 ✓, P70 ✓ (4 / 4), P71 ✗, P72 ✓, P73 ✓, P74 ✗, P75 ✗, P76 ✓, P77 ✗,
   P78 ✓. Pending: P79-P80 (E45), P81-P82 (E46 pilot).
-- Running: D E45 (≈ 06:15); C E46pr (≈ 06:45); F E46p (≈ 06:30). E: bundle built, idle (E46 full runs). A, B ≈ 0.5 h.
+- Running: C E46pr (≈ 06:45); F E46p (≈ 06:30). D idle (E45 done). E: bundle built, idle (E46 full runs). A, B ≈ 0.5 h.
 - Next: E45 → P79 / P80 and the three-seed headline; E46 gates → full runs for passing rows (E + C); freeze Nov 12.
   OpenReview enrollment Nov 10 23:59 AoE (Nov 11 17:29 IST): "beats VScan on the nine-cell mean at equal tokens per
   layer without attention scores; wins on Lingshu; Qwen3-VL +0.4 (seed 0), a tie for the size term alone".
@@ -2047,7 +2048,10 @@ Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` g
 single-token branch (`gate_jitter_merge_sched_pa`) seeds 1-2 on the five single-token cells; its generated branch
 (`gate_jitter_merge_pa_eq`) seed 2 on SLAKE and open anatomy (seed 1 exists from E44). C: the RadImageNet cells; D:
 OmniMedVQA and SLAKE.
-- P79: route (three-seed mean) − VScan ≥ +1.0 on the nine-cell mean. 80%.
+- P79: route (three-seed mean) − VScan ≥ +1.0 on the nine-cell mean. 80%. **Supported (Nov 10 06:20):** +1.79 (SE
+  0.39, p < 0.00001), seeds +1.94 / +1.77 / +1.66 (seed SD 0.14), halves +2.00 / +1.59; Lingshu +2.98, Qwen3-VL
+  +0.29; per cell Lingshu SLAKE −0.1, RIN anatomy +0.9, abnormality balanced +2.9, OmniMedVQA +6.0, open anatomy
+  +5.2; Qwen3-VL SLAKE −1.2, RIN anatomy −0.7, OmniMedVQA +2.7, open anatomy +0.4. Raw nine-cell 67.62.
 - P80: route (three-seed mean) Qwen3-VL four-cell ≥ VScan's 65.11. 55%. **Supported (Nov 10 06:15):** seeds 65.50 / 65.43 / 65.30, mean
   **65.41** (63.9 / 89.6 / 64.7 / 43.4); every seed above VScan (+0.19 to +0.39), seed spread 0.20.
 

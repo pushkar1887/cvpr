@@ -87,10 +87,10 @@ Results (nine model × cell combinations, judged, Lingshu RadImageNet abnormalit
 
 | Budget | Ours | Best published | Δ |
 |---|---|---|---|
-| VScan's tokens per layer (≈ 16% / 15%) | 67.7 | VScan 65.5 | **+1.94** (SE 0.41); held-out `omni_panel` +0.96 |
+| VScan's tokens per layer (≈ 16% / 15%) | 67.6 | VScan 65.5 | **+1.79** (SE 0.39, three seeds); held-out `omni_panel` +0.96 |
 | 10% kept before the LLM | gate + coverage + merge + size term | VisionZip | **+3.04** (SE 0.46) |
 
-Full model: 70.3. Per model at VScan's budget: Lingshu +3.2, Qwen3-VL +0.4 (seed 0; seeds 1-2 running).
+Full model: 70.3. Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).
 
 ---
 
@@ -101,8 +101,8 @@ protocol, code design and compute backends. Predictions are pre-registered in pl
 
 Status (Nov 10, 06:05 IST): the diagnosis (Stages 0-7) is complete; the method above was built and tested in E40-E46,
 each experiment registered in plan.md before its runs, adopted or rejected by a fixed one-sided test with Holm control,
-two-halves replication and a per-cell loss guard (`medprune/adoption.py`). Seeds of the final row (E45) and a pilot
-repairing the background summary and k-means pieces (E46) are running. Snapshot: [status_2026-11-10.md](status_2026-11-10.md);
+two-halves replication and a per-cell loss guard (`medprune/adoption.py`). The final row is confirmed over three seeds (E45); a
+pilot repairing the background summary and k-means pieces (E46) is running. Snapshot: [status_2026-11-10.md](status_2026-11-10.md);
 live tracker: [plan.md](plan.md#stage-tracker).
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),

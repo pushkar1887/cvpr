@@ -2308,6 +2308,15 @@ Rows (10% kept per image, 2B's rng stream; open answers judged in-session; code:
   `route:SL-S10|BG-S` join the candidates and the selection is re-run (registered).
 - 01:50 E Qwen3-VL notebook → **E47bs**: BG-S seeds 1-2 (SLAKE + OmniMedVQA, Qwen3-VL), launched before BG-S's
   nine-cell test (which uses seed 0 only); the Lingshu half and the RadImageNet seeds follow on the next free slots.
+- **Budget column for every table (Nov 11 02:00; user: "my numbers are of 10%, mention the budget alongside the
+  methods").** Measured mean visual tokens per decoder layer, % of N, Lingshu / Qwen3-VL, from each question's keep-set
+  and schedule (`scratchpad/budget_table.py`): 10% kept before the LLM — every pre-LLM pruner, Random + merge and 2B 9.5
+  / 9.6% (PruneSID 10.0 / 9.6%), **final 10% route 9.4 / 9.5%** (below the flat count, as registered); FastV's rule —
+  Random (K = 2) and FastV 16.0 / 14.6%, VScan 16.4 / 14.9%, SparseVLM 16.2 / 15.0%, BTP 16.0 / 15.1%, PDrop 14.0%
+  (Lingshu), **final equal-budget route 16.3 / 15.2%**; larger — FEATHER 46.0 / 37.9%, TransPrune 43.4 / 35.9%. Table:
+  README §6. [FLAG] Qwen3-VL's equal-budget route spends 15.2% per layer against VScan's 14.9% (E42b's integer rounding
+  on 64-token images: 9.78 vs 9.00 tokens), 2% more tokens behind a +0.3 Qwen3-VL margin; the paper states it beside the
+  number. Lingshu's route (16.3%) is below VScan's (16.4%).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

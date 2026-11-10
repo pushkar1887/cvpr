@@ -81,16 +81,48 @@ Training-free and without attention scores; selection happens before the LLM, pl
    into it). For clusters of identical tokens this reproduces the attention over all of them exactly (proportional
    attention, Bolya et al., ICLR 2023); merging alone weighs each cluster as one token.
 5. **Routed schedule** — when the instruction asks for a one-token answer (option letter, yes/no), more tokens are kept
-   until 5/7 of the depth and cut after it (same mean tokens per layer); generated answers keep a flat budget.
+   until 5/7 of the depth and cut after it (same mean tokens per layer: matched to FastV's at the equal budget, to the
+   flat 10% count at 10%); generated answers keep a flat budget.
 
-Results (nine model × cell combinations, judged, Lingshu RadImageNet abnormality in balanced accuracy; plan.md):
+Every row is reported with its measured budget: mean visual tokens per decoder layer as % of N, from each question's
+keep-set and schedule (Lingshu / Qwen3-VL, averaged over the model's cells). "10%" covers three budget classes, and a
+comparison is only made within one. Nine-cell = raw accuracy; the per-model columns score Lingshu RadImageNet
+abnormality in balanced accuracy (its gold answers are 71.9% "yes"). Judged open answers; plan.md E40-E47.
 
-| Budget | Ours | Best published | Δ |
-|---|---|---|---|
-| VScan's tokens per layer (≈ 16% / 15%) | 67.6 | VScan 65.5 | **+1.79** (SE 0.39, three seeds); held-out `omni_panel` +0.96 |
-| 10% kept before the LLM | gate + coverage + merge + size term | VisionZip | **+3.04** (SE 0.46) |
+| Method | Selection signal | Budget rule | Tokens / layer (L / Q) | Nine-cell | Lingshu (5) | Qwen3-VL (4) |
+|---|---|---|---|---|---|---|
+| Full | — | all tokens | 100 / 100% | 70.27 | 73.32 | 69.40 |
+| *10% kept before the LLM* | | | | | | |
+| VisionZip | ViT attention + merge | 10% kept | 9.5 / 9.6% | 62.91 | 65.95 | 62.39 |
+| PruneSID | similarity / diversity | 10% kept | 10.0 / 9.6% | 62.30 | 64.32 | 62.86 |
+| CDPruner (released sign) | DPP with the instruction | 10% kept | 9.5 / 9.6% | 61.96 | 63.87 | 62.92 |
+| VisPruner | ViT attention + diversity | 10% kept | 9.5 / 9.6% | 60.08 | 64.38 | 57.52 |
+| DivPrune | max-min diversity | 10% kept | 9.5 / 9.6% | 57.76 | 57.00 | 61.46 |
+| HiPrune | ViT hierarchical attention | 10% kept | 9.5 / 9.6% | 58.35 | 63.08 | 55.64 |
+| Pool (VTC-Bench) | block average | 10% kept | 9.5 / 9.6% | 62.14 | 64.35 | 62.39 |
+| Random + merge | none + merge | 10% kept | 9.5 / 9.6% | 64.66 | 68.25 | 63.11 |
+| **Ours: gate + coverage + merge + size term** | gate, strata, log s | 10% kept | 9.5 / 9.6% | **66.31** | **69.73** | **64.50** |
+| **Ours, final 10%: + schedule for one-token answers** | + read-then-prune | ≤ the 10% count | 9.4 / 9.5% | **66.51** | **69.84** | **64.90** |
+| *FastV's tokens per layer (all tokens to layer 2, then 10%)* | | | | | | |
+| Random (K = 2) | none | FastV rule | 16.0 / 14.6% | 61.33 | 64.27 | 60.31 |
+| FastV | LLM attention, layer 2 | FastV rule | 16.0 / 14.6% | 40.89 | 41.50 | 45.27 |
+| VScan | ViT + LLM attention, merge | FastV-matched, 2 stages | 16.4 / 14.9% | 65.53 | 68.23 | 65.11 |
+| SparseVLM ¹ | LLM attention, text raters | FastV-matched, 3 stages | 16.2 / 15.0% | 51.91 ¹ | | |
+| BTP ¹ | LLM attention + spatial | FastV-matched, 4 stages | 16.0 / 15.1% | 63.02 ¹ | | |
+| **Ours, final equal budget: + routed schedule (3 seeds)** | gate, strata, log s, schedule | FastV-matched | 16.3 / 15.2% | **67.62** | **71.21** | **65.41** |
+| *Larger budgets (own rules)* | | | | | | |
+| FEATHER | RoPE-free LLM attention | 2 stages | 46.0 / 37.9% | 61.21 | 65.43 | 60.57 |
+| TransPrune | token transition | multi-stage | 43.4 / 35.9% | 60.91 | 62.50 | 64.27 |
 
-Full model: 70.3. Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).
+¹ No RadImageNet open-anatomy runs: mean over the seven other cells (same cells: Full 74.75, VScan 71.17, ours at the
+equal budget 73.06, ours at 10% 71.89). PDrop (Lingshu only, three cells) is in plan.md.
+
+Paired, images resampled jointly across models: final 10% row − VisionZip **+3.28 (SE 0.46)**, − PruneSID +3.98, − 2B
++0.24 (SE 0.19; held-out `omni_panel` +1.08, p 0.009); final equal-budget row − VScan **+1.79 (SE 0.39, three seeds)**.
+The 10% rows have one seed until E47s lands. Qwen3-VL's equal-budget route spends 15.2% per layer against VScan's 14.9%
+(integer rounding of the schedule on 64-token images), 2% more tokens for a +0.3 Qwen3-VL margin.
+
+Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).
 
 Contemporaneous work: MedSTP (arXiv 2610.22751, Oct 15, 2026; 10% kept, pre-LLM) is reported as a separate reference block, not as a baseline, because its SLAKE set and open-answer metric differ from ours. On the two benchmarks where the protocols align (OmniMedVQA, RadImageNet anatomy MC), our 10% row gains more over PruneSID than MedSTP reports, on both models (Qwen3-VL margins within noise; plan.md §A3.1).
 

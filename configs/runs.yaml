@@ -487,3 +487,10 @@ blocks:
   - {exp: E46pr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [gate_slic_merge_pa_eq]}
   - {exp: E46pr, tier: P0, account: C, model: lingshu7b, groups: [rin_abn_closed, rin_open], methods: [gate_jitter_bgsum_pa_eq]}
   - {exp: E46pr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [gate_jitter_bgsum_pa_eq]}
+
+  # Nov 10 06:58 - E46 full run of SLIC-PA (passed its pilot gates): the five remaining cells. E = OmniMedVQA,
+  # C = RadImageNet anatomy + abnormality. BG-PA failed its gates (no full run).
+  - {exp: E46f, tier: P0, account: E, model: lingshu7b, groups: [omni_anat], methods: [gate_slic_merge_pa_eq]}
+  - {exp: E46f, tier: P0, account: E, model: qwen3vl8b, groups: [omni_anat], methods: [gate_slic_merge_pa_eq]}
+  - {exp: E46fr, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed], methods: [gate_slic_merge_pa_eq]}
+  - {exp: E46fr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_slic_merge_pa_eq]}

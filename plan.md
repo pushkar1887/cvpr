@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 06:20 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 06:58 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -2086,6 +2086,17 @@ stands for 30-150.
   35%.
 - Accounts: F (`abdullah4152`, new; data bundle built on F; the `cvpr` secret is attached by the user for later
   RadImageNet cells) runs the SLAKE pilot; C runs the RadImageNet pilot after E45r. E's first token returned 401; a fresh one works (05:37), E's bundle building.
+
+- **Pilot result (Nov 10 06:53; F E46p, C E46pr, 10 runs, 0 missing verdicts).**
+  - SLIC-PA − E42a seed 0: Lingshu SLAKE +0.75, Qwen3-VL SLAKE +0.75, Lingshu open anatomy −1.0, Qwen3-VL open anatomy
+    0.0; normalized coverage 0.356 / 0.363 / 0.412 / 0.416 (E42a 0.364 / 0.374 / 0.432 / 0.437). Gates (a) pass, (b) pass
+    (mean −0.5, at the threshold), (c) pass (+0.75) → **GO: full run of the five remaining cells** (E OmniMedVQA, C
+    RadImageNet anatomy + abnormality).
+  - BG-PA − E42a seed 0: Lingshu RIN abnormality balanced −3.5, Qwen3-VL RIN anatomy +0.7, open anatomy +1.8 / +0.4;
+    Lingshu yes-rate 20.5 (past Full's 26.9); Qwen3-VL RIN anatomy deep image share 0.0097 (E42a 0.0094). Gate (a) pass,
+    (b) fail (mean −0.15), (c) fail → **NO-GO**. Mechanism: Full's background attention sits on a few sink tokens, so
+    Σ_bg e^{a_j} is dominated by its maximum; the mean background token's s · e^{ā} falls far short of it (the duplicate
+    identity needs near-identical tokens; sinks are outliers). The background piece stays out. P81 ✗.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

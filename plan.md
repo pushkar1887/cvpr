@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 06:58 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 16:00 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -34,7 +34,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 7e | **E43** the size term at 10% (`gate_jitter_merge_pa`), k-means merge clusters + size term (`gate_kmeans_merge_pa_eq`), the schedule routed to single-token answers (`gate_jitter_merge_sched_pa`), held-out `omni_panel` | ✅ DONE Nov 10 04:19 (registered Nov 9 20:40, `b512b3e`). **Final equal-budget row = the route** (dev +1.62 vs E42a +1.23, k-means +1.26); Holm-confirmed on the test half (+1.02 vs reference, +1.82 vs VScan) and `omni_panel` (+0.96 vs VScan); 2B adopted (+1.12; +3.04 vs VisionZip). P72 ✓, P73 ✓, P74 ✗, P75 ✗ | ≈ 9.5 | 0 | Nov 9-10 | Route − VScan, all questions, seed 0: +1.94 (SE 0.41); 67.71 vs 65.53 (Full 70.27) |
 | 7f | **E44** seed 1 of the adopted E42a row (nine cells) + Lingshu held-out `omni_panel` | ✅ DONE Nov 10 01:06 (registered Nov 9 23:23, `70cd2c7`). P76 ✓ (seed 1 − VScan +1.17), P77 ✗ (Qwen3-VL two-seed 65.01 vs VScan 65.11: a tie); E44h ran VScan only (`omni_panel` Lingshu 85.6, Full 86.3), E42a's row moved to C (E44h2) | ≈ 4.4 | ≈ 0.3 (E44h2) | Nov 9-10 | **Two-seed headline: E42a − VScan +1.35 nine-cell (SE 0.40, p 0.0004); Lingshu +2.5, Qwen3-VL −0.1** |
 | 7g | **E45** seeds 1-2 of the final route row (single-token branch seeds 1-2 on its five cells, generated branch seed 2 on SLAKE + open anatomy) | ✅ DONE Nov 10 06:14 (registered 04:22, `44e0a6f`); 14 runs. P79 ✓, P80 ✓ | ≈ 4.8 | 0 | Nov 10 | **Three-seed headline: route − VScan +1.79 (SE 0.39), Lingshu +3.0, Qwen3-VL +0.3; 67.6 vs 65.5 (Full 70.3)** |
-| 7h | **E46** pilot: background summary + size term (`gate_jitter_bgsum_pa_eq`), SLIC clusters + size term (`gate_slic_merge_pa_eq`) | 🔄 RUNNING. Registered Nov 10 05:25 (`710a24a`); C E46pr (RadImageNet, since 05:42), F E46p (SLAKE, since 05:50) | 0 | ≈ 1.7 pilot; full runs only for rows passing their gates | Nov 10 | Go / no-go gates fixed in the E46 card; P81-P82 |
+| 7h | **E46** background summary + size term (`gate_jitter_bgsum_pa_eq`), SLIC clusters + size term (`gate_slic_merge_pa_eq`) | ✅ DONE Nov 10 07:40 (registered 05:25, `710a24a`). Pilot: BG-PA fails its gates (no full run); SLIC-PA passes. SLIC full nine cells − E42a −0.06 (SE 0.40, p 0.56) → not adopted. P81 ✗, P82 ✗ | ≈ 4.4 | 0 | Nov 10 | Neither piece joins the final row; SLIC − VScan +1.47 (a valid but not better row) |
 | 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
 
 **Nov 7, 03:20:** E14–E16 launched (Stage 7b): ≈ 21 GPU-h planned, within every account's free hours (C 2.8 h left
@@ -52,7 +52,7 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 | B — Qwen3-VL | `pushkararora` | 30 | week of Oct 31: 28.37 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50, E14 Lingshu RIN 1.85). **Week of Nov 7:** baselines v4 E18 3.27, gpu v8 E17b 2.18, gpu v9 E22 2.08, baselines v5 E21 3.70, baselines v6 E31 1.30, gpu v10 E28 2.82, gpu v11 E35 0.86, baselines v7 E34 2.26, gpu v12 E40r + E41r + E41b ≈ 2.9, baselines v8 E40 + E41 ≈ 3.3, gpu v13 E42r ≈ 0.8, baselines v9 E42b ≈ 1.1, baselines v10 + gpu v14 E42a ≈ 2.4 , baselines v11 E44 ≈ 1.7, gpu v15 E44h ≈ 0.9 | — | — | Kaggle-reported ≈ 3 h before E44 (Nov 9 23:00), ≈ 0.4 now (both slots idle); the running sums above undercount, Kaggle's figure rules |
 | C — supplementary | `pushkarsiuuarora` | 21.8 | week of Oct 31: 21.01 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.84; Lingshu v4 2.71; v5 E15 1.80). **Week of Nov 7:** v6 E14o 1.50, v7 E19 2.05, v8 E19b 0.88, v9 E25 2.91, v10 E32 1.04, v11 E36 0.46, v12 E37 2.04, v13 E41 + E40 ≈ 3.1 , v14 E42a fallback (cancelled / finished), v15 E43r ≈ 2.3, v17 E44h2 ≈ 0.5, v18 E45r ≈ 1.2 | v19 E46pr (pilot, since 05:42) | — | Kaggle-reported 15 h 51 m available of 30 (Nov 9 23:00) |
 | D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | bundle 0.35 h CPU (Nov 5); **week of Nov 7:** v1 × 2 E14 smoke ≈ 0.6, `medprune-gpu-qwen3vl8b` v2 E14 7.90, `medprune-gpu-lingshu7b` v2 E14 8.30, `medprune-gpu-qwen3vl8b` v3 E27 2.08, `medprune-gpu-lingshu7b` v3 E29 2.62, `medprune-gpu-qwen3vl8b` v4 E27b 1.39, `medprune-gpu-lingshu7b` v4 E37 2.11, `medprune-gpu-lingshu7b` v5 E40 ≈ 2.0 = 27.0 ; E42 v6 / v5 (duplicates, cancelled in the UI; v5 hung ≈ 3 h) , v8 / v7 E43 ≈ 3.7 / 4.2 | v9 / v8 E45 (seeds, since 04:23) | — | Kaggle-reported 18 h 56 m available of 30 (Nov 9 23:00); the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
-| E — 5th account (added Nov 10) | `abdmohammad41523`; token read inline from a local file for one command, never stored | 30 | `medprune-00-build-data-bundle` v1 (CPU, 05:38-05:56) | — | E46 full runs if a row passes | full; GPU notebooks get the `cvpr` secret when attached in the UI |
+| E — 5th account (added Nov 10) | `abdmohammad41523`; token read inline from a local file for one command, never stored | 30 | `medprune-00-build-data-bundle` v1 (CPU, 05:38-05:56); GPU `medprune-gpu-lingshu7b` v1 + `medprune-gpu-qwen3vl8b` v1 E46f ≈ 1.6 | — | — | full; GPU notebooks get the `cvpr` secret when attached in the UI |
 | F — 6th account (added Nov 10) | `abdullah4152`; token read inline from a local file for one command, never stored | 30 | `medprune-00-build-data-bundle` v1 (CPU, 05:27-05:49) | `medprune-gpu-lingshu7b` v1 + `medprune-gpu-qwen3vl8b` v1 E46p (since 05:50) | — | full; GPU notebooks get the `cvpr` secret when attached in the UI |
 
 Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
@@ -2016,21 +2016,26 @@ difference ≈ 0.25; with the residual seed term of a two-seed mean, ≈ 0.18, S
 OmniMedVQA +1.3, open anatomy +0.7. Absolute two-seed nine-cell (raw abnormality): E42a 67.15 (Lingshu 68.86,
 Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` gained "name@sN" (one seed only).
 
-**Status at Nov 10 06:05 IST** (supersedes the 01:20 block).
-- **Final method (equal budget; E43 rule):** `route:gate_jitter_merge_sched_pa|gate_jitter_merge_pa_eq` = foreground
-  gate + Hilbert coverage + foreground merge + size term, with the read-then-prune schedule only where the instruction
-  asks for one token. Seed 0, all questions: nine-cell 67.71 vs VScan 65.53, **+1.94 (SE 0.41)**; test half +1.82 (p
-  0.0008); held-out `omni_panel` +0.96 (p 0.038). Lingshu 69.47 vs 65.87 (+3.2), Qwen3-VL 65.50 vs 65.11 (+0.4); Full
-  70.27. **Three seeds (E45, P79 ✓): +1.79 (SE 0.39), Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan);
-  67.62 vs 65.53.**
-- Size term alone over two seeds: − VScan +1.35 (SE 0.40); Lingshu +2.5, Qwen3-VL −0.1.
-- **10% kept (pre-LLM budget):** `gate_jitter_merge_pa` − VisionZip **+3.04 (SE 0.46)**; − the 10% recipe +1.12.
-- Predictions since Nov 9 18:00: P67 ✓, P68 ✗, P69 ✓, P70 ✓ (4 / 4), P71 ✗, P72 ✓, P73 ✓, P74 ✗, P75 ✗, P76 ✓, P77 ✗,
-  P78 ✓. Pending: P79-P80 (E45), P81-P82 (E46 pilot).
-- Running: C E46pr (≈ 06:45); F E46p (≈ 06:30). D idle (E45 done). E: bundle built, idle (E46 full runs). A, B ≈ 0.5 h.
-- Next: E45 → P79 / P80 and the three-seed headline; E46 gates → full runs for passing rows (E + C); freeze Nov 12.
-  OpenReview enrollment Nov 10 23:59 AoE (Nov 11 17:29 IST): "beats VScan on the nine-cell mean at equal tokens per
-  layer without attention scores; wins on Lingshu; Qwen3-VL +0.4 (seed 0), a tie for the size term alone".
+**Status at Nov 10 16:00 IST** (supersedes the 06:05 block; numbers recomputed from the run files).
+
+| Row (nine cells, judged; raw means) | Nine | Lingshu | Qwen3-VL | Δ (SE) vs comparison [Lingshu / Qwen3-VL] |
+|---|---|---|---|---|
+| Full | 70.27 | 70.96 | 69.40 | |
+| VScan | 65.53 | 65.87 | 65.11 | |
+| gate + coverage + merge (eq) | 66.50 | 68.38 | 64.16 | +0.62 (0.39) vs VScan [+1.87 / −0.95] |
+| + size term (seeds on disk) | 67.11 | 68.81 | 64.98 | +1.31 (0.40) vs VScan [+2.46 / −0.14] |
+| **+ routed schedule = final (3 seeds)** | **67.62** | **69.40** | **65.41** | **+1.79 (0.39) vs VScan [+2.98 / +0.29]** |
+| SLIC + size term (E46, not adopted) | 67.08 | 68.40 | 65.44 | +1.47 (0.41) vs VScan [+2.38 / +0.33] |
+| VisionZip (10%) | 62.91 | 63.34 | 62.39 | |
+| 10% gate + coverage + merge | 65.42 | 67.28 | 63.09 | +1.92 (0.42) vs VisionZip [+2.89 / +0.70] |
+| **10% + size term (2B)** | **66.31** | **67.75** | **64.50** | **+3.04 (0.46) vs VisionZip [+3.78 / +2.11]** |
+
+- Held-out `omni_panel` (1198 unseen images): final (schedule branch, MC) − VScan +0.96 (SE 0.54, p 0.037); Lingshu
+  85.5 vs 85.6 (Full 86.3), Qwen3-VL 83.2 vs 81.2 (Full 83.0).
+- All registered experiments are complete. Predictions since Nov 9 18:00: P67 ✓, P68 ✗, P69 ✓, P70 ✓, P71 ✗, P72 ✓,
+  P73 ✓, P74 ✗, P75 ✗, P76 ✓, P77 ✗, P78 ✓, P79 ✓, P80 ✓, P81 ✗, P82 ✗.
+- All slots idle. Next: the OpenReview enrollment (Nov 10 23:59 AoE = Nov 11 17:29 IST) with the three-seed numbers;
+  experiment freeze Nov 12; paper Nov 16.
 
 **E43 result (registered rule, Nov 10 04:25; seed 0).**
 - Dev-half selection (candidate − reference, nine-cell): **route +1.62**, 2A k-means +1.26, E42a +1.23 (all questions:
@@ -2084,7 +2089,7 @@ stands for 30-150.
 - P81 (BG-PA): passes its gates and, if run in full, − E42a ≥ +0.3 nine-cell. 35%. **Contradicted (Nov 10 06:53):** fails
   gates (b) and (c).
 - P82 (SLIC-PA): passes its gates and, if run in full, − E42a ≥ +0.3 nine-cell with open anatomy ≥ −0.5 on both models.
-  35%.
+  35%. **Contradicted (Nov 10 15:55):** gates passed, full run − E42a −0.06 (SE 0.40), Lingshu open anatomy −1.0.
 - Accounts: F (`abdullah4152`, new; data bundle built on F; the `cvpr` secret is attached by the user for later
   RadImageNet cells) runs the SLAKE pilot; C runs the RadImageNet pilot after E45r. E's first token returned 401; a fresh one works (05:37), E's bundle building.
 
@@ -2098,6 +2103,12 @@ stands for 30-150.
     (b) fail (mean −0.15), (c) fail → **NO-GO**. Mechanism: Full's background attention sits on a few sink tokens, so
     Σ_bg e^{a_j} is dominated by its maximum; the mean background token's s · e^{ā} falls far short of it (the duplicate
     identity needs near-identical tokens; sinks are outliers). The background piece stays out. P81 ✗.
+- **SLIC-PA full result (Nov 10 15:55; C E46fr 3 runs, E E46f 2 runs, 0 missing verdicts).** − E42a seed 0, registered
+  rule (seed term 0.28): nine-cell **−0.06 (SE 0.40), p 0.56**, halves −0.10 / −0.02, no significant cell loss → **not
+  adopted**. Per cell: Lingshu SLAKE +0.8, RIN anatomy −0.7, abnormality balanced −0.1, OmniMedVQA −0.1, open anatomy
+  −1.0; Qwen3-VL SLAKE +0.8, RIN anatomy −0.5, OmniMedVQA +0.4, open anatomy 0.0. SLIC − VScan +1.47 (SE 0.50). The
+  repair worked as a repair (coverage restored, k-means' −1.6 open-anatomy loss mostly gone) but adds nothing over the
+  stratified merge: with the size term, how clusters are formed no longer moves accuracy (as P63 found for selection).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.
@@ -4286,3 +4297,11 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
 - 06:07 D `medprune-gpu-qwen3vl8b` v8 (E45 Qwen3-VL) COMPLETE: OmniMedVQA seeds 1-2, SLAKE seed 2 (12 new verdicts). Route
   Qwen3-VL over three seeds 65.41 vs VScan 65.11 (P80 ✓). `adoption.load_cell` route fix: a cell whose questions are all
   single-token needs only the single-token branch (test added).
+
+### 2026-11-10 — Claude — E46 closed (SLIC-PA not adopted); latest results recomputed from run files
+
+- 15:50 harvested E's Lingshu OmniMedVQA SLIC run (3329 questions, `43617cc`); SLIC-PA has all nine cells.
+- Registered rule: SLIC-PA − E42a −0.06 (SE 0.40, p 0.56), halves −0.10 / −0.02 → not adopted; P82 ✗. Neither repaired
+  piece (background summary, k-means / SLIC clusters) joins the final row.
+- Status block rewritten from the run files (`scratchpad/latest_table.py`): final route − VScan +1.79 (SE 0.39) over
+  three seeds; 10% size-term recipe − VisionZip +3.04 (SE 0.46).

@@ -529,3 +529,8 @@ blocks:
   - {exp: E47b, tier: P0, account: F, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_sink_merge_pa]}
   - {exp: E47b, tier: P0, account: F, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_sink_merge_pa]}
   - {exp: E47br, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc], methods: [gate_jitter_sink_merge_pa]}
+  # Nov 11 01:50 - E47bs: BG-S seeds 1-2 (launched before its nine-cell test; the test uses seed 0 only).
+  - {exp: E47bs, tier: P0, account: E, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_sink_merge_pa], seeds: [1, 2]}
+  - {exp: E47bs, tier: P0, account: E, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_sink_merge_pa], seeds: [1, 2]}
+  - {exp: E47bsr, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_jitter_sink_merge_pa], seeds: [1, 2]}
+  - {exp: E47bsr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [gate_jitter_sink_merge_pa], seeds: [1, 2]}

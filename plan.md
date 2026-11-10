@@ -2291,6 +2291,23 @@ Rows (10% kept per image, 2B's rng stream; open answers judged in-session; code:
 - 00:10-01:05 harvested: D × 2 (`omni_panel` S10 + SL-S10), F × 2 (SL-S10, `omni_panel` 2B + VisionZip), E Lingshu (S10
   + SL), C × 2 (every RadImageNet cell); all full length, 0 missing verdicts. Freed slots took E47s: D (S10 seeds,
   both models), F Lingshu (2B seeds), E Lingshu notebook (Qwen3-VL 2B seeds), C Lingshu (RadImageNet seeds).
+- **Selection and confirmation (Nov 11 01:45; all E47 seed-0 runs in, 43 / 43, 0 missing verdicts).** Dev-half
+  nine-cell − 2B: `route:S10|2B` +0.03 (all questions +0.24, test half +0.45), `routec:S10|2B` −0.08 (+0.20), the SLIC
+  rows −0.37 to −1.36 (SL all questions −0.80: Lingshu open anatomy −4.0). **Final 10% row (registered rule):
+  `route:gate_jitter_merge_sched10_pa|gate_jitter_merge_pa`.** Confirmatory family, Holm at 0.05, all three rejected:
+  (i) − 2B test half +0.45 (SE 0.27), p 0.0498; (ii) − VisionZip test half +2.98 (SE 0.67), p < 0.0001; (iii) − 2B on
+  `omni_panel` +1.08 (SE 0.46), p 0.009 (Lingshu +1.0, Qwen3-VL +1.2). Secondary (E42 rule, all questions, seed term
+  0.28): +0.24 (SE 0.34), p 0.24, halves +0.03 / +0.45 → not adopted by that rule. [FLAG] (i) passes at p 0.0498 with no
+  seed term; with it, it would not. The 10% route is a small, held-out-confirmed gain on single-token answers (OmniMedVQA
+  +0.6 / +0.8, RIN anatomy +0.6 / +0.8), not a nine-cell step; the three-seed means decide the headline. All questions:
+  route − VisionZip +3.28 (SE 0.46), − PruneSID +3.98 (0.48), − Full −3.93 (0.38).
+- Predictions: P83 ✗ (+0.24 < +0.3), P84 ✗ (Lingshu SLAKE close −0.7: at 10% the schedule's k1 is only 1.24 k, too few
+  tokens to recover a lesion the flat 32 lost), P85 ✗ (SLAKE mean −0.75), P86 ✓ (SL on Lingshu SLAKE abnormality +4.0,
+  after +6.3 at the equal budget: SLIC's one replicated effect), P87 ✗, P88 ✓, P89 ✗, P90 ✗ (+0.45 < +0.5), P91 ✗, P92
+  ✓ (+1.0 / +1.2). BG-S's adoption test (E42 rule vs 2B, nine cells) waits for E47b; if adopted, `route:S10|BG-S` and
+  `route:SL-S10|BG-S` join the candidates and the selection is re-run (registered).
+- 01:50 E Qwen3-VL notebook → **E47bs**: BG-S seeds 1-2 (SLAKE + OmniMedVQA, Qwen3-VL), launched before BG-S's
+  nine-cell test (which uses seed 0 only); the Lingshu half and the RadImageNet seeds follow on the next free slots.
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

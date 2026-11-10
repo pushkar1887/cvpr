@@ -2081,7 +2081,8 @@ stands for 30-150.
 - If a row passes: its remaining five cells run, and it is tested against E42a on all nine cells by the E42 rule (seed
   term 0.28, Holm over the passing rows); an adopted row replaces E42a in the route's generated branch and the route is
   re-chosen on the dev half and confirmed on the test half (the test half's second use: Holm count raised to five).
-- P81 (BG-PA): passes its gates and, if run in full, − E42a ≥ +0.3 nine-cell. 35%.
+- P81 (BG-PA): passes its gates and, if run in full, − E42a ≥ +0.3 nine-cell. 35%. **Contradicted (Nov 10 06:53):** fails
+  gates (b) and (c).
 - P82 (SLIC-PA): passes its gates and, if run in full, − E42a ≥ +0.3 nine-cell with open anatomy ≥ −0.5 on both models.
   35%.
 - Accounts: F (`abdullah4152`, new; data bundle built on F; the `cvpr` secret is attached by the user for later

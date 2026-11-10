@@ -1,9 +1,11 @@
 # Diagnostics — Pruning the Air
 
-Every diagnostic and hypothesis tested for the CVPR 2027 paper, as of 2026-11-06. For each one: the question, why it
-matters, what we expected, how we tested it, the numbers, what they mean technically and in plain words, and what to
-do about it. Numbers come from `plan.md` (Stage tracker, §A6, §A9, Work log) and `results/all`; nothing here is new
-data. All GPU work registered in `configs/runs.yaml` is complete (324 / 324 runs).
+Every diagnostic and hypothesis tested for the CVPR 2027 paper, as of 2026-11-10. §1–§5 cover the diagnosis (to
+Nov 6); §6.2 and §9 add the method experiments E40–E46 (Nov 7–10). For each one: the question, why it matters, what we
+expected, how we tested it, the numbers, what they mean technically and in plain words, and what to do about it.
+Numbers come from `plan.md` (Stage tracker, §A6, §A9, E-cards, Work log) and `results/all`; §9 was recomputed from the
+run files on Nov 10. All GPU work registered in `configs/runs.yaml` is complete through E46, and every Kaggle slot is
+idle. The current status is the Nov 10 section at the end of [status_2026-11-07.md](status_2026-11-07.md).
 
 ---
 
@@ -835,7 +837,7 @@ the image encoder still runs in full.
 | C1 Phenomenon | holds for Qwen-family models; not universal (HuatuoGPT); not medical-specific | scope the claim; HuatuoGPT as contrast; E7 in supplementary |
 | C2 Predictability (background dose-response) | **contradicted** | drop; per-modality bars instead |
 | C3 Mechanism | holds via question-blindness, position-in-keys, anti-informative attention, interventions | rewrite away from "rotary decay" and "attention picks air" |
-| C4 Remedy | partial: full on SLAKE, ⅓ on RIN; composes with every pruner | diagnosis-first; gate = minimal remedy, not SOTA |
+| C4 Remedy | Nov 6: partial (full on SLAKE, ⅓ on RIN), composes with every pruner. **Nov 10:** the tested method (§6.2) beats VScan at equal tokens per layer (+1.79, SE 0.39, three seeds) and VisionZip at 10% (+3.04, SE 0.46) | diagnosis still leads; the method is the remedy the diagnosis predicts, claimed on the nine-cell mean |
 | C5 Protocol | holds: the judge flips Qwen3-VL SLAKE; McNemar overstated p | report judge + rule; image-clustered tests |
 
 ---
@@ -851,18 +853,34 @@ the image encoder still runs in full.
    ≈ 50–65% depth (K=16 beats Random by 5.6–8.5 on RIN). Choose the layer on held-out data.
 3. **Report end-to-end speed**, not only prefill (D-28).
 
-### 6.2 The method this suggests: two-stage pruning (proposal, not run)
+### 6.2 The method that was built and tested (E40–E46, Nov 7–10)
 
-- **Stage 1 (layer 0–2, speed):** Foreground Gate + coverage selection (Uniform or DivPrune) to a moderate budget
-  (e.g. 25–30%). This is where most FLOPs are saved.
-- **Stage 2 (layer L*, accuracy):** last-token attention top-k down to the final budget (10%), L* chosen on held-out
-  data by a rule fixed in advance (first layer where question share ≥ 0.2).
-- **Why it should work:** stage 1 avoids the early anti-informative ranking (D-16) and keeps coverage (D-11); stage 2
-  uses attention only where it is question-aware and beats Random (D-14, D-17).
-- **Kill test (to register before running):** Lingshu and Qwen3-VL on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA
-  anatomy at 10%; adopt only if two-stage − Gate+Uniform ≥ +1.5 with the CI excluding 0 in at least 2 Lingshu cells,
-  is ≥ 0 elsewhere, ties or beats PruneSID, and keeps ≥ 2× prefill speedup. Otherwise the paper stays diagnosis-first
-  with Gate+Uniform as the remedy. Cost ≈ 2–4 GPU-h (account D).
+The Nov 6 proposal here was two-stage pruning: coverage early, then last-token attention top-k at a question-aware
+layer. It was not run in that form. The built method keeps the first stage and replaces attention ranking with steps
+that follow from the diagnosis and from the E40–E46 measurements; no step reads attention scores. Every step was
+registered before its runs and adopted by the rule in `medprune/adoption.py` (one-sided nine-cell test, Holm, two-halves
+replication, no Bonferroni-significant cell loss), which replaced the proposal's kill test.
+
+| Step | What it does | Why (diagnosis) | Test → result |
+|---|---|---|---|
+| 1 Foreground gate | drop tokens with foreground fraction < τ = 0.5; discard them | background capture (§5.2, D-05); robust to τ (D-26) | Nov 6: closes SLAKE's gap |
+| 2 Coverage | one random token per Hilbert-curve stretch of the foreground | coverage, not ranking, carries accuracy (D-11, D-16, D-21) | E40–E41 |
+| 3 Merge | each dropped foreground token averaged into its most cosine-similar kept token | dropped content stays readable | E40–E41: 10% − VisionZip +1.92 (SE 0.42); equal budget − VScan +0.62 (SE 0.39) |
+| 4 Size-aware attention | + log s on each kept token's logit, every layer | merged keys were read at 1/2.9–1/4.8 of Full's foreground attention (§9) | E42a adopted (+0.91 vs step 3, p 0.0001); at 10% (2B) − VisionZip **+3.04** (SE 0.46) |
+| 5 Routed schedule | one-token instructions: 20.3% / 18.4% to layer 20 / 26, then 6.8% / 6.1%; else flat 16.4% / 15.0% | one-token answers are formed in the prefill pass; generated answers read the image later (§9) | E42b flat schedule rejected; E43 route adopted; E45: final − VScan **+1.79** (SE 0.39), three seeds |
+
+Confirmation of the final row: test half (not used for selection) +1.82 (SE 0.58, p 0.0008); held-out `omni_panel`
++0.96 (SE 0.54, p 0.037), multiple choice only, so it confirms the schedule branch. Per model over three seeds: Lingshu
++2.98, Qwen3-VL +0.29.
+
+Tested and not adopted:
+
+| Piece | Result | Why it fails |
+|---|---|---|
+| Schedule on every question (E42b) | open anatomy −6.0 / −4.2 | generated answers need the image after the cut |
+| Background summary token (E40–E43) and + size term (BG-PA, E46) | no k-dependence; BG-PA fails its pilot gates (Lingshu abnormality balanced −3.5) | Full's background attention sits on a few sink tokens; one mean token cannot reproduce it (§9) |
+| k-means clusters + size term (E43) | open anatomy −1.6 / −1.6 | ≈ 10% worse spatial coverage |
+| SLIC clusters + size term (E46) | − E42a −0.06 (SE 0.40, p 0.56) | coverage restored, nothing gained: with the size term, how clusters are formed no longer moves accuracy |
 
 ### 6.3 For the paper
 
@@ -881,13 +899,17 @@ the image encoder still runs in full.
 |---|---|---|---|
 | G22 | Why does the same prior hurt RIN (−41.7) far more than SLAKE (−12.4)? | the largest effect in the paper is unexplained | in-session token statistics of RIN images (aggregates only) |
 | D4 | Within-question causal test: is evidence kept → correct? (Random seeds 0–2, conditional logit) | decides how far G16 can be pushed | laptop |
-| G10 | Majority baseline and balanced accuracy for every yes/no cell | RIN abnormality is 71.9% "yes" | laptop |
+| G10 | ~~Majority baseline and balanced accuracy for every yes/no cell~~ **Closed Nov 10:** Lingshu RIN abnormality is reported in balanced accuracy (majority = 50 by construction), Qwen3-VL's version is dropped as a language-prior cell; raw accuracy above Full is a yes-rate shift (§9) | RIN abnormality is 71.9% "yes" | done |
 | SparseVLM | Why it survives on Qwen3-VL: rater subset vs early budget schedule | needed before the paper explains it | ≈ 0.4 GPU-h |
 | H5 | DeepStack as the reason Qwen3-VL fails less | currently only consistent, not tested | needs an ablation |
 | Judge | κ 0.90 is in-sample and AI-to-AI | must not be reported as human agreement | 100 held-out human labels |
 | G19 | No vision-encoder-side pruner besides VisPruner | title scope | ≈ 1–2 GPU-h |
 | G20 | Positioning vs Wen et al. 2025, DART, VTC-Bench, MedSTP | "already known" objection | writing |
 | G15 | Lingshu was trained on SLAKE-style data | contamination | limitation paragraph |
+| Latency (method) | The final row and 2B are untimed: E9 timed keep schedules with physical removal, accuracy runs mask | any speedup claim for the method | FLOPs from the runs' keep schedules (laptop); wall-clock needs the latency harness extended to merge, bias and a second cut, then ≈ 0.3 GPU-h |
+| Route confound | Format vs dataset: every routed cell is a whole dataset (MC or yes/no instructions) | the mechanism claim for step 5 | within-SLAKE split done (§9) supports format; a held-out set mixing formats would settle it |
+| Panel coverage | `omni_panel` is multiple choice: it confirms the schedule branch, not the flat branch | held-out evidence for generated answers | a held-out open-answer set |
+| Cell concentration | The final row's lead comes from OmniMedVQA (+6.05 / +2.67) and Lingshu open anatomy (+5.20); Qwen3-VL SLAKE −1.19 and RIN anatomy −0.70 | "better everywhere" is false | report per-cell; writing |
 
 ---
 
@@ -903,10 +925,11 @@ the image encoder still runs in full.
 | `results/all/latency/lingshu7b__slake_en__t4x2.json` | D-28 |
 | `python -m medprune.analysis {diagnosis,evidence,profile,baselines}` | regenerate the tables |
 | `python -m medprune.latency {measure,prompt-tokens,flops}` | E9 |
+| `medprune.adoption` (`load_cell`, `paired_cells`, `nine_cell`; CLI `--reference X --candidate Y`) | §6.2, §9: nine-cell deltas, SEs and every adoption decision |
 
 ## 9. Additions, Nov 7-10 (E40-E46)
 
-Numbers from plan.md (E40-E46 cards). All judged; Lingshu RadImageNet abnormality in balanced accuracy where noted.
+Numbers from plan.md (E40-E46 cards), recomputed from the run files on Nov 10 16:00. All judged; Lingshu RadImageNet abnormality in balanced accuracy where noted.
 
 | Diagnostic | Finding | Consequence |
 |---|---|---|
@@ -915,6 +938,11 @@ Numbers from plan.md (E40-E46 cards). All judged; Lingshu RadImageNet abnormalit
 | Deep-layer image attention | Full's last-token image share in deep layers I = 0.018-0.152, foreground part F = 0.009-0.084; the merged recipe reads the image at 1/2.9-1/4.8 of F; + log s restores it (measured 0.0094 / 0.037 / 0.056 / 0.108 vs predicted 0.0091 / 0.041 / 0.039 / 0.092) | Size-aware attention (adopted) |
 | Answer format | The schedule gains wherever the answer is one token (computed in the prefill pass) and loses on generated answers (open anatomy −6.0 / −4.2) | Schedule routed to one-token instructions (adopted) |
 | Dose-response of the size term | Within cells the gain does not track cluster size (Spearman −0.08 to 0.00); it concentrates where the reference is weakest | The residual error is content averaging, not attention mass |
-| Background summary token | No dependence on k; shifts Lingshu's yes-rate toward Full (35.6 → 26.6 at 10%) | Repair under test: summary + size term (E46) |
-| k-means merge clusters | Content-pure (SLAKE +0.4 / +1.3) but ≈ 10% worse spatial coverage; open anatomy −1.6 / −1.6 | Repair under test: SLIC clusters (content + position), E46 |
-| Seed variance | Nine-cell selector-seed SD ≈ 0.25; Qwen3-VL four-cell swings 0.56 between seeds | Per-model single-seed margins are not claims |
+| Background summary token | No dependence on k; shifts Lingshu's yes-rate toward Full (35.6 → 26.6 at 10%) | Repaired as summary + size term (BG-PA, E46): fails its pilot gates (next row) |
+| BG-PA pilot (E46) | Lingshu abnormality balanced −3.5 vs E42a, yes-rate 20.5 (past Full's 26.9); Qwen3-VL RIN anatomy deep image share 0.0097 (E42a 0.0094). Full's background attention sits on a few sink tokens, so Σ_bg e^{a_j} is dominated by its maximum; a mean background token's s · e^{ā} falls far short (the duplicate identity behind the size term needs near-identical tokens, and sinks are outliers) | Background stays discarded; P81 ✗ |
+| k-means merge clusters | Content-pure (SLAKE +0.4 / +1.3) but ≈ 10% worse spatial coverage; open anatomy −1.6 / −1.6 | Repaired as SLIC clusters (content + position, E46): next row |
+| SLIC clusters + size term (E46) | Pilot gates pass (coverage 0.356–0.416 vs E42a 0.364–0.437). Full nine cells − E42a −0.06 (SE 0.40, p 0.56), halves −0.10 / −0.02; − VScan +1.47 (SE 0.41) | Not adopted (P82 ✗): with the size term, the clustering rule no longer moves accuracy, as P63 found for selection |
+| Seed variance | Nine-cell selector-seed SD ≈ 0.25 (E42a); final route over three seeds +1.94 / +1.77 / +1.66 vs VScan (SD 0.14); Qwen3-VL four-cell 65.50 / 65.43 / 65.30 vs VScan 65.11 | Headline = three-seed mean; per-model single-seed margins are not claims |
+| Route assignment | The route sends whole datasets to one branch: RIN anatomy, RIN abnormality, OmniMedVQA → schedule; SLAKE (closed questions use a word-or-phrase instruction) and RIN open → flat | Format and dataset are confounded in the nine cells (next row) |
+| Format inside one dataset | SLAKE, flat schedule (E42b) − recipe: closed +2.40 (SE 0.99) / +0.24 (1.15), open −0.47 (0.99) / −1.24 (0.84), Lingshu / Qwen3-VL | The format pattern holds within a dataset; one dataset, two models: supports the account, does not prove it |
+| Per-cell profile of the final row | − VScan: Lingshu SLAKE −0.13, RIN anatomy +0.93, abnormality +2.86, OmniMedVQA +6.05, open anatomy +5.20; Qwen3-VL SLAKE −1.19, RIN anatomy −0.70, OmniMedVQA +2.67, open anatomy +0.40 | The lead is the nine-cell mean; VScan is stronger on Qwen3-VL SLAKE and RIN anatomy (not significant) |

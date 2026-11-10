@@ -2030,7 +2030,7 @@ Qwen3-VL 65.01), reference 66.50, VScan 65.53, Full 70.27. `medprune.adoption` g
 | 10% gate + coverage + merge | 65.42 | 67.28 | 63.09 | +1.92 (0.42) vs VisionZip [+2.89 / +0.70] |
 | **10% + size term (2B)** | **66.31** | **67.75** | **64.50** | **+3.04 (0.46) vs VisionZip [+3.78 / +2.11]** |
 
-- Held-out `omni_panel` (1198 unseen images): final (schedule branch, MC) − VScan +0.96 (SE 0.54, p 0.037); Lingshu
+- Held-out `omni_panel` (1200 questions, 1198 images, 21 shared with the nine cells): final (schedule branch, MC) − VScan +0.96 (SE 0.54, p 0.037); Lingshu
   85.5 vs 85.6 (Full 86.3), Qwen3-VL 83.2 vs 81.2 (Full 83.0).
 - All registered experiments are complete. Predictions since Nov 9 18:00: P67 ✓, P68 ✗, P69 ✓, P70 ✓, P71 ✗, P72 ✓,
   P73 ✓, P74 ✗, P75 ✗, P76 ✓, P77 ✗, P78 ✓, P79 ✓, P80 ✓, P81 ✗, P82 ✗.
@@ -4305,3 +4305,16 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
   piece (background summary, k-means / SLIC clusters) joins the final row.
 - Status block rewritten from the run files (`scratchpad/latest_table.py`): final route − VScan +1.79 (SE 0.39) over
   three seeds; 10% size-term recipe − VisionZip +3.04 (SE 0.46).
+
+### 2026-11-10 — Claude — Docs: one status file; diagnostics.md updated to the final results
+
+- `status_2026-11-10.md` merged into `status_2026-11-07.md` as its closing "Nov 10 update" section (removed; README now
+  links the single file). The section is recomputed from the run files: method, headline, nine-cell means, Table 9
+  (per cell, with Lingshu abnormality balanced and yes-rates), E40-E46 verdicts, P67-P82, six [FLAG]s.
+- Route check: the route sends whole datasets to one branch (RIN anatomy, RIN abnormality, OmniMedVQA → schedule; SLAKE,
+  RIN open → flat). Within-SLAKE test on existing E42b runs: flat schedule − recipe +2.40 (SE 0.99) / +0.24 (1.15) on
+  closed, −0.47 (0.99) / −1.24 (0.84) on open (Lingshu / Qwen3-VL): the format pattern inside one dataset.
+- Gaps recorded: the final row's latency is unmeasured (E9 predates the method); `omni_panel` confirms only the schedule
+  branch. Status-block wording fixed: `omni_panel` has 1198 images, 21 shared with the nine cells (not "unseen").
+- diagnostics.md: header, §5.3 C4, §6.2 (the tested method replaces the Nov 6 two-stage proposal), §7 (G10 closed;
+  latency, route confound and panel coverage added), §9 (E46 outcomes, seeds, SLAKE split).

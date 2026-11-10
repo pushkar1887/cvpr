@@ -99,10 +99,11 @@ Full model: 70.3. Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-
 **[plan.md](plan.md)** is the single plan: stage tracker (Stages 0–8 with checkboxes and exit gates), research,
 protocol, code design and compute backends. Predictions are pre-registered in plan.md §A6 (2026-11-02).
 
-Status (Nov 10, 06:05 IST): the diagnosis (Stages 0-7) is complete; the method above was built and tested in E40-E46,
+Status (Nov 10, 16:00 IST): the diagnosis (Stages 0-7) is complete; the method above was built and tested in E40-E46,
 each experiment registered in plan.md before its runs, adopted or rejected by a fixed one-sided test with Holm control,
-two-halves replication and a per-cell loss guard (`medprune/adoption.py`). The final row is confirmed over three seeds (E45); a
-pilot repairing the background summary and k-means pieces (E46) is running. Snapshot: [status_2026-11-10.md](status_2026-11-10.md);
+two-halves replication and a per-cell loss guard (`medprune/adoption.py`). The final row beats VScan by +1.79 nine-cell
+(SE 0.39) over three seeds (E45); the repairs of the background summary and k-means pieces (E46) were not adopted. All
+registered runs are complete. Status file: [status_2026-11-07.md](status_2026-11-07.md) (Nov 10 update at the end);
 live tracker: [plan.md](plan.md#stage-tracker).
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),

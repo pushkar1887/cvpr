@@ -66,11 +66,31 @@ full 63.7) and HuatuoGPT-Vision-7B (55.3 vs 55.5–56.8); on OmniMedVQA FastV al
 | **H3** | Artifact tokens: high-norm tokens on flat background attract the scoring attention | No outliers, or selected at base rate |
 | **H4** | Small evidence: the remaining loss grows as the evidence region shrinks (SLAKE organ masks) | Flat across evidence sizes |
 
-## 6. Fix — Foreground Gate
+## 6. Method — gate, coverage, merge, size-aware attention, routed schedule
 
-A zero-parameter body mask on the image the model sees (near-black/white pixels connected to the image edge = background → keep large components → fill holes → dilate) gives
-each visual token a foreground fraction; any pruner then selects only among foreground tokens, within the same budget.
-Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and uniform sampling.
+Training-free and without attention scores; selection happens before the LLM, plus one attention bias inside it.
+
+1. **Foreground gate** — a zero-parameter body mask (near-black/white pixels connected to the image edge = background
+   → keep large components → fill holes → dilate) gives each visual token a foreground fraction; tokens below 0.5 are
+   background and are dropped and discarded.
+2. **Coverage** — the foreground tokens are ordered along a Hilbert curve and cut into k equal stretches; one random
+   token per stretch is kept.
+3. **Merge** — every dropped foreground token is averaged into its most cosine-similar kept token (vision output and
+   Qwen3-VL's DeepStack rows).
+4. **Size-aware attention** — in every LLM layer, + log s on each kept token's attention logit (s = the tokens merged
+   into it). For clusters of identical tokens this reproduces the attention over all of them exactly (proportional
+   attention, Bolya et al., ICLR 2023); merging alone weighs each cluster as one token.
+5. **Routed schedule** — when the instruction asks for a one-token answer (option letter, yes/no), more tokens are kept
+   until 5/7 of the depth and cut after it (same mean tokens per layer); generated answers keep a flat budget.
+
+Results (nine model × cell combinations, judged, Lingshu RadImageNet abnormality in balanced accuracy; plan.md):
+
+| Budget | Ours | Best published | Δ |
+|---|---|---|---|
+| VScan's tokens per layer (≈ 16% / 15%) | 67.7 | VScan 65.5 | **+1.94** (SE 0.41); held-out `omni_panel` +0.96 |
+| 10% kept before the LLM | gate + coverage + merge + size term | VisionZip | **+3.04** (SE 0.46) |
+
+Full model: 70.3. Per model at VScan's budget: Lingshu +3.2, Qwen3-VL +0.4 (seed 0; seeds 1-2 running).
 
 ---
 
@@ -79,23 +99,16 @@ Under 5 ms per image, no training, composes with FastV, PDrop, DivPrune and unif
 **[plan.md](plan.md)** is the single plan: stage tracker (Stages 0–8 with checkboxes and exit gates), research,
 protocol, code design and compute backends. Predictions are pre-registered in plan.md §A6 (2026-11-02).
 
-Status (Nov 3, evening): **Stages 0–4b done; Stage 5 running on A and B; confound controls queued on C** — live
-tracker at the top of [plan.md](plan.md#stage-tracker), open reviewer objections in its gap register (§A9).
-K1 = GO: on RadImageNet anatomy (10% of tokens kept), FastV scores 38.1% vs Random 79.3% on Lingshu-7B and 50.9% vs
-84.6% on Qwen3-VL-8B. The diagnosis so far: FastV's layer-1 ranking ignores the question (98% of the keep-set is shared
-across questions about one image; the question explains 0.3% of the ranking's variance), is close to a fixed map at 64
-tokens (position explains 69%), is not caused by RoPE, and for Lingshu ranks tokens that are less useful than random
-ones; the pruned model falls back on its text-only answers. On SLAKE it keeps the large organs the questions ask about
-at about a fifth of chance, which is where its loss sits. Background capture explains SLAKE's CT/MRI loss fully but not
-RadImageNet's. **Nov 3, 21:45:** FastV also loses to Random on ordinary photographs (−8.7 Lingshu, −4.9 Qwen3-VL), so
-the failure is not medical-only; medical scans amplify it, and RadImageNet's collapse is not explained by its 64-token
-inputs (framing under revision, plan.md §A9). Open-answer judge and HuatuoGPT-Vision port running on C; 115 CPU tests
-pass. Depth plan: plan.md §A10.
+Status (Nov 10, 06:05 IST): the diagnosis (Stages 0-7) is complete; the method above was built and tested in E40-E46,
+each experiment registered in plan.md before its runs, adopted or rejected by a fixed one-sided test with Holm control,
+two-halves replication and a per-cell loss guard (`medprune/adoption.py`). Seeds of the final row (E45) and a pilot
+repairing the background summary and k-means pieces (E46) are running. Snapshot: [status_2026-11-10.md](status_2026-11-10.md);
+live tracker: [plan.md](plan.md#stage-tracker).
 
 **Other agents (Codex, Gemini):** start at plan.md Part F (rules, environment, task queue with definitions of done),
 then read the Work log at the end of plan.md and add an entry when you finish.
 
-Compute (measured rates, plan.md §C4): ≈ 48 Kaggle T4-hours in total across three accounts (8.0 spent, 40 left), or ≈ 10–12 h on an A100. Storage: ≤ 2 GB
+Compute: six Kaggle accounts (A-F, T4 x2, 30 GPU-h per week each); the ledger is at the top of plan.md. Storage: ≤ 2 GB
 persistent; one model (~17 GB) temporarily per GPU session.
 
 ## Repository
@@ -110,9 +123,10 @@ cvpr/
 ├── scripts/setup_env.sh    identical setup on Kaggle and SSH; prints the compute profile
 ├── configs/runs.yaml       the run matrix (every experiment's runs); bundle_manifest.json added at Stage 2
 ├── medprune/               the package: env, data, masks, selection, attention_hook, models, scoring, stats,
-│                           run_eval, checks, analysis (huatuo_llava follows at Stage 7)
+│                           run_eval, checks, analysis, remedy (the method), adoption (the decision rule),
+│                           baselines/ (14 published pruners), judge
 ├── notebooks/              00 data bundle (Kaggle CPU), 01 GPU runs (Kaggle), 02 analysis (laptop)
-├── tests/                  69 CPU tests incl. the masking ≡ token-removal proof (`pytest -q`)
+├── tests/                  217 CPU tests incl. the masking ≡ token-removal proof and the size-term identity
 ├── results/                runtime output (git-ignored)
 └── third_party/            FastV, MedEvalKit, HuatuoGPT-Vision references (git-ignored)
 ```

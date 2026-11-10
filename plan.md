@@ -4598,3 +4598,9 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
   schedule. Not in ScanPrune (ablations, code kept to reproduce them): background summary (E40, E46), k-means (E43),
   SLIC (E46, E47), `routec`, BG-N, BG-S (E47). 228 CPU tests. [FLAG] "ScanPrune" sits next to VScan, the main
   equal-budget baseline, in every table; no prior method of that name was found (web search, Nov 11).
+- 03:55 harvested C Qwen3-VL v5 (BG-S seeds 1-2, RadImageNet cells; 47 new verdicts). Descriptive three-seed BG-S vs
+  2B (not a second adoption test): Lingshu RIN anatomy 86.83 vs 86.67, abnormality balanced 55.12 vs 55.35 (BG-S's
+  seed-0 −2.4 was mostly 2B's high seed 0: 56.4 vs 54.6 / 55.0), open anatomy 52.53 vs 52.40 (BG-S 53.6 / 49.8 / 54.2);
+  Qwen3-VL RIN anatomy **89.97 vs 88.90 (every BG-S seed above every 2B seed)**, open anatomy **47.93 vs 43.47 (47.4-48.8
+  vs 43.0-44.2)**. BG-S's Qwen3-VL effect is robust across seeds and its Lingshu cost was seed noise. The registered
+  decision stands (not adopted, seed-0 test p 0.08); SLAKE / OmniMedVQA seeds still on D and E.

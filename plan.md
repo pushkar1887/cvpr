@@ -2,7 +2,7 @@
 
 Single source of truth for the project: research (Part A), execution by stages (Part B), protocol (Part C), code
 design (Part D), compute backends incl. SSH A100 (Part E), agent handbook and task queue (Part F), work log (Part G,
-the last section). Version 2 (merged), 2026-11-02.
+the last section). Version 2 (merged), 2026-11-02; reviewed section by section against the run files on 2026-11-10.
 
 **AI agents (Codex, Gemini, Claude): read Part F first, then the newest entries of the Work log (Part G).**
 
@@ -28,21 +28,16 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 6 | **E12 layer profile + text readout (D1, D2)**, modality panel (E4), budget curves (E5), RIN 448² / flip (E10r, E11r) | ✅ DONE. B v5 6.30 h (79 runs; merged Nov 5 00:30); A v9 9.43 h (87 runs, 86 complete; merged Nov 5 03:40; judge pass 7 merged). Missing: Lingshu SLAKE-zh `gate_fastv` (0.32 h, did not fit) | 15.73 | 0.32 (A) | Nov 4–5 | **E10r**: more tokens do not help (Lingshu −48.9 at 256 tokens vs −41.7; Qwen3-VL −29.2 vs −33.7). **`fastv_text` = FastV** (Lingshu +0.5 / +0.2). **E5**: Lingshu RIN loss flat 5→25% (−39.8 / −41.7 / −43.9). **P9 ✗**: no background dose-response across modalities. **E12**: question dependence starts at layer 14 (Lingshu) / 17 (Qwen3-VL) |
 | 6b | **E13 published pruners**: SparseVLM, VisPruner, PruneSID, BTP (official selection code, medprune prompts; `medprune/baselines/`) on SLAKE, RIN anatomy, RIN abnormality, OmniMedVQA anatomy | ✅ DONE (A 4.74 h, B 4.34 h; 32 runs, all complete; merged Nov 5 00:10). SLAKE judge-scored (pass 5 merged) | 9.23 | 0 | Nov 4–5 | **Only LLM-attention scoring collapses**: SparseVLM fails like FastV on Lingshu (−44.8 RIN anatomy), not on Qwen3-VL (+0.1); VisPruner / PruneSID ≈ Random. Gate+Uniform ≥ all published on Lingshu RIN; on SLAKE (judge) no non-attention method separates from another. P15 ✗, P16 ✗, P17 ✗, P18 ✓ |
 | 7 | Supplementary (E6-P2, E8 HuatuoGPT, E9 latency) + open-answer judge | ✅ DONE. E8r, E6-P2 (both halves), judge passes 4–8 merged. **C v4 ✅** (2.71 h, 10 runs, merged Nov 5 07:30): the 8 registered Lingshu runs A did not reach, Lingshu DivPrune on OmniMedVQA anatomy, **E9 latency** and Lingshu prompt tokens. **B v6 ✅** (1.38 h, 4 runs): Qwen3-VL DivPrune on RIN abnormality + OmniMedVQA anatomy. Registry: 324 of 324 registered runs complete. Judge: **κ 0.81 (as pre-registered) → 0.90 with the rubric guard** vs Codex's labels (AI labels, not human — §G Nov 4) | 14.45 | 0 | Nov 3–5 | G6 answered; on RadImageNet the gate repairs a third of FastV's deficit at most. **E9**: FastV at 10% → prefill 2.95× (paired 3.07×), first-token path 1.69× (vision encoder 183 ms is untouched); the gate alone saves nothing. **Oracle organ gate = heuristic gate** on SLAKE (−0.9, n.s.) |
-| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | 🔄 RUNNING. Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | 0 | ≈ 21 (D 14, B 3.3, C 2.4, A 1.2); Nov 7 06:56 A v11 E17 ✅ (1.22 h; P24 ✗, P25 ✓, **CDPruner's released sign +26.5 / +8.1 → reported row**); 07:00 E17b on A + B; 07:09 A E15b ✅ (P23 replicates on Qwen3-VL); 07:12 C E14o-Lingshu ✅ (P27 ✗; TransPrune collapses on open anatomy); 07:30 E19 on C; 08:51 A E14o-Qwen3-VL ✅ (P30 ✗; FEATHER collapses on Qwen3-VL; gate costs coverage selectors 12.6 on region-asking questions); 09:03 E20 on A; 09:04 B E18 ✅ (P26 ✗; **VScan's merge on FastV's keep-set +39.0 / +35.3**, beats Gate+FastV by 21-24); 09:12 E21 on B; 09:15 B E17b-Qwen3-VL ✅ (P28 / P29 Qwen3-VL halves hold); 09:22 E22 on B; 09:22 C E19 ✅ (P31 ✗, P32 ✓, P33 ✓: the ranking's cost ends at K ≈ 10-12 on multiple choice, later on open answers, with BRR unchanged); 09:28 E19b on C; 09:34 A E17b-Lingshu ✅ (P28 ✗, P29 ✗; the gate helps released CDPruner where its BRR > 1); 09:40 E23 on A; 10:14 A E20 ✅ (P34 ✗: a 3% background quota restores +8.1 of Gate+Uniform's −12.6 on region-asking questions but costs multiple choice 4-6); 10:17 E24 on A; 10:21 C E19b ✅ (P39 ✗ as registered, P40 ✓: open answers recover at about half the depth, multiple choice at a third); 10:24 E25 on C; 10:43 A E23 ✅ (P41 ✓, P42 ✗ as registered: merge and a layer-16 cut hold at 5% / 25%; the cut keeps Full at 5%); 10:45 E26 on A; 11:20 D E14-Qwen3-VL SLAKE + OmniMedVQA ✅ (15 / 16; late-LLM-attention methods lead OmniMedVQA +5.5 to +5.9, SLAKE separates nothing); 11:23 E27 on D; 11:25 B E22 ✅ (P38 ✗: the merge brings Lingshu OmniMedVQA to Random, +29.2, but leaves RIN abnormality at the language prior); 11:28 E28 on B; 11:43 D E14-Lingshu SLAKE + OmniMedVQA ✅ (**E14 complete**; consolidated table: every gated coverage selector is safe on all eight cells); 11:48 E29 on D; 12:31 A E24 ✅ (P43 ✗, 12 / 14; **VScan at 5% = Full** with FastV's token count); 12:35 E30 on A; 12:51 B E21 ✅ (P35 ✗, P36 ✓, P37 ✗ as registered: the merge lifts every keep-set on anatomy, Random + merge is the best open-anatomy row; gate and merge compose on Lingshu); 12:55 E31 on B; 12:57 A E26 ✅ 9 / 16 (Lingshu three-seed Random at 5% / 25%: every delta moves ≤ 0.9); 12:59 E26b on A; 13:22 C E25 ✅ (P44 ✗, P45 ✗: the one-third depth was RIN anatomy's; a cut at about half the depth is safe on every anatomy / SLAKE cell, not on findings); 13:26 E32 on C; 13:31 D E27 ✅ 4 / 5 (OmniMedVQA Random seeds: deltas move ≤ 0.5; Qwen3-VL Gate+VisionZip +1.6); 13:35 E27b on D; 13:44 A E30 ✅ (P49 ✓: VScan's multiple-choice lead is its front-loaded schedule — Random's tokens on it +13.9 / +11.7 at 5%); 13:47 E33 on A; 14:15 B E31 ✅ (P50 ✓, P51 ✗: merging a covering keep-set keeps findings near Random — the merge cannot restore a lesion FastV dropped); 14:19 E34 on B; 14:20 B E28 ✅ (P46 ✓: Random + merge +7.3 on Lingshu OmniMedVQA, the best row there); 14:22 E35 on B; 14:23 A E26b ✅ (three-seed Random everywhere at 5% / 25%; Gate+Uniform fails at 5% on both models); 14:28 D E29 ✅ (P48 ✗: the gate adds on top of the merge only where FastV + merge stays below Random); 14:30 C E32 ✅ (P52 ✓, P53 ✗, P54 ✓: findings are read between layers 16 and 20; a cut inside that window is worse than an early one); 14:34 E36 on C; 14:59 D E27b ✅ (P55 ✗: Random + merge +1.5 on Qwen3-VL OmniMedVQA; three Random seeds everywhere); 15:17 C E36 ✅ (P57 ✓: the depth curve for the same tokens is U-shaped — a cut during reading is the worst); 15:20 E37 on C + D; 15:26 B E35 ✅ (Random + merge row complete: within 2 of Random on all eight cells); 15:54 A E33 ✅ (P56 ✗: the schedule's cut at layer 14 sits in Lingshu's findings window, −7.2); 15:58 E38 on A; 16:44 B E34 ✅ (selector-seed SD 0.0-1.0 for Random + merge and Random on VScan's schedule); 17:27 A E38 ✅ (P59 ✓: the same token-matched schedule with the cut after the reading window is +1.2 to +8.3 on all four Lingshu cells); 17:30 E39 / E39b on A; 17:39 C E37-Lingshu ✅ (P58 ✗: no mid-depth dip on OmniMedVQA; the dip is a RadImageNet observation); 17:43 D E37-Qwen3-VL ✅ (monotone too; P58 ✗ on both models); 18:30 A E39b ✅ (P61 ✗: the late cut costs Lingshu open anatomy 4.2 — a trade, not a free gain); 18:45 A E39 ✅ (P60 ✗ as registered by 0.2; on Qwen3-VL the cut position does not matter). All seven slots idle at 18:45 | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
+| 7b | **E14** six more published pruners (VisionZip ± gate, HiPrune, CDPruner ± gate, FEATHER, VScan, TransPrune; G19) on the four baseline cells; **E15** RadImageNet open questions (`rin_open`, D5); **E16** SparseVLM raters ablation (D-15) | ✅ DONE Nov 7 18:45 (E14-E39; launch log follows). Nov 7 03:14: C v5 (E15, Lingshu, judged in-session), A v10 (E16, Qwen3-VL then Lingshu); D v1 × 2 E14 smoke ✅ (03:22, 32 runs × 3 questions); 03:24: D v2 × 2 (E14 SLAKE + OmniMedVQA, SLAKE judged in-session), B `medprune-baselines-qwen3vl8b` v3 + `medprune-gpu-qwen3vl8b` v7 (E14 RadImageNet cells) | ≈ 82 (ledger sums: A 22.4, B 21.8, C 12.7, D 25.0) | 0. Planned ≈ 21 at launch (D 14, B 3.3, C 2.4, A 1.2); registered follow-ups E17-E39 added the rest. Nov 7 06:56 A v11 E17 ✅ (1.22 h; P24 ✗, P25 ✓, **CDPruner's released sign +26.5 / +8.1 → reported row**); 07:00 E17b on A + B; 07:09 A E15b ✅ (P23 replicates on Qwen3-VL); 07:12 C E14o-Lingshu ✅ (P27 ✗; TransPrune collapses on open anatomy); 07:30 E19 on C; 08:51 A E14o-Qwen3-VL ✅ (P30 ✗; FEATHER collapses on Qwen3-VL; gate costs coverage selectors 12.6 on region-asking questions); 09:03 E20 on A; 09:04 B E18 ✅ (P26 ✗; **VScan's merge on FastV's keep-set +39.0 / +35.3**, beats Gate+FastV by 21-24); 09:12 E21 on B; 09:15 B E17b-Qwen3-VL ✅ (P28 / P29 Qwen3-VL halves hold); 09:22 E22 on B; 09:22 C E19 ✅ (P31 ✗, P32 ✓, P33 ✓: the ranking's cost ends at K ≈ 10-12 on multiple choice, later on open answers, with BRR unchanged); 09:28 E19b on C; 09:34 A E17b-Lingshu ✅ (P28 ✗, P29 ✗; the gate helps released CDPruner where its BRR > 1); 09:40 E23 on A; 10:14 A E20 ✅ (P34 ✗: a 3% background quota restores +8.1 of Gate+Uniform's −12.6 on region-asking questions but costs multiple choice 4-6); 10:17 E24 on A; 10:21 C E19b ✅ (P39 ✗ as registered, P40 ✓: open answers recover at about half the depth, multiple choice at a third); 10:24 E25 on C; 10:43 A E23 ✅ (P41 ✓, P42 ✗ as registered: merge and a layer-16 cut hold at 5% / 25%; the cut keeps Full at 5%); 10:45 E26 on A; 11:20 D E14-Qwen3-VL SLAKE + OmniMedVQA ✅ (15 / 16; late-LLM-attention methods lead OmniMedVQA +5.5 to +5.9, SLAKE separates nothing); 11:23 E27 on D; 11:25 B E22 ✅ (P38 ✗: the merge brings Lingshu OmniMedVQA to Random, +29.2, but leaves RIN abnormality at the language prior); 11:28 E28 on B; 11:43 D E14-Lingshu SLAKE + OmniMedVQA ✅ (**E14 complete**; consolidated table: every gated coverage selector is safe on all eight cells); 11:48 E29 on D; 12:31 A E24 ✅ (P43 ✗, 12 / 14; **VScan at 5% = Full** with FastV's token count); 12:35 E30 on A; 12:51 B E21 ✅ (P35 ✗, P36 ✓, P37 ✗ as registered: the merge lifts every keep-set on anatomy, Random + merge is the best open-anatomy row; gate and merge compose on Lingshu); 12:55 E31 on B; 12:57 A E26 ✅ 9 / 16 (Lingshu three-seed Random at 5% / 25%: every delta moves ≤ 0.9); 12:59 E26b on A; 13:22 C E25 ✅ (P44 ✗, P45 ✗: the one-third depth was RIN anatomy's; a cut at about half the depth is safe on every anatomy / SLAKE cell, not on findings); 13:26 E32 on C; 13:31 D E27 ✅ 4 / 5 (OmniMedVQA Random seeds: deltas move ≤ 0.5; Qwen3-VL Gate+VisionZip +1.6); 13:35 E27b on D; 13:44 A E30 ✅ (P49 ✓: VScan's multiple-choice lead is its front-loaded schedule — Random's tokens on it +13.9 / +11.7 at 5%); 13:47 E33 on A; 14:15 B E31 ✅ (P50 ✓, P51 ✗: merging a covering keep-set keeps findings near Random — the merge cannot restore a lesion FastV dropped); 14:19 E34 on B; 14:20 B E28 ✅ (P46 ✓: Random + merge +7.3 on Lingshu OmniMedVQA, the best row there); 14:22 E35 on B; 14:23 A E26b ✅ (three-seed Random everywhere at 5% / 25%; Gate+Uniform fails at 5% on both models); 14:28 D E29 ✅ (P48 ✗: the gate adds on top of the merge only where FastV + merge stays below Random); 14:30 C E32 ✅ (P52 ✓, P53 ✗, P54 ✓: findings are read between layers 16 and 20; a cut inside that window is worse than an early one); 14:34 E36 on C; 14:59 D E27b ✅ (P55 ✗: Random + merge +1.5 on Qwen3-VL OmniMedVQA; three Random seeds everywhere); 15:17 C E36 ✅ (P57 ✓: the depth curve for the same tokens is U-shaped — a cut during reading is the worst); 15:20 E37 on C + D; 15:26 B E35 ✅ (Random + merge row complete: within 2 of Random on all eight cells); 15:54 A E33 ✅ (P56 ✗: the schedule's cut at layer 14 sits in Lingshu's findings window, −7.2); 15:58 E38 on A; 16:44 B E34 ✅ (selector-seed SD 0.0-1.0 for Random + merge and Random on VScan's schedule); 17:27 A E38 ✅ (P59 ✓: the same token-matched schedule with the cut after the reading window is +1.2 to +8.3 on all four Lingshu cells); 17:30 E39 / E39b on A; 17:39 C E37-Lingshu ✅ (P58 ✗: no mid-depth dip on OmniMedVQA; the dip is a RadImageNet observation); 17:43 D E37-Qwen3-VL ✅ (monotone too; P58 ✗ on both models); 18:30 A E39b ✅ (P61 ✗: the late cut costs Lingshu open anatomy 4.2 — a trade, not a free gain); 18:45 A E39 ✅ (P60 ✗ as registered by 0.2; on Qwen3-VL the cut position does not matter). All seven slots idle at 18:45 | Nov 7 | G19 closes with vision-encoder methods in the table; CDPruner tests question-awareness without LLM attention; FEATHER tests the RoPE fix on M-RoPE models |
 | 7c | **E40 / E41 the remedy** (`jitter_merge`, `gate_jitter_merge`, `gate_jitter_bgsum`, `pool` at 10% kept; the two gated rows at VScan's budget), both models, five cells; budget audit | ✅ DONE Nov 9 15:28: 60 / 60 runs on six slots, 0 missing verdicts; P62-P66 registered first | ≈ 17.1 | 0 | Nov 9 | **Recipe `gate_jitter_merge`** (nine-cell 65.4; best published at ~10% VisionZip 62.9). At VScan's budget 66.5 vs VScan 65.5: Lingshu 68.4 vs 65.9, Qwen3-VL 64.2 vs 65.1. P63, P64 supported; P62, P65, P66 contradicted |
 | 7d | **E42** size-aware attention (`gate_jitter_merge_pa_eq`) and the read-then-prune schedule (`gate_jitter_merge_sched`) on the recipe at the equal budget, both models, five cells | ✅ DONE Nov 9 22:27. E42a ADOPTED 21:00 (registered rule: +0.91, z 3.62, p 0.0001, halves +1.23 / +0.59, no significant cell loss); E42b fails the loss guard (nine-cell −0.66, p 0.94; open anatomy −6.0 / −4.2 significant). 20 / 20 runs. P67, P69, P70 supported; P68, P71 contradicted | ≈ 8.6 | 0 | Nov 9 | **E42a − VScan +1.53 [SE 0.42] nine-cell (67.3 vs 65.5); Qwen3-VL 65.29 vs 65.11** |
 | 7e | **E43** the size term at 10% (`gate_jitter_merge_pa`), k-means merge clusters + size term (`gate_kmeans_merge_pa_eq`), the schedule routed to single-token answers (`gate_jitter_merge_sched_pa`), held-out `omni_panel` | ✅ DONE Nov 10 04:19 (registered Nov 9 20:40, `b512b3e`). **Final equal-budget row = the route** (dev +1.62 vs E42a +1.23, k-means +1.26); Holm-confirmed on the test half (+1.02 vs reference, +1.82 vs VScan) and `omni_panel` (+0.96 vs VScan); 2B adopted (+1.12; +3.04 vs VisionZip). P72 ✓, P73 ✓, P74 ✗, P75 ✗ | ≈ 9.5 | 0 | Nov 9-10 | Route − VScan, all questions, seed 0: +1.94 (SE 0.41); 67.71 vs 65.53 (Full 70.27) |
 | 7f | **E44** seed 1 of the adopted E42a row (nine cells) + Lingshu held-out `omni_panel` | ✅ DONE Nov 10 01:06 (registered Nov 9 23:23, `70cd2c7`). P76 ✓ (seed 1 − VScan +1.17), P77 ✗ (Qwen3-VL two-seed 65.01 vs VScan 65.11: a tie); E44h ran VScan only (`omni_panel` Lingshu 85.6, Full 86.3), E42a's row moved to C (E44h2) | ≈ 4.4 | ≈ 0.3 (E44h2) | Nov 9-10 | **Two-seed headline: E42a − VScan +1.35 nine-cell (SE 0.40, p 0.0004); Lingshu +2.5, Qwen3-VL −0.1** |
 | 7g | **E45** seeds 1-2 of the final route row (single-token branch seeds 1-2 on its five cells, generated branch seed 2 on SLAKE + open anatomy) | ✅ DONE Nov 10 06:14 (registered 04:22, `44e0a6f`); 14 runs. P79 ✓, P80 ✓ | ≈ 4.8 | 0 | Nov 10 | **Three-seed headline: route − VScan +1.79 (SE 0.39), Lingshu +3.0, Qwen3-VL +0.3; 67.6 vs 65.5 (Full 70.3)** |
 | 7h | **E46** background summary + size term (`gate_jitter_bgsum_pa_eq`), SLIC clusters + size term (`gate_slic_merge_pa_eq`) | ✅ DONE Nov 10 07:40 (registered 05:25, `710a24a`). Pilot: BG-PA fails its gates (no full run); SLIC-PA passes. SLIC full nine cells − E42a −0.06 (SE 0.40, p 0.56) → not adopted. P81 ✗, P82 ✗ | ≈ 4.4 | 0 | Nov 10 | Neither piece joins the final row; SLIC − VScan +1.47 (a valid but not better row) |
-| 8 | Analysis and writing | ⏳ LATER | 0 | 0 | Nov 6–23 | **Paper Nov 16 AoE**, supplementary Nov 23 AoE |
+| 8 | Analysis and writing | 🔄 CURRENT (Nov 10: every registered run complete, E0-E46; no paper draft in the repo yet) | 0 | ≈ 0.3 (final-row latency, T11, before the Nov 12 freeze) | Nov 10–23 | OpenReview enrollment **Nov 11, 17:29 IST**; **paper Nov 16 AoE** (Nov 17, 17:29 IST); supplementary Nov 23 AoE; tasks T7, T11-T14 (§F4) |
 
-**Nov 7, 03:20:** E14–E16 launched (Stage 7b): ≈ 21 GPU-h planned, within every account's free hours (C 2.8 h left
-before v5 by the user's count, A 1.4, B 5.0, D 30). **Totals (Nov 5, 07:40):** spent 72.8 GPU-h (A 28.58, B 25.02, C 19.21) · running 0 · free this week ≈ 9.0
-(A 1.4, B 5.0, C 2.6) + D 30 (bundle built; GPU unused). Every registered run is complete. Earlier estimate (measured rates, §C4): **≈ 61
-GPU-h for the whole project** (48 before Nov 3 evening; the added hours are the diagnostic controls of §A9 — E6 on both
-models before the grid, E10, E11, Random seeds — and E12, the layer profile and text readout of §A10, 1.0 + 0.9). The
-judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
+**Totals (Nov 10, 16:00 IST):** ≈ 204 GPU-h over Stages 3-7h (sum of the Spent column: 72.8 to Nov 5, E14-E39 ≈ 82, E40-E46 ≈ 49) · running 0 · all twelve slots (A-F × 2) idle. The per-session sums in the ledger approximate Kaggle's quota page, which rules where they differ (D's sums exceed its 30 h weekly quota: they overcount or span a quota reset). The Nov 3 whole-project estimate was ≈ 61 GPU-h; the method experiments (E40-E46) and the E14-E39 follow-ups account for the difference. At the Nov 3 T4-to-A100 ratio (≈ 4×, Part E) the same work would be ≈ 50 A100 hours.
 
 **Compute ledger (Kaggle T4×2 hours)**
 
@@ -50,14 +45,12 @@ judge moved from B to C. On an A100 (Part E): ≈ 14–16 h.
 |---|---|---|---|---|---|---|
 | A — Lingshu | `pushkararora88` | 30 | week of Oct 31: 29.70 (E0 0.19, E1 2.92, repairs 0.44, E1g 1.32, session 1 9.46, E13 4.74 + smoke ≈ 0.08, session 2 9.43, v10 E16 1.12). **Week of Nov 7:** v11 E17 1.22, baselines v3 E15b 1.43, baselines v4 E14o-Qwen3-VL 1.65, gpu v12 E17b 2.49, baselines v5 E20 1.18, gpu v13 E23 1.04, baselines v6 E24 2.20, gpu v14 E26 2.14, baselines v7 E30 1.11, gpu v15 E26b 1.35, baselines v8 E33 2.11, baselines v9 E38 1.20, baselines v10 E39b 0.98, gpu v16 E39 1.21, baselines v11 E40r + E41r ≈ 2.5, gpu v17 E40 ≈ 3.3 , baselines v12 E42r ≈ 1.0, gpu v18 E42b ≈ 2.1, gpu v19 E44 ≈ 1.5 | — | — | Kaggle-reported ≈ 2 h before v19 (Nov 9 23:00), ≈ 0.5 now (both slots idle) |
 | B — Qwen3-VL | `pushkararora` | 30 | week of Oct 31: 28.37 (E0 0.20, Qwen K-block 1.73, E1g 1.24, session 1 9.76, E13 4.34 + smoke ≈ 0.07, session 2 6.30, v6 DivPrune 1.38, E14 Qwen3-VL RIN 1.50, E14 Lingshu RIN 1.85). **Week of Nov 7:** baselines v4 E18 3.27, gpu v8 E17b 2.18, gpu v9 E22 2.08, baselines v5 E21 3.70, baselines v6 E31 1.30, gpu v10 E28 2.82, gpu v11 E35 0.86, baselines v7 E34 2.26, gpu v12 E40r + E41r + E41b ≈ 2.9, baselines v8 E40 + E41 ≈ 3.3, gpu v13 E42r ≈ 0.8, baselines v9 E42b ≈ 1.1, baselines v10 + gpu v14 E42a ≈ 2.4 , baselines v11 E44 ≈ 1.7, gpu v15 E44h ≈ 0.9 | — | — | Kaggle-reported ≈ 3 h before E44 (Nov 9 23:00), ≈ 0.4 now (both slots idle); the running sums above undercount, Kaggle's figure rules |
-| C — supplementary | `pushkarsiuuarora` | 21.8 | week of Oct 31: 21.01 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.84; Lingshu v4 2.71; v5 E15 1.80). **Week of Nov 7:** v6 E14o 1.50, v7 E19 2.05, v8 E19b 0.88, v9 E25 2.91, v10 E32 1.04, v11 E36 0.46, v12 E37 2.04, v13 E41 + E40 ≈ 3.1 , v14 E42a fallback (cancelled / finished), v15 E43r ≈ 2.3, v17 E44h2 ≈ 0.5, v18 E45r ≈ 1.2 | v19 E46pr (pilot, since 05:42) | — | Kaggle-reported 15 h 51 m available of 30 (Nov 9 23:00) |
-| D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | bundle 0.35 h CPU (Nov 5); **week of Nov 7:** v1 × 2 E14 smoke ≈ 0.6, `medprune-gpu-qwen3vl8b` v2 E14 7.90, `medprune-gpu-lingshu7b` v2 E14 8.30, `medprune-gpu-qwen3vl8b` v3 E27 2.08, `medprune-gpu-lingshu7b` v3 E29 2.62, `medprune-gpu-qwen3vl8b` v4 E27b 1.39, `medprune-gpu-lingshu7b` v4 E37 2.11, `medprune-gpu-lingshu7b` v5 E40 ≈ 2.0 = 27.0 ; E42 v6 / v5 (duplicates, cancelled in the UI; v5 hung ≈ 3 h) , v8 / v7 E43 ≈ 3.7 / 4.2 | v9 / v8 E45 (seeds, since 04:23) | — | Kaggle-reported 18 h 56 m available of 30 (Nov 9 23:00); the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
+| C — supplementary | `pushkarsiuuarora` | 21.8 | week of Oct 31: 21.01 (E7/E10/E11 6.14; HuatuoGPT E0 0.23, E8 SLAKE 3.34, E8r 2.70; E6-P2 1.93 + 1.29; judge passes 1–8 0.84; Lingshu v4 2.71; v5 E15 1.80). **Week of Nov 7:** v6 E14o 1.50, v7 E19 2.05, v8 E19b 0.88, v9 E25 2.91, v10 E32 1.04, v11 E36 0.46, v12 E37 2.04, v13 E41 + E40 ≈ 3.1 , v14 E42a fallback (cancelled / finished), v15 E43r ≈ 2.3, v17 E44h2 ≈ 0.5, v18 E45r ≈ 1.2, v19 E46pr (pilot) + E46fr (full) ≈ 1.8 | — | — | Kaggle-reported 15 h 51 m available of 30 (Nov 9 23:00) |
+| D — 4th account (added Nov 5) | token via `KAGGLE_API_TOKEN` for one command; never stored | 30 | bundle 0.35 h CPU (Nov 5); **week of Nov 7:** v1 × 2 E14 smoke ≈ 0.6, `medprune-gpu-qwen3vl8b` v2 E14 7.90, `medprune-gpu-lingshu7b` v2 E14 8.30, `medprune-gpu-qwen3vl8b` v3 E27 2.08, `medprune-gpu-lingshu7b` v3 E29 2.62, `medprune-gpu-qwen3vl8b` v4 E27b 1.39, `medprune-gpu-lingshu7b` v4 E37 2.11, `medprune-gpu-lingshu7b` v5 E40 ≈ 2.0 = 27.0 ; E42 v6 / v5 (duplicates, cancelled in the UI; v5 hung ≈ 3 h) , v8 / v7 E43 ≈ 3.7 / 4.2, v9 / v8 E45 ≈ 3.6 (both slots) | — | — | Kaggle-reported 18 h 56 m available of 30 (Nov 9 23:00); the `cvpr` secret is not attached to D's GPU notebooks (created Nov 7 by API), so D runs no RadImageNet cell |
 | E — 5th account (added Nov 10) | `abdmohammad41523`; token read inline from a local file for one command, never stored | 30 | `medprune-00-build-data-bundle` v1 (CPU, 05:38-05:56); GPU `medprune-gpu-lingshu7b` v1 + `medprune-gpu-qwen3vl8b` v1 E46f ≈ 1.6 | — | — | full; GPU notebooks get the `cvpr` secret when attached in the UI |
-| F — 6th account (added Nov 10) | `abdullah4152`; token read inline from a local file for one command, never stored | 30 | `medprune-00-build-data-bundle` v1 (CPU, 05:27-05:49) | `medprune-gpu-lingshu7b` v1 + `medprune-gpu-qwen3vl8b` v1 E46p (since 05:50) | — | full; GPU notebooks get the `cvpr` secret when attached in the UI |
+| F — 6th account (added Nov 10) | `abdullah4152`; token read inline from a local file for one command, never stored | 30 | `medprune-00-build-data-bundle` v1 (CPU, 05:27-05:49); GPU `medprune-gpu-lingshu7b` v1 + `medprune-gpu-qwen3vl8b` v1 E46p ≈ 1.0 | — | — | full; GPU notebooks get the `cvpr` secret when attached in the UI |
 
-Slack ≈ 20 GPU-h. E12 (D1 layer profile, D2 `fastv_text`) is now scheduled in A/B session 2. Next uses of slack:
-RadImageNet open questions (`rin_open`, MedSTP's strongest column, scored by the judge). HuatuoGPT P2 blocks (incl.
-its layer profile, the 1D-RoPE case) are done. Restore datasets for the A/B sessions:
+Remaining GPU work before the Nov 12 freeze: the final rows' wall-clock latency (≈ 0.3 GPU-h, T11); after the freeze GPU time only re-runs cells that fail their checks. Restore datasets for the A/B sessions:
 `medprune-restore-<model>` (private, one per account; run files + static maps, `RESTORE_FROM = "auto"`).
 
 Deadlines (CVPR 2027 CFP ✓): paper enrollment **Nov 10, 23:59 AoE = Nov 11, 17:29 IST**; submission **Nov 16 AoE =
@@ -91,6 +84,14 @@ Lingshu. Background capture is real but is only one of two regimes: on SLAKE, Fa
 it fails where the prior lands on acquisition background (CT/MRI) and where the budget is too small for a fixed prior to
 cover the content (64-token inputs). E10 (resolution), E11 (flip, bottom-k) and E7 (photographs) test which half is
 domain-specific.
+
+*Revision 2026-11-10 (E14-E46; the Nov 10 section of `status_2026-11-07.md`).* The thesis that reaches the paper:
+early-layer attention pruning applies a question-blind, partly positional prior; on medical scans that prior lands on
+background and on a fixed region, so coverage, not ranking, carries accuracy (E14: every gated coverage selector is safe
+on all eight baseline cells; E19: the ranking's cost ends at K ≈ 10-12 on multiple choice). The remedy follows from the
+diagnosis and reads no attention scores: gate → Hilbert coverage → foreground merge → + log s size term → schedule
+routed to one-token instructions (§A5 addendum). It beats VScan at equal tokens per layer (+1.79 nine-cell, SE 0.39,
+three seeds) and VisionZip at 10% kept (+3.04, SE 0.46). MedSTP's comparison is in §A3.1.
 
 ## A2. Claims and required evidence
 
@@ -131,6 +132,16 @@ gate-recoverable) and above all RadImageNet (−41 / −34), which 64-token inpu
 −16.3 / −0.5; photographs at 224²: −10.7 / −2.7). C3 gains two interventions: flipping SLAKE images leaves Lingshu's
 keep-set in place (positional), and Lingshu's least-attended 10% beats its most-attended 10% by 6.2 points.
 
+*Nov 10 (final, E0-E46).* **C1** holds on both models and all three medical benchmarks at 10% (FastV − Random, Lingshu /
+Qwen3-VL: RIN anatomy −41.2 / −33.7, OmniMedVQA anatomy −29.4 / −4.3; Lingshu SLAKE −12.6), stated for medical VQA only
+(E7 is a supplementary scope note). **C2** as worded is not supported (P9 ✗: no modality dose-response); it becomes the
+two regimes. **C3** rests on interventions: flip (positional on Lingshu), bottom-k (least- beats most-attended, +6.2
+SLAKE, +40.0 RIN), a static position map ≈ FastV on RIN, the inverse gate beats FastV (P12 ✗), `artifact_excl` = FastV
+(P5), the K-sweep (K = 16 beats Random at 61% / 50% of the tokens per layer). **C4** is now the method: +1.79 vs VScan
+at equal tokens per layer, +3.04 vs VisionZip at 10% kept, claimed on the nine-cell mean (three cells carry it; status
+file FLAG 1); its latency is unmeasured (T11). **C5**: balanced accuracy changes one conclusion (Lingshu RIN abnormality
+"above Full" is a yes-rate shift, G10).
+
 ## A3. Prior work and our delta
 
 | Work | Venue | Established | Medical | Open (our delta) |
@@ -147,6 +158,60 @@ keep-set in place (positional), and Lingshu's least-attended 10% beats its most-
 | EasyLens | arXiv 2606.06379 | Subtle-lesion feature amplification | Yes | No pruning |
 
 CVPR 2027 rule ✓: work online after **Sept 15, 2026** is contemporaneous — MedSTP must be cited and discussed, not beaten.
+
+### A3.1 MedSTP: its numbers and how we compare (Nov 10)
+
+**Protocol (arXiv 2610.22751, HTML version; its FastV / Random rows equal our Nov 2 copy).** 10% of visual tokens kept,
+every method pruned before the LLM; Lingshu-7B and Qwen3-VL-8B. Baselines: Random, BTP, FastV, SparseVLM, VisPruner,
+HRViT, PruneSID (no VisionZip, DivPrune or VScan; no other budget). SLAKE 2,394 questions (English + Chinese);
+OmniMedVQA 3,329; RadImageNet 1,000 closed (anatomy MC) + open, the open answers scored as the mean of two judges'
+rubric scores (Selene, Phi-4). Efficiency: prefill 1.61×, end-to-end 1.07×. Code release: not checked.
+
+**Their table (accuracy %, Lingshu / Qwen3-VL).**
+
+| Method | OmniMedVQA | SLAKE | RIN closed | RIN open (judge score) |
+|---|---|---|---|---|
+| Full | 80.62 / 68.16 | 83.92 / 80.08 | 89.40 / 89.70 | 70.25 / 73.65 |
+| Random | 38.69 / 49.92 | 56.93 / 49.25 | 55.59 / 64.32 | 43.05 / 47.05 |
+| BTP | 48.69 / 55.93 | 75.23 / 76.48 | 70.40 / 86.20 | 48.75 / 68.75 |
+| FastV | 32.26 / 51.49 | 55.01 / 66.92 | 37.50 / 52.10 | 28.70 / 37.70 |
+| SparseVLM | 33.07 / 52.72 | 55.64 / 73.22 | 38.30 / 78.40 | 28.20 / 55.30 |
+| VisPruner | 56.65 / 54.85 | 68.38 / 76.78 | 68.90 / 81.70 | 47.95 / 64.55 |
+| HRViT | 52.96 / 53.44 | 60.61 / 73.02 | 69.80 / 81.40 | 48.30 / 64.85 |
+| PruneSID | 67.26 / 53.89 | 74.31 / 75.61 | 79.00 / 86.30 | 58.40 / 70.80 |
+| **MedSTP** | **70.83 / 58.82** | **76.78 / 78.45** | **82.50 / 87.90** | **63.60 / 72.05** |
+
+**Where the protocols align (recomputed from our run files, Nov 10).**
+- OmniMedVQA anatomy and RIN anatomy MC: same question counts, Full within 1.6 points (ours 82.2 / 69.3 and 89.0 /
+  89.7), same budget rule as our 10% row. FastV, BTP, PruneSID and SparseVLM reproduce on RIN anatomy (ours FastV 38.1,
+  BTP 70.0, PruneSID 77.3 / 85.9, SparseVLM 35.0 / 84.7).
+- Not aligned: **SLAKE** (Full 80.2 / 66.0 vs 83.9 / 80.1: a different set and prompts; the 14-point Qwen3-VL gap rules
+  out any SLAKE comparison) and **RIN open** (rubric score vs our correct / incorrect verdicts; Full 70.3 vs 56.6).
+- Unexplained divergences in their pipeline: Random (RIN anatomy, Lingshu 55.6 vs our pre-LLM Random 79.2; OmniMedVQA
+  38.7 vs 67.9) and VisPruner on Lingshu (OmniMedVQA 56.7 vs 68.4). Their pipeline is not uniformly harsher than ours.
+
+**Our 10% row (2B, `gate_jitter_merge_pa`) vs MedSTP, raw, aligned cells only:** OmniMedVQA 78.3 vs 70.8 / 61.9 vs 58.8;
+RIN anatomy 86.4 vs 82.5 / 88.3 vs 87.9. Not reportable as a win: different pipelines.
+
+**Bridge (each method − a shared baseline, inside its own pipeline; ours / MedSTP's):**
+
+| Cell | 2B − PruneSID | MedSTP − PruneSID | 2B − BTP | MedSTP − BTP |
+|---|---|---|---|---|
+| Lingshu OmniMedVQA | +6.8 | +3.6 | +16.8 | +22.1 |
+| Qwen3-VL OmniMedVQA | +5.1 | +4.9 | +5.7 | +2.9 |
+| Lingshu RIN anatomy | +9.1 | +3.5 | +16.4 | +12.1 |
+| Qwen3-VL RIN anatomy | +2.4 | +1.6 | +3.5 | +1.7 |
+| Lingshu SLAKE (not aligned) | +2.8 | +2.5 | +7.1 | +1.6 |
+| Qwen3-VL SLAKE (not aligned) | −0.9 | +2.8 | +1.3 | +2.0 |
+
+Our gain over PruneSID is the larger one on all four aligned cells; the two Qwen3-VL margins (+0.2, +0.8) are inside
+the noise (single-seed baseline rows; SE of a difference ≈ 1.5-2). Over BTP, Lingshu OmniMedVQA goes the other way.
+
+**Rule for the paper.** Table 1 carries MedSTP's published numbers as a separate grey block, never mixed with our rows;
+the text states the bridge on the two aligned benchmarks and why SLAKE and RIN open are not comparable (the Full-model
+gaps above). Allowed claim: "on the two benchmarks where the protocols align, our 10% pruner gains more over PruneSID
+than MedSTP reports, on both models". Not allowed: "we beat MedSTP". MedSTP's own table also supports the diagnosis
+(FastV below Random in 5 of 8 cells). A head-to-head needs MedSTP inside our harness (T14).
 
 ## A4. Mechanism and hypotheses
 
@@ -198,6 +263,11 @@ Uniform) or max–min diversity (Gate+DivPrune) among g_i = 1. **Budget fairness
 tokens. **Variants:** Gate-score (selection only; causal test of H1); Gate-input (drop background before the LLM; free
 compression; latency only). Cost < 5 ms per 512² image, no parameters. Ablations: τ ∈ {0.25, 0.5, 0.75}; background
 quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background only) as lower bound.
+
+*Addendum 2026-11-10.* The gate is step 1 of the final method. Steps 2-5 (Hilbert coverage, foreground merge, + log s
+size term, schedule routed to one-token instructions) and every adoption decision are on the E40-E46 cards (Stages
+7c-7h) and in diagnostics.md §6.2. Background tokens stay discarded: a background summary token, with or without the
+size term, does not help (E40-E43, E46).
 
 ## A6. Pre-registered predictions (frozen 2026-11-02) and decision rules
 
@@ -251,6 +321,8 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 - **Table 3** 2×2 factorial; K-sweep; DivPrune/PDrop ± gate; τ, quota.
 - **Table 4** Tokens into the LLM, prefill TFLOPs, measured latency.
 
+*Nov 10:* Table 1 rows = Full, Random, FastV, the published pruners at their own budget rules, and our two final rows (2B at 10% kept; the route at VScan's tokens per layer), seeds averaged; Lingshu RIN abnormality in balanced accuracy, Qwen3-VL's abnormality cell left out as a language-prior cell. MedSTP: grey block + the bridge of §A3.1 (T12). Table 4 needs the final rows' FLOPs and latency (T11).
+
 ## A8. Risks
 
 | Risk | Mitigation |
@@ -258,12 +330,12 @@ quota 0/3%; oracle gate (SLAKE masks) as upper bound; inverse gate (background o
 | Standard in-LLM FastV not below random (MedSTP pruned pre-LLM) | E1 runs both insertion points; K1 |
 | fp16 overflow on T4 | Day-1 check; vision fp32; 8-bit fallback (2–3× slower) |
 | Throughput half of plan | P0 = 39 h fits; cut Random seeds off S1; A100 (Part E) |
-| Full accuracy ≠ MedSTP's | MedEvalKit prompts/scoring; self-contained tables; MedSTP only as reference |
+| Full accuracy ≠ MedSTP's | MedEvalKit prompts/scoring; self-contained tables; MedSTP only as reference. Measured Nov 10: OmniMedVQA and RIN anatomy within 1.6 points; SLAKE −3.7 / −14.1 (§A3.1) |
 | "Fix is trivial" / "bias is known" | Minimal causal intervention; FEATHER/PoRe as baselines; factorial |
 | "Medical only" | Natural control + dose-response = statement about structured backgrounds |
 | SLAKE has 96 test images | Image-clustered bootstrap; RadImageNet (1,000 images) and panel carry statistics |
 | RadImageNet license forbids redistribution | Per-account download; aggregates only |
-| Public repo before submission | Keep the GitHub repo **private** until the paper is submitted (scooping, double-blind) |
+| Public repo before submission | Keep the GitHub repo **private** until the paper is submitted (scooping, double-blind). **[FLAG] Nov 10: `gh repo view` reports `pushkar1887/cvpr` PUBLIC**; the visibility switch is the user's |
 
 ## A9. Gap register — reviewer objections → tests (opened 2026-11-03)
 
@@ -277,24 +349,26 @@ Status column as results land; numbers come from the Work log (Nov 3, "Offline d
 | G3 | "The top rows are just uninformative content" | Same positions across images (cross-image Jaccard 0.77 / 0.47 on RIN) | E11/E11r: same images upside down — a keep-set that stays in place is positional; `static_map` (E6) | **E11 read**: on flipped SLAKE, FastV keeps the same grid positions (Jaccard 0.64 Lingshu, 0.36 Qwen3-VL) rather than the moved content (0.13 / 0.20; random 0.05) → Lingshu positional, Qwen3-VL mixed. **E11r (Nov 5)**: on flipped RIN the collapse stays (FastV − Random −33.6 Lingshu, −28.3 Qwen3-VL) | P0 |
 | G4 | "Attention is noisy but informative on average" | Within Random's draws, +1 SD of kept-token attention rank → −0.14 to −0.35 log-odds for Lingshu (p < 0.05 in 4/6 cells); ≈ 0 for Qwen3-VL | `fastv_bottom` (keep the least-attended tokens; E11/E11r); re-fit with Random seeds 1–2 (E6) | **E11 read**: on SLAKE, bottom-10% − top-10% = **+6.2 [+2.5, +10.1] Lingshu** (attention ranks useful tokens last) and −4.2 [−7.2, −1.4] Qwen3-VL (weakly informative); both below Random (−6.4 / −6.6). **E11r (RIN, Nov 5)**: least- minus most-attended **+40.0** [+36.2, +43.7] Lingshu, +29.9 Qwen3-VL; least-attended − Random −1.7 (n.s.) / −3.8 → on RIN early attention ranks the useful tokens last | P0 |
 | G5 | "FastV is text-guided; you test the wrong questions" | Keep-sets of different questions about one SLAKE image overlap 0.978 [0.974, 0.982] (Lingshu) / 0.820 [0.805, 0.836] (Qwen3-VL), Random 0.054; the question explains 0.3% / 3.1% of the variance of layer-1 token ranks (exact grid positions: position 40% / 27%, image 59% / 70%; layer 15: question 23% / 3.5%) — and ≤ 1.2% on photographs too, so question-blindness is general, not medical; the scoring token is a fixed template token | Report as a finding; the layer profile (D1) shows where question dependence starts, per readout | Analysis done | P0 |
-| G6 | "Two Qwen-family models with M-RoPE" | — | HuatuoGPT-Vision-7B (LLaVA, 1D RoPE, fixed 576 tokens; also a token-count control for RIN) on K | **E8 SLAKE read**: FastV − Random −0.6 [−2.7, +1.4] (closed +2.6, n.s.) — the failure is **not universal**; RoPE-free − Random +3.1 [+1.1, +5.0] (closed +7.5), Gate+FastV +2.5; least- minus most-attended −10.7 (attention informative). FastV keeps 77% of its tokens in the bottom quarter of rows (P4 for HuatuoGPT: 3.1× uniform) and RoPE removal halves the positional share (52% → 23%): in 1D-RoPE LLaVA the prior *is* rotary (FEATHER), in M-RoPE Qwen models it is not (G18). Open answers wait for judge pass 3. E8r (RIN) needs C's `cvpr` secret | P1 |
+| G6 | "Two Qwen-family models with M-RoPE" | — | HuatuoGPT-Vision-7B (LLaVA, 1D RoPE, fixed 576 tokens; also a token-count control for RIN) on K | **E8 SLAKE read**: FastV − Random −0.6 [−2.7, +1.4] (closed +2.6, n.s.) — the failure is **not universal**; RoPE-free − Random +3.1 [+1.1, +5.0] (closed +7.5), Gate+FastV +2.5; least- minus most-attended −10.7 (attention informative). FastV keeps 77% of its tokens in the bottom quarter of rows (P4 for HuatuoGPT: 3.1× uniform) and RoPE removal halves the positional share (52% → 23%): in 1D-RoPE LLaVA the prior *is* rotary (FEATHER), in M-RoPE Qwen models it is not (G18). Open answers wait for judge pass 3. E8r (RIN) done Nov 4 (Stage 7). **Closed** | P1 |
 | G7 | "10% is an extreme budget" | — | E5 (5/25/50%) | **Read (Nov 5)**: Lingshu RIN FastV − Random −39.8 / −41.7 / −43.9 at 5 / 10 / 25%, FastV@50% − Full −5.0; SLAKE −12.4 / −13.4 / −6.2, @50% − Full −1.4. Qwen3-VL RIN −32.2 / −33.7 / −15.9. The failure holds to 25% | P0 |
-| G8 | "Score at a deeper layer and it works" | Offline: top-10% by layer-7/15 attention is still image-independent on RIN (cross-image Jaccard 0.62 / 0.38) and background-heavy (BRR 2.6 / 2.0, Lingshu) | `fastv_k8`, `fastv_k16` (E6) | Running | P0 |
-| G9 | "Open-answer scoring is unfair to Qwen3-VL" | Synonyms ("axial" vs "Transverse Plane"); Qwen3-VL SLAKE Full 58.2 | Local LLM judge on saved responses (Qwen2.5-7B-Instruct, one-token Yes/No verdict), validated against 200 blind hand labels (population-weighted κ) | Pass 1 (v2 prompt, 2,141 answers, 0.1 GPU-h) exposed two failure modes — it overruled the reference with its own knowledge (16 of 364 exact matches rejected, e.g. "largest organ? Liver" → No) and accepted partial/refusing answers (text-only open accuracy 11% → 25%). Fixed in v3 (`d9d678c`): explicit rubric + scorer = exact match OR judge; v3 pass over all 2,855 answers queued on C; labelling sheet after it. Preliminary (v2): Qwen3-VL SLAKE-open FastV − Random flips from +0.8 (rule) to −3.4 [−6.4, −0.8]; Lingshu unchanged (−11.5 / −11.6). Rule fixed now: rule OR judge becomes primary iff its κ with the hand labels ≥ 0.8 and > κ(rule, human) | P0 |
-| G10 | "Yes/no accuracy on an imbalanced set" | RIN abnormality is 71.9% yes | Report the majority baseline and balanced accuracy for every yes/no cell | Analysis task | P0 |
-| G11 | "Coverage explains it; nothing new" | Selector-level coverage correlates with accuracy (r −0.91 to −0.99) but per question it explains 0–46% of FastV's penalty (logistic mediation) | Report both; DivPrune (max coverage) in E6 | Analysis done; E6 running | P1 |
-| G12 | "The gate removes informative tokens" / "background is not empty" | Gate = 100% of SLAKE CT/MRI; 889/1000 RIN questions gated | `inverse_gate` (background only) should sit near text-only; `oracle_gate` (SLAKE organ masks) | E6 running | P1 |
+| G8 | "Score at a deeper layer and it works" | Offline: top-10% by layer-7/15 attention is still image-independent on RIN (cross-image Jaccard 0.62 / 0.38) and background-heavy (BRR 2.6 / 2.0, Lingshu) | `fastv_k8`, `fastv_k16` (E6) | **Closed (Nov 4-5)**: K = 8 is as bad as K = 2 (Lingshu RIN −43.9 vs −41.7); K = 16 beats Random (+8.5 RIN, +6.9 SLAKE; Qwen3-VL +5.6 / +0.9) but at 61% / 50% of the tokens per layer (budget audit, Nov 9); E19: the ranking's cost ends at K ≈ 10-12 on multiple choice | P0 |
+| G9 | "Open-answer scoring is unfair to Qwen3-VL" | Synonyms ("axial" vs "Transverse Plane"); Qwen3-VL SLAKE Full 58.2 | Local LLM judge on saved responses (Qwen2.5-7B-Instruct, one-token Yes/No verdict), validated against 200 blind hand labels (population-weighted κ) | Pass 1 (v2 prompt, 2,141 answers, 0.1 GPU-h) exposed two failure modes — it overruled the reference with its own knowledge (16 of 364 exact matches rejected, e.g. "largest organ? Liver" → No) and accepted partial/refusing answers (text-only open accuracy 11% → 25%). Fixed in v3 (`d9d678c`): explicit rubric + scorer = exact match OR judge; v3 pass over all 2,855 answers queued on C; labelling sheet after it. Preliminary (v2): Qwen3-VL SLAKE-open FastV − Random flips from +0.8 (rule) to −3.4 [−6.4, −0.8]; Lingshu unchanged (−11.5 / −11.6). Rule fixed now: rule OR judge becomes primary iff its κ with the hand labels ≥ 0.8 and > κ(rule, human). **Closed (Nov 5)**: κ 0.81 as registered, 0.90 with the rubric guard, against Codex's labels (AI labels, not human); rule OR judge is primary | P0 |
+| G10 | "Yes/no accuracy on an imbalanced set" | RIN abnormality is 71.9% yes | Report the majority baseline and balanced accuracy for every yes/no cell | **Closed (Nov 10)**: Lingshu RIN abnormality is reported in balanced accuracy (Full 58.6); Qwen3-VL's abnormality cell is left out (every row 71-72 raw, 51-54 balanced: the language prior) | P0 |
+| G11 | "Coverage explains it; nothing new" | Selector-level coverage correlates with accuracy (r −0.91 to −0.99) but per question it explains 0–46% of FastV's penalty (logistic mediation) | Report both; DivPrune (max coverage) in E6 | **Closed**: E6, E13, E14 done; every gated coverage selector is safe on all eight cells, and coverage is step 2 of the method | P1 |
+| G12 | "The gate removes informative tokens" / "background is not empty" | Gate = 100% of SLAKE CT/MRI; 889/1000 RIN questions gated | `inverse_gate` (background only) should sit near text-only; `oracle_gate` (SLAKE organ masks) | **Closed**: the inverse gate beats FastV (P12 ✗; background tokens are not empty for the LLM); oracle gate = heuristic gate on SLAKE (−0.9, n.s.); a background summary token does not help either (E46) | P1 |
 | G13 | "Post-hoc analyses" | Predictions frozen Nov 2 (§A6); E10/E11/G-tests added Nov 3 after seeing E1/E1g | Label E10, E11 and the offline diagnostics *exploratory* in the paper; list every deviation (gate revision, scoring, RIN builder) | Writing | P0 |
 | G14 | "How blind is a pruned model?" | FastV's answer equals the text-only answer for 33% of RIN questions (Random 22%); FastV keeps 26% of the image's contribution, Random 86% | Report retained visual gain (acc − text-only) / (Full − text-only) for every cell | Analysis done | P0 |
 | G15 | "Contamination" | Lingshu was trained on SLAKE-style data | Paired comparisons only; limitation paragraph | Writing | P2 |
 | G16 | "Show me FastV misses the evidence, not just 'background'" | SLAKE organ masks, 358 / 364 questions naming an annotated structure: FastV keeps it at 0.84× [0.57, 1.11] / 0.61× [0.43, 0.80] chance (Random 1.00 / 1.05; Gate+FastV 2.81 / 1.68); large organs 0.20× / 0.23×, dropped entirely in 58% / 71% of questions (Random 13% / 11%); small structures 1.46× / 0.88×; FastV − Random −16.8 [−25.2, −7.1] on large organs vs −2.5 on small (Lingshu) | `oracle_gate` (E6-P1); within-question test of "evidence kept → correct" with Random seeds 0–2 (conditional logit, D4) | **`oracle_gate` read (Nov 5, judge)**: it keeps the named structure at 4.89× chance (hit 100%). On the 358 questions naming a structure, Oracle − Random +5.3 [+2.0, +8.9] (p 0.003); on the other 703, −3.6 [−6.9, −0.3] (p 0.033); net −0.6 (n.s.). **[FLAG] FastV loses more where no structure is named** (−16.4 [−20.2, −12.5] vs −7.5 [−11.4, −3.8]): missed evidence is a real but minor part of the loss, so G16 cannot be the headline mechanism. D4 still open | P0 |
-| G17 | "This is the visual attention sink (Kang et al., ICLR 2025), already known" | Spearman(layer-1 score, layer-1 input norm) 0.32 / 0.44 Lingshu (RIN / SLAKE), ≈ 0 / 0.16 Qwen3-VL; FastV's top-10% overlaps the top-10% by norm at 2.3–3.9× chance; ViT-norm outliers selected 2.6–5.1× (P5) → a partial mechanism for Lingshu, not for Qwen3-VL | `artifact_excl` (E6, running); sink-dimension count per token in the layer profile (D1); cite and contrast | Partial | P1 |
+| G17 | "This is the visual attention sink (Kang et al., ICLR 2025), already known" | Spearman(layer-1 score, layer-1 input norm) 0.32 / 0.44 Lingshu (RIN / SLAKE), ≈ 0 / 0.16 Qwen3-VL; FastV's top-10% overlaps the top-10% by norm at 2.3–3.9× chance; ViT-norm outliers selected 2.6–5.1× (P5) → a partial mechanism for Lingshu, not for Qwen3-VL | `artifact_excl` (E6: FastV unchanged, P5); sink-dimension count per token in the layer profile (D1); cite and contrast | Partial: sinks are not the cause of FastV's loss (`artifact_excl`), but they are why a mean background token cannot stand in for the background (E46 BG-PA) | P1 |
 | G18 | "FEATHER already explained early-layer bias by RoPE" | RoPE-free scores give the same positional variance share as RoPE scores (RIN: 69% vs 69% Lingshu, 47% vs 51% Qwen3-VL) and keep-set overlap 0.94 / 0.77 → in M-RoPE models the positional prior sits in the visual keys | HuatuoGPT (1D RoPE, E8) as the FEATHER-like case; D1 per layer | Analysis done | P0 |
-| G19 | "Only FastV; the title says attention-guided pruning" | — | PDrop ± gate (E6-P2), `fastv_k8/k16`, `fastv_text` (D2); scope the title to early-layer LLM attention unless a ViT-side method (VisionZip-style) is added | **E14 running (Nov 7)**: VisionZip and HiPrune (vision-encoder attention), CDPruner (instruction-conditioned DPP, no LLM attention), FEATHER, VScan, TransPrune | P1 |
+| G19 | "Only FastV; the title says attention-guided pruning" | — | PDrop ± gate (E6-P2), `fastv_k8/k16`, `fastv_text` (D2); scope the title to early-layer LLM attention unless a ViT-side method (VisionZip-style) is added | **Closed (E14, Nov 7)**, all in the table: VisionZip and HiPrune (vision-encoder attention), CDPruner (instruction-conditioned DPP, no LLM attention), FEATHER, VScan, TransPrune | P1 |
 | G20 | "Prior work already shows Random ≥ attention pruning" (Wen et al. 2025, ACL Findings; DART; VTC-Bench) | Not yet positioned | Related-work check (D6); our delta = medical regime + quantified prior + anatomy grounding + E7/E10 controls | Writing | P0 |
 | G21 | "Many exploratory analyses: forking paths" | §A6 frozen Nov 2; G-tests added Nov 3 | Confirmatory set = P1–P14 with Holm correction; everything else labelled exploratory with its date (extends G13) | Writing | P0 |
 | G22 | "Why does RadImageNet collapse 2.5× more than SLAKE at the same 64 tokens?" | FastV − Random −41.2 / −33.7 on RIN vs −16.3 / −0.5 on SLAKE at 224² and −10.7 / −2.7 on photographs at 224²; Random alone loses only 9.7 / 5.1 points on RIN (anatomy is readable from any 6 tokens); position explains 69% / 51% of RIN's layer-1 ranking vs 64% / 40% on SLAKE at 224² — similar priors, very different damage | E11r (flip RIN), E6 `static_map` on RIN (is a fixed map as bad as FastV?), E10r (RIN at 448²); in-session token statistics of RIN images at FastV-kept vs random cells (aggregates only, license) | Partly answered (Nov 5): a position-only map built on SLAKE reproduces FastV on both RIN tasks (Lingshu static map − Random −50.9 anatomy, −15.6 abnormality vs FastV −41.7 / −14.2; static − FastV on abnormality −1.4, p 0.09) → RIN's collapse is what a fixed position prior does to these images. Open: why the same prior hurts RIN more than SLAKE | P0 |
 | G23 | "Evidence retention does not explain accuracy" | Lingshu's bottom-10% keeps less of the named organ than FastV (0.59× vs 0.83×) yet answers better (+6.2); per-question mediation 7% | Report evidence retention as a description of *where* FastV looks, not as the causal path; causal claims rest on interventions (bottom-k, flip, gate, oracle) | Writing | P0 |
+| G24 | "Compare with MedSTP" | Its published table (§A3.1); code not checked | Grey reference block + the bridge through PruneSID / BTP on OmniMedVQA and RIN anatomy, where the protocols align | **Bridge computed (Nov 10)**: our gain over PruneSID is larger on all four aligned cells (Qwen3-VL margins within noise); SLAKE and RIN open not comparable (Full differs by 3.7 / 14.1; rubric-score metric) | P0 |
+| G25 | "What does the method cost?" | E9 timed keep schedules (pre-LLM 10% prefill 3.27×), not the method | FLOPs from the runs' keep schedules (laptop); wall-clock with the latency harness extended to merge, bias and a second cut (≈ 0.3 GPU-h) | Open (T11) | P0 |
 
 **Paper consequence.** Section 5 (Diagnosis) leads with G5 + G3 (question- and image-blind prior), G4 (attention is
 not informative), G14 (the pruned model falls back on the language prior), then splits the loss into the two regimes
@@ -344,7 +418,7 @@ New work, in order of decision value per GPU-hour (none is in `configs/runs.yaml
 | D2 | `fastv_text`: prune with the text-token readout at layer 1 | G2 ("your FastV is not FastV") | ≈ 0.4 GPU-h per model on K | L2 |
 | D3 | Evidence grounding as a tested `analysis.py` function, on every SLAKE cell (E6, E10 224², E11 flipped) | G16 | laptop | Fig. 1, Fig. 5 |
 | D4 | Within-question evidence test: Random seeds 0–2, conditional logit of correct on evidence kept | is evidence retention causal for accuracy? | laptop, after E6 seeds | L4 |
-| D5 | RadImageNet open questions (`rin_open`), judge-scored | MedSTP's strongest column | ≈ 1.0 GPU-h per model | L1 — **E15 running (Nov 7, C, Lingshu only, 1,000 questions)** |
+| D5 | RadImageNet open questions (`rin_open`), judge-scored | MedSTP's strongest column | ≈ 1.0 GPU-h per model | L1 — **done** (E15 Lingshu, E15b Qwen3-VL, Nov 7); open anatomy is one of the nine cells |
 | D6 | Related-work check: question independence of FastV, Random ≥ attention, visual attention sinks | G20 | 1 h | §2 |
 | D7 | Holm correction over P1–P14; every other analysis labelled exploratory with its date | G21 | laptop | §3 |
 
@@ -2401,7 +2475,7 @@ OmniMedVQA (both models, 8 methods each); B's notebooks have the secret and run 
 ## Stage 8 — Analysis and writing
 
 **In one sentence:** every number in the paper is regenerated from the run files, and the paper and supplementary are
-submitted on time. **Status: ⏳ LATER (writing can start Nov 6, once E3 is in).**
+submitted on time. **Status: 🔄 CURRENT (Nov 10): every registered run is complete (E0-E46); no paper draft in the repo yet.**
 
 **Steps**
 1. Merge all session outputs into `D:\cvpr\results\`; run `02_analyze_results.ipynb` end to end (task T7). It writes
@@ -2409,10 +2483,11 @@ submitted on time. **Status: ⏳ LATER (writing can start Nov 6, once E3 is in).
    keeps the run IDs behind its cells.
 2. Write following §A7; limitations: 2D only, heuristic mask, closed-form benchmarks, no clinical claim.
 3. Double-blind: no link to the named GitHub repo in the paper; use an anonymized mirror if code is referenced.
-4. Cite MedSTP as contemporaneous (online after Sept 15, 2026).
+4. Cite MedSTP as contemporaneous (online after Sept 15, 2026): grey reference block + bridge (§A3.1, T12).
 
 **Checks**
-- [ ] Nov 9: abstract draft to the mentor. [ ] Nov 10 (IST evening): enrolled on OpenReview.
+- [ ] Nov 9: abstract draft to the mentor (not recorded as done). [ ] Enrolled on OpenReview by **Nov 11, 17:29 IST** (Nov 10 23:59 AoE; T13).
+- [ ] Before the Nov 12 freeze: FLOPs and latency of the two final rows (T11).
 - [ ] Nov 15: full draft to the mentor. [ ] Nov 16 (IST evening): submitted (deadline Nov 17, 17:29 IST).
 - [ ] Nov 23: supplementary submitted.
 - [ ] One notebook run regenerates every figure and table from a clean `results/`.
@@ -2889,7 +2964,7 @@ Any agent picking up this project works from this Part. It says where things are
 2. **Current stage** = the first row of the Stage tracker whose exit gate is not passed. **Current task** = the first
    task in §F4 whose status is `open`, belongs to the current or an earlier stage, and whose prerequisites are done.
 3. Before changing code: `.venv\Scripts\python -m pytest -q` on the laptop (Linux: `python -m pytest -q`) must pass.
-   It currently runs 84 tests in about 10 s (verified Nov 3).
+   It runs 218 tests in about 35 s (verified Nov 10).
 4. When you finish (or stop), add a Work log entry (template in Part G) and set the task's status in §F4.
 
 ## F2. Rules
@@ -2922,8 +2997,8 @@ Any agent picking up this project works from this Part. It says where things are
 | Item | Value |
 |---|---|
 | Laptop | Windows 11; repo `D:\cvpr`; venv `D:\cvpr\.venv` (torch 2.14.1 CPU, transformers 4.57.1); Git Bash and PowerShell |
-| GitHub | `https://github.com/pushkar1887/cvpr`, public, branch `main` |
-| Kaggle | Roles A/B/C → Kaggle-2/3/1 (Stage 0 table); GPU T4×2; HF token in secret `cvpr`; clone over HTTPS |
+| GitHub | `https://github.com/pushkar1887/cvpr`, public (A8 [FLAG]: private until submission), branch `main` |
+| Kaggle | Roles A/B/C → Kaggle-2/3/1 (Stage 0 table); D added Nov 5, E and F Nov 10 (ledger); GPU T4×2; HF token in secret `cvpr`; clone over HTTPS |
 | Data paths | Per-role notebook-output bundle, auto-discovered under `/kaggle/input`; RadImageNet `/tmp/medprune-rin` (per session); results `/kaggle/working/results` |
 | Commands | `python -m medprune.data build`, `… masks`, `… summary`; `python -m medprune.run_eval` (`--list`, `--limit`, `--dry-run`, repeatable `--bundle`) |
 | A100 | Not available yet; Part E describes the switch |
@@ -2942,8 +3017,12 @@ Status values: `open`, `in progress (agent, date)`, `done (commit)`.
 | T6 | 7 | E9 latency measurement | done (`59c141c`, `medprune/latency.py` + `tests/test_latency.py`); runs in C v4 | T2 |
 | T7 | 8 | table and figure builders (Tables 1–4, Figs 1–5) | open | T3 |
 | T8 | 4 | Recover E1 identities, rerun the two RIN Random conditions, verify K1/K2 | done (Codex, Nov 3) — independent CIs and registered 43-item retry verified | original and corrected receipts preserved |
-| T9 | 5 preflight | Resolve full SLAKE scoring comparability before broad grid; report abnormality class-prior baseline | next — real abnormality build/image pairing passed on CPU | T8 done; first Qwen block running; remaining grid held |
-| T10 | 5 | First ten registered Qwen E3 conditions on K; retrieve/verify outputs and report cross-model results | in progress (Codex, Nov 3) — B v2 submitted, API RUNNING | K1 GO; data-builder access and 84 CPU tests verified |
+| T9 | 5 preflight | Resolve full SLAKE scoring comparability before broad grid; report abnormality class-prior baseline | done — SLAKE scored by rule OR judge (κ 0.90, Nov 5); abnormality in balanced accuracy (G10, Nov 10) | T8 done |
+| T10 | 5 | First ten registered Qwen E3 conditions on K; retrieve/verify outputs and report cross-model results | done (Nov 3-4; merged into Stage 5) | K1 GO |
+| T11 | 8 | FLOPs and wall-clock latency of the two final rows (G25): FLOPs from the runs' keep schedules (`medprune.latency flops`); timing needs the harness extended to merged embeddings, the size-term bias and a second cut | open — before the Nov 12 freeze | — |
+| T12 | 8 | MedSTP grey block + bridge table in Table 1 (§A3.1, G24) | open — numbers in §A3.1 | T7 |
+| T13 | 8 | OpenReview enrollment: title and abstract with the three-seed numbers (Nov 11, 17:29 IST) | open (user) | — |
+| T14 | 8 | Check whether MedSTP's code is released; if it is, run it in our harness on OmniMedVQA + RIN anatomy at 10% (before the freeze or not at all) | open | — |
 
 **T1 — data bundle notebook (Kaggle CPU, internet on).** Cells, in order:
 1. `from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("cvpr")`.
@@ -4318,3 +4397,19 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
   branch. Status-block wording fixed: `omni_panel` has 1198 images, 21 shared with the nine cells (not "unseen").
 - diagnostics.md: header, §5.3 C4, §6.2 (the tested method replaces the Nov 6 two-stage proposal), §7 (G10 closed;
   latency, route confound and panel coverage added), §9 (E46 outcomes, seeds, SLAKE split).
+
+### 2026-11-10 — Claude — plan.md reviewed end to end; MedSTP comparison (§A3.1); docs to the final state
+
+- Stale entries fixed: Stage 7b ✅ (≈ 82 GPU-h, ledger sums), Stage 8 current with the real deadlines, project totals
+  (≈ 204 GPU-h; all twelve slots idle), ledger "Running" cells for C, D, F (E45 / E46 hours added), A9 statuses (G6, G8,
+  G9, G10, G11, G12, G17, G19 closed or updated; G24 MedSTP, G25 method cost added), A10 D5, F1 (218 tests pass, 35 s),
+  F3 (accounts D-F), F4 (T9, T10 done; T11-T14 added). A1, A2, A5, A7 carry Nov 10 revisions; the frozen predictions
+  (§A6) are untouched.
+- MedSTP (§A3.1): its table, protocol differences, and a bridge through PruneSID / BTP recomputed from our run files.
+  Aligned cells (OmniMedVQA, RIN anatomy): our 10% row's gain over PruneSID is larger on all four, Qwen3-VL margins within
+  noise. SLAKE and RIN open are not comparable (Full differs by 3.7 / 14.1; rubric-score metric). Paper: grey block + bridge,
+  no "beats MedSTP" claim.
+- **[FLAG]** `gh repo view` reports the repository PUBLIC, against A8 (private until submission, double-blind). Not
+  changed: the visibility switch is the user's.
+- README (MedSTP line, 218 tests), status file (MedSTP section, Next), diagnostics.md (§7 G19 closed, G20 bridge, §9
+  MedSTP row) updated to match.

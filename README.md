@@ -92,6 +92,8 @@ Results (nine model × cell combinations, judged, Lingshu RadImageNet abnormalit
 
 Full model: 70.3. Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).
 
+Contemporaneous work: MedSTP (arXiv 2610.22751, Oct 15, 2026; 10% kept, pre-LLM) is reported as a separate reference block, not as a baseline, because its SLAKE set and open-answer metric differ from ours. On the two benchmarks where the protocols align (OmniMedVQA, RadImageNet anatomy MC), our 10% row gains more over PruneSID than MedSTP reports, on both models (Qwen3-VL margins within noise; plan.md §A3.1).
+
 ---
 
 ## Plan and status
@@ -127,7 +129,7 @@ cvpr/
 │                           run_eval, checks, analysis, remedy (the method), adoption (the decision rule),
 │                           baselines/ (14 published pruners), judge
 ├── notebooks/              00 data bundle (Kaggle CPU), 01 GPU runs (Kaggle), 02 analysis (laptop)
-├── tests/                  217 CPU tests incl. the masking ≡ token-removal proof and the size-term identity
+├── tests/                  218 CPU tests incl. the masking ≡ token-removal proof and the size-term identity
 ├── results/                runtime output (git-ignored)
 └── third_party/            FastV, MedEvalKit, HuatuoGPT-Vision references (git-ignored)
 ```

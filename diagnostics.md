@@ -903,8 +903,8 @@ Tested and not adopted:
 | SparseVLM | Why it survives on Qwen3-VL: rater subset vs early budget schedule | needed before the paper explains it | ≈ 0.4 GPU-h |
 | H5 | DeepStack as the reason Qwen3-VL fails less | currently only consistent, not tested | needs an ablation |
 | Judge | κ 0.90 is in-sample and AI-to-AI | must not be reported as human agreement | 100 held-out human labels |
-| G19 | No vision-encoder-side pruner besides VisPruner | title scope | ≈ 1–2 GPU-h |
-| G20 | Positioning vs Wen et al. 2025, DART, VTC-Bench, MedSTP | "already known" objection | writing |
+| G19 | ~~No vision-encoder-side pruner besides VisPruner~~ **Closed Nov 7 (E14):** VisionZip, HiPrune, CDPruner, FEATHER, VScan and TransPrune are in the table | title scope | done |
+| G20 | Positioning vs Wen et al. 2025, DART, VTC-Bench, MedSTP | "already known" objection | writing; MedSTP's bridge is computed (§9, plan.md §A3.1) |
 | G15 | Lingshu was trained on SLAKE-style data | contamination | limitation paragraph |
 | Latency (method) | The final row and 2B are untimed: E9 timed keep schedules with physical removal, accuracy runs mask | any speedup claim for the method | FLOPs from the runs' keep schedules (laptop); wall-clock needs the latency harness extended to merge, bias and a second cut, then ≈ 0.3 GPU-h |
 | Route confound | Format vs dataset: every routed cell is a whole dataset (MC or yes/no instructions) | the mechanism claim for step 5 | within-SLAKE split done (§9) supports format; a held-out set mixing formats would settle it |
@@ -946,3 +946,4 @@ Numbers from plan.md (E40-E46 cards), recomputed from the run files on Nov 10 16
 | Route assignment | The route sends whole datasets to one branch: RIN anatomy, RIN abnormality, OmniMedVQA → schedule; SLAKE (closed questions use a word-or-phrase instruction) and RIN open → flat | Format and dataset are confounded in the nine cells (next row) |
 | Format inside one dataset | SLAKE, flat schedule (E42b) − recipe: closed +2.40 (SE 0.99) / +0.24 (1.15), open −0.47 (0.99) / −1.24 (0.84), Lingshu / Qwen3-VL | The format pattern holds within a dataset; one dataset, two models: supports the account, does not prove it |
 | Per-cell profile of the final row | − VScan: Lingshu SLAKE −0.13, RIN anatomy +0.93, abnormality +2.86, OmniMedVQA +6.05, open anatomy +5.20; Qwen3-VL SLAKE −1.19, RIN anatomy −0.70, OmniMedVQA +2.67, open anatomy +0.40 | The lead is the nine-cell mean; VScan is stronger on Qwen3-VL SLAKE and RIN anatomy (not significant) |
+| MedSTP comparison (contemporaneous) | Protocols align on OmniMedVQA and RIN anatomy only (Full within 1.6 points); SLAKE (Full 80.2 / 66.0 vs 83.9 / 80.1) and RIN open (rubric score) do not. Bridge, each method − PruneSID in its own pipeline: ours +6.8 / +5.1 (OmniMedVQA), +9.1 / +2.4 (RIN anatomy) vs MedSTP's +3.6 / +4.9, +3.5 / +1.6 | Grey reference block + bridge; no raw win claim; Qwen3-VL margins within noise |

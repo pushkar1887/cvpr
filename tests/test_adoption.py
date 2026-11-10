@@ -98,3 +98,21 @@ def test_route_takes_single_token_answers_from_the_first_row(tmp_path, monkeypat
     assert list(rin["c"]) == [1.0, 0.0, 1.0]  # mc and judgement from A, open from B
     slake = adoption.load_cell(tmp_path, "lingshu7b", "slake_en", "route:A|B", {})
     assert list(slake["c"]) == [1.0, 0.0, 0.0]  # SLAKE's yes / no questions get "close": B
+
+
+def test_route_on_an_all_single_token_cell_needs_only_the_first_branch(tmp_path, monkeypatch):
+    import pandas as pd
+    import pytest
+
+    from medprune import adoption
+
+    a = pd.DataFrame({"c": [1.0, 0.0], "image": ["i0", "i1"], "gold": [True, False], "yes": [1.0, 0.0],
+                      "atype": ["mc", "mc"]}, index=["q0", "q1"])
+    real = adoption.load_cell
+    monkeypatch.setattr(adoption, "load_cell", lambda r, m, d, meth, v: a if meth == "A" else real(r, m, d, meth, v))
+    out = adoption.load_cell(tmp_path, "qwen3vl8b", "rin_anat_mc", "route:A|missing", {})
+    assert list(out["c"]) == [1.0, 0.0]
+    mixed = a.assign(atype=["mc", "open"])
+    monkeypatch.setattr(adoption, "load_cell", lambda r, m, d, meth, v: mixed if meth == "A" else real(r, m, d, meth, v))
+    with pytest.raises(FileNotFoundError):  # generated-answer questions present: the missing branch is an error
+        adoption.load_cell(tmp_path, "lingshu7b", "rin_open", "route:A|missing", {})

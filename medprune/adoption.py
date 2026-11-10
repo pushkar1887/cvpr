@@ -157,7 +157,13 @@ def load_cell(results: Path, model: str, dataset: str, method: str, verdicts: di
 
     if method.startswith("route:"):  # E43: "route:A|B" = A's answer where the instruction asks for one token, else B's
         single, generated = method[len("route:"):].split("|")
-        out = load_cell(results, model, dataset, generated, verdicts)
+        try:
+            out = load_cell(results, model, dataset, generated, verdicts)
+        except FileNotFoundError:  # a cell whose questions are all single-token needs only the first branch
+            a = load_cell(results, model, dataset, single, verdicts)
+            if not a["atype"].map(lambda x: prompt_style(dataset, x)).isin(SINGLE_TOKEN).all():
+                raise
+            return a
         pick = out["atype"].map(lambda a: prompt_style(dataset, a)).isin(SINGLE_TOKEN)
         if pick.any():
             a = load_cell(results, model, dataset, single, verdicts)

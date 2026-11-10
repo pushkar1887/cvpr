@@ -12,7 +12,7 @@ previous stage's **exit gate** is met (parallel work is marked). Tick boxes on G
 
 ## Stage tracker
 
-Updated 2026-11-10 06:05 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
+Updated 2026-11-10 06:15 IST. **Update after every Kaggle session:** status, the Spent column, the ledger below, and a
 Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), measured from the kernel logs.
 
 | Stage | Work | Status | GPU-h spent | GPU-h left | Dates (IST) | Exit gate / result |
@@ -2048,7 +2048,8 @@ single-token branch (`gate_jitter_merge_sched_pa`) seeds 1-2 on the five single-
 (`gate_jitter_merge_pa_eq`) seed 2 on SLAKE and open anatomy (seed 1 exists from E44). C: the RadImageNet cells; D:
 OmniMedVQA and SLAKE.
 - P79: route (three-seed mean) − VScan ≥ +1.0 on the nine-cell mean. 80%.
-- P80: route (three-seed mean) Qwen3-VL four-cell ≥ VScan's 65.11. 55%.
+- P80: route (three-seed mean) Qwen3-VL four-cell ≥ VScan's 65.11. 55%. **Supported (Nov 10 06:15):** seeds 65.50 / 65.43 / 65.30, mean
+  **65.41** (63.9 / 89.6 / 64.7 / 43.4); every seed above VScan (+0.19 to +0.39), seed spread 0.20.
 
 **E46 — repairing the two dropped pieces, pilot first (registered Nov 10 05:25, git `710a24a`, before any E46 run; approved in chat).**
 Diagnosis (laptop, saved keep-sets + gates): k-means (2A) − E42a: SLAKE +0.4 / +1.3, open anatomy −1.6 / −1.6; its kept
@@ -4266,3 +4267,6 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
   created by API (the `cvpr` secret is attached in the UI). `medprune.adoption`: `name@sN` selects one seed; its CLI
   cannot take a `route:` candidate (the `:` separator) — use the library (`paired_cells`, `nine_cell`).
 - Docs: README (method, status, repository), `status_2026-11-10.md`, diagnostics.md §9.
+- 06:07 D `medprune-gpu-qwen3vl8b` v8 (E45 Qwen3-VL) COMPLETE: OmniMedVQA seeds 1-2, SLAKE seed 2 (12 new verdicts). Route
+  Qwen3-VL over three seeds 65.41 vs VScan 65.11 (P80 ✓). `adoption.load_cell` route fix: a cell whose questions are all
+  single-token needs only the single-token branch (test added).

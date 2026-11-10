@@ -155,16 +155,19 @@ def load_cell(results: Path, model: str, dataset: str, method: str, verdicts: di
     from .analysis import parse_run_id, rescore_open
     from .judge import apply_judge
 
-    if method.startswith("route:"):  # E43: "route:A|B" = A's answer where the instruction asks for one token, else B's
-        single, generated = method[len("route:"):].split("|")
+    if method.startswith(("route:", "routec:")):  # E43: "route:A|B" = A's answer where the instruction asks for one
+        # token, else B's; E47: "routec:A|B" also sends "close" (a single word or phrase) to A
+        prefix, _, branches = method.partition(":")
+        styles = SINGLE_TOKEN | ({"close"} if prefix == "routec" else set())
+        single, generated = branches.split("|")
         try:
             out = load_cell(results, model, dataset, generated, verdicts)
-        except FileNotFoundError:  # a cell whose questions are all single-token needs only the first branch
+        except FileNotFoundError:  # a cell whose questions are all routed to A needs only the first branch
             a = load_cell(results, model, dataset, single, verdicts)
-            if not a["atype"].map(lambda x: prompt_style(dataset, x)).isin(SINGLE_TOKEN).all():
+            if not a["atype"].map(lambda x: prompt_style(dataset, x)).isin(styles).all():
                 raise
             return a
-        pick = out["atype"].map(lambda a: prompt_style(dataset, a)).isin(SINGLE_TOKEN)
+        pick = out["atype"].map(lambda a: prompt_style(dataset, a)).isin(styles)
         if pick.any():
             a = load_cell(results, model, dataset, single, verdicts)
             idx = pick.index[pick]

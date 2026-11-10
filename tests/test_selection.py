@@ -108,8 +108,9 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 82  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
-    #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41); size term / schedule (E42); 10% size term, k-means (E43); bgsum + size term, SLIC (E46)
+    assert len(METHODS) == 87  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
+    #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41); size term / schedule (E42); 10% size term, k-means (E43); bgsum + size term, SLIC (E46);
+    #                            10% schedule, SLIC flat / scheduled, sink, null background (E47)
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name
@@ -121,7 +122,12 @@ def test_registry_is_consistent_with_fastv_definition():
         if spec.prop_attn:  # the size term needs merged clusters
             assert spec.merge in ("nearest", "foreground", "bgsum"), spec.name
         if spec.sched_at is not None:  # the schedule is token-matched by itself, selected before the LLM
-            assert spec.rule == "stratified" and spec.mask_from == 0 and not spec.match_fastv, spec.name
+            assert spec.rule in ("stratified", "slic") and spec.mask_from == 0 and not spec.match_fastv, spec.name
+        if spec.sched_flat:  # E47: matched to the flat count of its budget
+            assert spec.sched_at is not None, spec.name
+        if spec.sink or spec.bg_null:  # E47 background variants: one slot of the recipe's budget each
+            assert spec.rule == "stratified" and spec.gate == "foreground" and spec.prop_attn, spec.name
+            assert spec.merge == ("bgsum" if spec.bg_null else "foreground"), spec.name
     assert METHODS["fastv"].score_layer == 1 and METHODS["fastv"].mask_from == 2
     assert METHODS["fastv_bottom"].invert and not METHODS["fastv"].invert
     assert METHODS["gate_cdpruner_neg"].invert and METHODS["gate_cdpruner_neg"].gate == "foreground"

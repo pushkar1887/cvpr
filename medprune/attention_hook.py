@@ -72,6 +72,8 @@ class PruneState:
     history: list[tuple[int, np.ndarray]] = field(default_factory=list)  # (mask_from, kept) per selection
     pre_rope: dict = field(default_factory=dict)  # {"layer": int, "q": tensor, "k": tensor}, filled by capture hooks
     key_bias: tuple[np.ndarray, np.ndarray] | None = None  # (visual token indices, additive logit), E42a's size term
+    null_value: np.ndarray | None = None  # E47 BG-N: visual token indices whose value vectors are zeroed in every layer
+    #                                       (they take attention mass, contribute nothing to the attention output)
     log_share: bool = False  # log the last prompt token's image attention share per layer, with and without key_bias
     _survivors: np.ndarray | None = None
     _drops: list[tuple[int, torch.Tensor]] = field(default_factory=list)
@@ -429,6 +431,12 @@ def medprune_sdpa(module, query, key, value, attention_mask, **kwargs):
             .masked_fill(~allowed, float("-inf")) + bias.to(query.dtype)[None, None, None, :]
     elif dropped is not None:
         attention_mask = allow_mask(attention_mask, query, key, dropped)
+    if state.null_value is not None and state.null_value.size:  # E47 BG-N: mass without content
+        pos = state.vis_pos[torch.as_tensor(state.null_value, dtype=torch.long)].to(value.device)
+        pos = pos[pos < value.shape[2]]
+        if pos.numel():
+            value = value.clone()
+            value[:, :, pos, :] = 0
     return sdpa_attention_forward(module, query, key, value, attention_mask, **kwargs)
 
 

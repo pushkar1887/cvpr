@@ -35,6 +35,7 @@ Work log entry. GPU-h = Kaggle T4×2 session hours (what the quota counts), meas
 | 7f | **E44** seed 1 of the adopted E42a row (nine cells) + Lingshu held-out `omni_panel` | ✅ DONE Nov 10 01:06 (registered Nov 9 23:23, `70cd2c7`). P76 ✓ (seed 1 − VScan +1.17), P77 ✗ (Qwen3-VL two-seed 65.01 vs VScan 65.11: a tie); E44h ran VScan only (`omni_panel` Lingshu 85.6, Full 86.3), E42a's row moved to C (E44h2) | ≈ 4.4 | ≈ 0.3 (E44h2) | Nov 9-10 | **Two-seed headline: E42a − VScan +1.35 nine-cell (SE 0.40, p 0.0004); Lingshu +2.5, Qwen3-VL −0.1** |
 | 7g | **E45** seeds 1-2 of the final route row (single-token branch seeds 1-2 on its five cells, generated branch seed 2 on SLAKE + open anatomy) | ✅ DONE Nov 10 06:14 (registered 04:22, `44e0a6f`); 14 runs. P79 ✓, P80 ✓ | ≈ 4.8 | 0 | Nov 10 | **Three-seed headline: route − VScan +1.79 (SE 0.39), Lingshu +3.0, Qwen3-VL +0.3; 67.6 vs 65.5 (Full 70.3)** |
 | 7h | **E46** background summary + size term (`gate_jitter_bgsum_pa_eq`), SLIC clusters + size term (`gate_slic_merge_pa_eq`) | ✅ DONE Nov 10 07:40 (registered 05:25, `710a24a`). Pilot: BG-PA fails its gates (no full run); SLIC-PA passes. SLIC full nine cells − E42a −0.06 (SE 0.40, p 0.56) → not adopted. P81 ✗, P82 ✗ | ≈ 4.4 | 0 | Nov 10 | Neither piece joins the final row; SLIC − VScan +1.47 (a valid but not better row) |
+| 7i | **E47** the 10% push: schedule matched to the flat 10% count (S10), SLIC flat and scheduled, sink token kept (BG-S), background mass without content (BG-N); VisPruner / DivPrune on `rin_open`; `omni_panel` at 10% | 🔄 RUNNING (registered Nov 10 23:50, before any E47 run; launched on C, D, E, F) | 0 | ≈ 16 | Nov 10-12 | P83-P92; final 10% row by the dev half, confirmed on the test half + `omni_panel` |
 | 8 | Analysis and writing | 🔄 CURRENT (Nov 10: every registered run complete, E0-E46; no paper draft in the repo yet) | 0 | ≈ 0.3 (final-row latency, T11, before the Nov 12 freeze) | Nov 10–23 | OpenReview enrollment **Nov 11, 17:29 IST**; **paper Nov 16 AoE** (Nov 17, 17:29 IST); supplementary Nov 23 AoE; tasks T7, T11-T14 (§F4) |
 
 **Totals (Nov 10, 16:00 IST):** ≈ 204 GPU-h over Stages 3-7h (sum of the Spent column: 72.8 to Nov 5, E14-E39 ≈ 82, E40-E46 ≈ 49) · running 0 · all twelve slots (A-F × 2) idle. The per-session sums in the ledger approximate Kaggle's quota page, which rules where they differ (D's sums exceed its 30 h weekly quota: they overcount or span a quota reset). The Nov 3 whole-project estimate was ≈ 61 GPU-h; the method experiments (E40-E46) and the E14-E39 follow-ups account for the difference. At the Nov 3 T4-to-A100 ratio (≈ 4×, Part E) the same work would be ≈ 50 A100 hours.
@@ -2183,6 +2184,86 @@ stands for 30-150.
   −1.0; Qwen3-VL SLAKE +0.8, RIN anatomy −0.5, OmniMedVQA +0.4, open anatomy 0.0. SLIC − VScan +1.47 (SE 0.50). The
   repair worked as a repair (coverage restored, k-means' −1.6 open-anatomy loss mostly gone) but adds nothing over the
   stratified merge: with the size term, how clusters are formed no longer moves accuracy (as P63 found for selection).
+
+**E47 — the 10% push: the schedule, SLIC and two background mechanisms at 10% kept (registered Nov 10 23:50, before
+any E47 run; requested in chat: "at 10% tokens, as close to Full as possible").** Reference: 2B (`gate_jitter_merge_pa`,
+seed 0; nine-cell raw 66.31, Full 70.27). Facts from the laptop audit of the run files (Nov 10 22:40-23:30; scripts
+`audit.py`, `slake_audit.py`, `splits.py`, `sink_audit.py`, `tok0_natural.py` in the session scratchpad; aggregates only):
+- (F1) 2B − Full per cell: Lingshu SLAKE −5.0, RIN anatomy −2.6, abnormality balanced −2.2, OmniMedVQA −3.9, open
+  anatomy −4.2; Qwen3-VL SLAKE −1.2, RIN anatomy −1.4, OmniMedVQA −7.4, open anatomy −9.6. Discordant pairs (Full right
+  / 2B right): Lingshu SLAKE 73 / 20, Qwen3-VL OmniMedVQA 373 / 127.
+- (F2) SLAKE by SLAKE's own labels (`test.json` content_type, HF `BoKelvin/SLAKE`): Lingshu abnormality questions
+  (n 150, Full 74.0) −14.0, 2.0 of the cell's 5.0 points; closed abnormality (n 109) −12.8, open (n 41) −17.1. On the
+  same questions VScan −4.6 / −19.5, the E42b schedule (equal budget) −10.1 / −12.2, SLIC (equal budget) −8.3 / −4.9.
+  CT slices (n 472, 324 tokens, k = 32) carry 2.7 of the 5.0 points. Qwen3-VL SLAKE's −1.2 is spread over types.
+- (F3) Qwen3-VL OmniMedVQA by image size: ≤ 64 visual tokens (n 2225, k = 6) −8.1, 65-128 (n 575) −9.2, > 128 −1.4 to
+  −2.6; ultrasound (n 2040) −8.3. At the equal budget the schedule branch cuts the ≤ 64 gap from −6.7 to −5.1.
+- (F4) Qwen3-VL open anatomy: region-asking (n 222) −16.7 against VisionZip −4.1 and VScan −4.1; organ-asking (n 278)
+  −4.0 against −12.6 / −14.0. The gate and the fixed budget trade region for organ (`jitter_merge`, ungated: −12.6 /
+  −8.6).
+- (F5) Full's background attention (last prompt token, layer 15, head mean): the background takes 42-74% of the image
+  share; its largest token is visual token 0 (the image's first token) in all eight cells, 19-35% of the background mass
+  on RadImageNet / OmniMedVQA and 8-12% on SLAKE. Ranking by vision-output norm finds the same token on 64-token images
+  (25-34%), not on SLAKE (1-3%). E46's summary token averages this sink into the air.
+- (F6) Natural experiment: the selector seed randomizes whether token 0 is kept (rows with three seeds: Random, Random
+  + merge, Random on VScan's schedule). Within question, image-clustered: keeping it gives region-asking +2.8 to +7.4,
+  organ-asking −2.6 to −8.3; pooled over every cell Lingshu −1.50 (SE 0.68), Qwen3-VL −0.31 (SE 0.47). At a fixed budget
+  the sink is a trade, not a gain.
+- (F7) The E43 route sends "close" prompts (a single word or phrase: SLAKE's 416 closed questions, among them all 109
+  closed abnormality questions) to the flat branch. E42b's schedule (no size term) on SLAKE closed questions: Lingshu
+  +2.4 (SE 1.1), Qwen3-VL +0.2.
+- A question-type route for the sink is not definable: the "region / area / body part" pattern matches all 1000 RIN
+  anatomy questions and 49 SLAKE position questions.
+
+Rows (10% kept per image, 2B's rng stream; open answers judged in-session; code: `remedy.flat_sched_counts`,
+`MethodSpec.sched_flat / sink / bg_null`, `PruneState.null_value`, `adoption` `routec:`; 226 CPU tests):
+- **S10 `gate_jitter_merge_sched10_pa`**: the read-then-prune schedule cut at round(5L/7) (Lingshu 20, Qwen3-VL 26),
+  token-matched to the flat count k = round(0.1 N) instead of FastV's mean: k1 = round(kL / (c + (L − c)/3)), k2 =
+  floor((Lk − c·k1) / (L − c)), so the mean visual tokens per layer is ≤ k and within (L − c)/L of it (N = 64: 7 then 3,
+  mean 5.86 vs 6; N = 324: 40 then 12, mean 32.0). Stage 2 = one survivor per Hilbert stratum; size term.
+- **SL `gate_slic_merge_pa`**: E46's SLIC clusters + size term, flat, at 10%. **SL-S10 `gate_slic_merge_sched10_pa`**:
+  the same clusters on S10's schedule.
+- **BG-S `gate_jitter_sink_merge_pa`**: token 0 kept as itself (s = 1, no merge into it) in place of one foreground
+  stratum (F5). The mechanism: Full's main background sink and its content back at one token's cost.
+- **BG-N `gate_jitter_bgnull_pa`**: E46's background summary (mean of the dropped background, + log s_bg) with its
+  value vector zeroed in every layer: the background's attention mass without its content. Tests whether E46's failure
+  (Lingshu yes-rate 20.5, past Full's 26.9) was the air's content.
+- Comparison rows: VisPruner and DivPrune on `rin_open` (both models; the two published 10% pruners without an
+  open-anatomy cell). Held-out `omni_panel` (1200 MC questions, 1198 images, 21 shared): 2B, S10, SL-S10, VisionZip.
+- Candidates for the final 10% row, built exactly from per-question outputs: 2B, SL, and eight routes = {`route` (E43
+  rule: mc / judgement → schedule branch), `routec` (also "close")} × {schedule branch S10, SL-S10} × {flat branch 2B,
+  SL}. BG-S and BG-N enter only through their gates.
+- **Background pilot** (E46's four cells: Lingshu RIN abnormality + open anatomy, Qwen3-VL RIN anatomy + open anatomy;
+  C). Go / no-go against 2B seed 0, fixed now: (a) Lingshu RIN abnormality yes-rate no farther from Full's 26.9 than
+  2B's 30.2 + 1.0 (|yes − 26.9| ≤ 4.3); (b) mean Δ over the four cells (abnormality balanced) ≥ 0, E46's bar,
+  unchanged; (c) mechanism — BG-S: open-anatomy region-asking Δ, mean of the two models, ≥ +2.0; BG-N: Qwen3-VL RIN
+  anatomy deep-layer (≥ L/2) image share ≥ 1.3 × 2B's 0.0086. A row passing (a)-(c) runs its five other cells and is
+  tested against 2B by the E42 rule (seed term 0.28: its keep-set differs); if adopted it joins the flat-branch
+  candidates and the selection is re-run.
+- **Selection and confirmation (fixed now).** Final 10% row = the highest dev-half nine-cell mean (abnormality
+  balanced) among the candidates, seed 0. Confirmatory family, one-sided, Holm at 0.05: (i) final − 2B on the test
+  half; (ii) final − VisionZip on the test half; (iii) final − 2B on `omni_panel`, both models (only if the final row
+  has a schedule branch). The test half was read in E43 and E46 (third use, disclosed); `omni_panel` has not been read
+  at 10%. Winner's curse: best of ten correlated candidates, dev-half SE ≈ 0.43, expected inflation ≤ 0.6; the test
+  half carries none. Seeds 1-2 of the final row (nine cells) follow; the 10% headline becomes the three-seed mean.
+- Predictions (all questions, nine-cell, abnormality balanced, against 2B seed 0 unless stated):
+  - P83: `route:S10|2B` − 2B ≥ +0.3. 60%.
+  - P84: on Lingshu SLAKE's "close" questions (n 416) S10 − 2B ≥ +1.0, and `routec:S10|2B` − `route:S10|2B` > 0. 50%.
+  - P85: SL − 2B ≥ +0.5 on the mean of the two SLAKE cells and ≥ −0.2 on the nine-cell mean. 45%.
+  - P86: Lingshu SLAKE abnormality questions (n 150): the best of SL, SL-S10, `routec:SL-S10|SL` − 2B ≥ +3.0. 40%.
+  - P87: BG-S − 2B on open-anatomy region-asking ≥ +2.0 (mean of the models) and on organ-asking ≤ 0 (F6). 55%.
+  - P88: BG-S passes its gates. 25%.
+  - P89: BG-N passes its gates. 15%.
+  - P90: the final 10% row − 2B ≥ +0.5 on the test half. 45%.
+  - P91: the final row closes ≥ 20% of 2B's raw nine-cell gap to Full (≥ +0.8 raw, all questions, seed 0). 30%.
+  - P92: S10 − 2B ≥ 0 on `omni_panel` on both models. 60%.
+- Not run: a per-image token floor for small images (changes the budget rule from per image to per dataset; every
+  baseline is per image); a question-type sink route (not definable, above); a re-merged stage 2 of the schedule (code
+  risk before the freeze); a norm-restoring merge (RMSNorm makes every sub-layer input scale-free; the norm only enters
+  the residual mix); per-model components.
+- Slots (≈ 16 GPU-h): E `medprune-gpu-lingshu7b` / `-qwen3vl8b` S10 + SL on SLAKE + OmniMedVQA; F SL-S10 on SLAKE +
+  OmniMedVQA and `omni_panel` 2B + VisionZip; D `omni_panel` S10 + SL-S10; C (E47r) every RadImageNet cell, the
+  background pilot cells first (Lingshu in `medprune-gpu-lingshu7b`, Qwen3-VL in `medprune-gpu-qwen3vl8b`).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

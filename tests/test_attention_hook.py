@@ -318,3 +318,61 @@ def test_image_share_is_logged_with_and_without_the_size_term(models):
         vis_cols = torch.isin(kept_positions(), VIS)
         expected = attention[i][0, :, -1, :].mean(0)[vis_cols].sum().item()
         np.testing.assert_allclose(plain.logs[f"ishare_l{i}"], [expected, expected], atol=1e-5)
+
+
+# ------------------------------------------------------------------------------- E47 BG-N: mass without content
+
+def test_null_value_takes_attention_mass_and_adds_no_content():
+    """A key whose value is zeroed (E47 BG-N) keeps its share of the softmax: the output equals attention with v = 0 at
+    that position, and differs from deleting the token (which renormalizes over the rest)."""
+    torch.manual_seed(0)
+    n_tok, heads, dim = 14, 2, 8
+    vis = torch.arange(2, 10)
+    q, k, v = (torch.randn(1, heads, n_tok, dim) for _ in range(3))
+    keep = np.array([0, 2, 5, 7])
+    null = np.array([5])
+
+    def run(null_value):
+        state = PruneState(vis_pos=vis)
+        state.apply_keep(keep, 0)
+        state.key_bias = (keep, np.log([1.0, 3.0, 4.0, 1.0]).astype(np.float32))
+        state.null_value = null_value
+        with pruning(state):
+            out, _ = hook.medprune_sdpa(_Decoder(), q, k, v, None)
+        return out, state
+
+    out, state = run(null)
+    v0 = v.clone()
+    v0[:, :, vis[5]] = 0
+    with pruning(None):
+        bias = state.key_bias_vector(n_tok, q.device)
+        allowed = hook.allow_mask(None, q, k, state.dropped_at(0))
+        mask = torch.zeros(allowed.shape).masked_fill(~allowed, float("-inf")) + bias[None, None, None, :]
+        ref, _ = sdpa_attention_forward(_Decoder(), q, k, v0, mask)
+    torch.testing.assert_close(out, ref, atol=1e-6, rtol=0)
+    plain, _ = run(None)
+    deleted = PruneState(vis_pos=vis)
+    deleted.apply_keep(np.array([0, 2, 7]), 0)
+    deleted.key_bias = (np.array([0, 2, 7]), np.log([1.0, 3.0, 1.0]).astype(np.float32))
+    with pruning(deleted):
+        gone, _ = hook.medprune_sdpa(_Decoder(), q, k, v, None)
+    after = slice(int(vis[-1]) + 1, n_tok)
+    assert (out[:, after] - plain[:, after]).abs().max() > 1e-3  # the content of token 5 is gone
+    assert (out[:, after] - gone[:, after]).abs().max() > 1e-3  # but its mass is not
+
+
+def test_null_value_is_identical_in_cached_decoding(models):
+    """Prefill + cached decoding with a zeroed value equals a prefill of the whole sequence with it."""
+    _, hooked, _, _ = models
+
+    def state():
+        s = _with_sizes()
+        s.null_value = np.array([KEEP[2]])
+        return s
+
+    tokens, cached = greedy(hooked, IDS, torch.arange(T), 5, state=state())
+    ids = torch.cat([IDS, torch.tensor(tokens)])
+    scratch = last_logits(hooked, ids, pos=torch.arange(ids.numel()), state=state())
+    torch.testing.assert_close(cached, scratch, atol=1e-5, rtol=0)
+    _, without = greedy(hooked, IDS, torch.arange(T), 5, state=_with_sizes())
+    assert (cached - without).abs().max() > 1e-5

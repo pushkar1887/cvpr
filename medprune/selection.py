@@ -48,6 +48,12 @@ class MethodSpec:
     #                          averages (ToMe's proportional attention); needs a merge
     sched_at: float | None = None  # E42b: second stage of the token-matched read-then-prune schedule at
     #                                round(sched_at * L) (`vscan_schedule`); stage 2 = one survivor per Hilbert stratum
+    sched_flat: bool = False  # E47: the schedule's counts match the flat keep count k of this budget (mean visual tokens
+    #                           per layer <= k, `remedy.flat_sched_counts`) instead of FastV's mean (`vscan_schedule`)
+    sink: bool = False  # E47 BG-S: visual token 0 (the image's first token, Full's main background attention sink) kept
+    #                     unmerged (s = 1) in place of one foreground stratum
+    bg_null: bool = False  # E47 BG-N: with merge "bgsum", the summary token's value vector is zeroed in every layer, so
+    #                        it carries the background's attention mass (+ log s with prop_attn) but no content
 
 
 def _spec(name: str, rule: str, **kw) -> tuple[str, MethodSpec]:
@@ -178,6 +184,18 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_jitter_bgsum_pa_eq", "stratified", mask_from=0, gate="foreground", merge="bgsum", match_fastv=True,
               prop_attn=True),
         _spec("gate_slic_merge_pa_eq", "slic", mask_from=0, gate="foreground", merge="foreground", match_fastv=True,
+              prop_attn=True),
+        # E47 (plan.md): the 10%-kept recipe (2B) pushed toward Full at the same tokens per layer. The read-then-prune
+        # schedule token-matched to the flat 10% count (the route's single-token branch at 10%), SLIC clusters flat and
+        # scheduled, and two background mechanisms: the sink token kept, or the background's mass without content.
+        _spec("gate_jitter_merge_sched10_pa", "stratified", mask_from=0, gate="foreground", merge="foreground",
+              sched_at=5 / 7, sched_flat=True, prop_attn=True),
+        _spec("gate_slic_merge_pa", "slic", mask_from=0, gate="foreground", merge="foreground", prop_attn=True),
+        _spec("gate_slic_merge_sched10_pa", "slic", mask_from=0, gate="foreground", merge="foreground", sched_at=5 / 7,
+              sched_flat=True, prop_attn=True),
+        _spec("gate_jitter_sink_merge_pa", "stratified", mask_from=0, gate="foreground", merge="foreground", sink=True,
+              prop_attn=True),
+        _spec("gate_jitter_bgnull_pa", "stratified", mask_from=0, gate="foreground", merge="bgsum", bg_null=True,
               prop_attn=True),
     ]
 )

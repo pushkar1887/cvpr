@@ -31,6 +31,15 @@ def fastv_matched_count(n: int, k: int, n_layers: int, first: int = 2) -> int:
     return max(1, min(n, int(np.floor(mean + 0.5))))
 
 
+def flat_sched_counts(k: int, n: int, n_layers: int, cut: int, ratio: float = 1 / 3) -> tuple[int, int]:
+    """E47: (k1, k2) of a read-then-prune schedule (k1 tokens in layers < cut, k2 ~ ratio * k1 from `cut` on) whose
+    mean visual tokens per layer, (cut * k1 + (L - cut) * k2) / L, equals the flat count k without exceeding it:
+    k1 = round(k L / (cut + (L - cut) ratio)), k2 = floor((L k - cut k1) / (L - cut)), clipped to [1, k1]."""
+    k1 = max(1, min(n, int(np.floor(k * n_layers / (cut + (n_layers - cut) * ratio) + 0.5))))
+    k2 = int(np.floor((n_layers * k - cut * k1) / (n_layers - cut)))
+    return k1, max(1, min(k1, k2))
+
+
 def hilbert_index(rc: np.ndarray, side: int) -> np.ndarray:
     """Distance along the Hilbert curve of a side x side grid (side a power of two) for each (row, col) in rc."""
     y, x = rc[:, 0].astype(np.int64).copy(), rc[:, 1].astype(np.int64).copy()

@@ -420,3 +420,88 @@ def test_e46_rows_dry_run(tmp_path):
     for s in specs:
         rows = [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")]
         assert all(r["k_keep"] == fastv_matched_count(16, 2, 28) for r in rows), s.method
+
+
+# ------------------------------------------------------------------------------------------------ E47 (10% push)
+
+def test_flat_sched_counts_match_the_flat_budget_from_below():
+    """E47: the schedule's mean visual tokens per layer never exceeds the flat count k and is within one stage-2 token
+    of it; k1 >= k >= k2 >= 1."""
+    from medprune.remedy import flat_sched_counts
+    from medprune.selection import keep_count
+
+    for layers, cut in ((28, 20), (36, 26)):
+        for n in (16, 36, 49, 64, 81, 100, 121, 256, 324, 1024, 1296):
+            k = keep_count(n, 0.10)
+            k1, k2 = flat_sched_counts(k, n, layers, cut)
+            mean = (cut * k1 + (layers - cut) * k2) / layers
+            assert 1 <= k2 <= k1 <= n and k1 >= k
+            assert mean <= k + 1e-9 or k2 == 1
+            assert k - mean <= (layers - cut) / layers + 1e-9
+    assert flat_sched_counts(32, 324, 28, 20) == (40, 12)  # Lingshu SLAKE CT slice: mean 32.0 = k
+    assert flat_sched_counts(6, 64, 28, 20) == (7, 3)  # 64-token image: mean 5.86 <= 6
+
+
+def test_e47_rows_dry_run(tmp_path):
+    from medprune.remedy import flat_sched_counts
+    from medprune.run_eval import RunSpec, run_many
+    from medprune.selection import keep_count
+
+    bundle, out = _bundle(tmp_path), tmp_path / "results"
+    names = ("gate_jitter_merge_sched10_pa", "gate_slic_merge_pa", "gate_slic_merge_sched10_pa",
+             "gate_jitter_sink_merge_pa", "gate_jitter_bgnull_pa")
+    specs = [RunSpec("lingshu7b", "slake_en", m, 0.25) for m in names]
+    run_many(specs, bundle, out, {"lingshu7b": {"slake": 1.0, "text_only": 0.5}}, dry_run=True)
+    rows = {s.method: [json.loads(l) for l in open(out / "runs" / f"{s.run_id('dryrun')}.jsonl")] for s in specs}
+    k = keep_count(16, 0.25)
+    k1, k2 = flat_sched_counts(k, 16, 28, 20)
+    for name in ("gate_jitter_merge_sched10_pa", "gate_slic_merge_sched10_pa"):
+        for r in rows[name]:
+            (l1, s1), (l2, s2) = r["keep_stages"]
+            assert (l1, l2) == (0, 20) and len(s1) == k1 and len(s2) == k2 and set(s2) < set(s1)
+    for name in ("gate_slic_merge_pa", "gate_jitter_sink_merge_pa", "gate_jitter_bgnull_pa"):
+        assert all(r["k_keep"] == k and r["keep_stages"] is None for r in rows[name])
+    assert all(0 in r["keep_idx"] for r in rows["gate_jitter_sink_merge_pa"])
+
+
+def _toy_state(name: str, budget: float = 0.25):
+    from medprune.data import Sample
+    from medprune.run_eval import FakeAdapter, RunSpec, build_state
+    from medprune.selection import METHODS
+
+    adapter = FakeAdapter("lingshu7b")
+    sample = Sample(qid="toy/1", dataset="slake_en", image_id="toy/1", image_path="x.png", question="Is it?",
+                    answer="yes", answer_type="yesno", prompt_style="close")
+    inputs = adapter.prepare(sample, image=object())
+    gate = np.ones((4, 4), dtype=np.float32)
+    gate[0, :] = 0.0  # the top row (tokens 0-3) is background
+    return build_state(RunSpec("lingshu7b", "slake_en", name, budget), METHODS[name], sample, inputs, gate, None,
+                       adapter, None)
+
+
+def test_sink_row_keeps_token_zero_as_itself():
+    """BG-S: token 0 (background here) is kept unmerged with s = 1; the other k - 1 tokens are foreground strata and
+    every dropped foreground token merges into a foreground token; dropped background is discarded."""
+    state = _toy_state("gate_jitter_sink_merge_pa")
+    rows, w = state.merge
+    assert 0 in state.keep and len(state.keep) == 4
+    row0 = w[np.searchsorted(rows, 0)]
+    assert row0[0] == 1.0 and np.count_nonzero(row0) == 1
+    others = [i for i in state.keep if i != 0]
+    assert all(i >= 4 for i in others)  # foreground strata only
+    assert np.all(w[:, 1:4] == 0)  # background tokens 1-3 discarded
+    state.size_term_from_merge()
+    assert float(state.key_bias[1][np.searchsorted(rows, 0)]) == 0.0  # log 1
+
+
+def test_bg_null_row_zeroes_the_summary_value_and_keeps_its_mass():
+    """BG-N: one kept background token holds the mean of the dropped background, carries log of its size, and is the
+    only zeroed value; without the background the row is the plain recipe."""
+    state = _toy_state("gate_jitter_bgnull_pa")
+    rows, w = state.merge
+    assert state.null_value is not None and state.null_value.size == 1
+    slot = int(state.null_value[0])
+    assert slot in range(4) and slot in state.keep  # a background token
+    assert np.count_nonzero(w[np.searchsorted(rows, slot)]) == 4  # itself + the three dropped background tokens
+    state.size_term_from_merge()
+    np.testing.assert_allclose(state.key_bias[1][np.searchsorted(rows, slot)], np.log(4), rtol=1e-6)

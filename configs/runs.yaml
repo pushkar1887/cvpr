@@ -494,3 +494,24 @@ blocks:
   - {exp: E46f, tier: P0, account: E, model: qwen3vl8b, groups: [omni_anat], methods: [gate_slic_merge_pa_eq]}
   - {exp: E46fr, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed], methods: [gate_slic_merge_pa_eq]}
   - {exp: E46fr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_slic_merge_pa_eq]}
+
+  # Nov 10 23:45 - E47, the 10% push (plan.md; P83-P92), seed 0 at 10% kept. S10 = schedule matched to the flat 10%
+  # count, SL = SLIC clusters, BG-S = sink token kept, BG-N = background mass without content. E = S10 + SL on SLAKE +
+  # OmniMedVQA; F = SL-S10 on SLAKE + OmniMedVQA, omni_panel 2B + VisionZip; D = omni_panel S10 + SL-S10; C (E47r) =
+  # every RadImageNet cell, both models in one notebook, the background pilot cells first.
+  - {exp: E47, tier: P0, account: E, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_sched10_pa, gate_slic_merge_pa]}
+  - {exp: E47, tier: P0, account: E, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_jitter_merge_sched10_pa, gate_slic_merge_pa]}
+  - {exp: E47, tier: P0, account: F, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_slic_merge_sched10_pa]}
+  - {exp: E47, tier: P0, account: F, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [gate_slic_merge_sched10_pa]}
+  - {exp: E47, tier: P0, account: F, model: lingshu7b, groups: [omni_panel], methods: [gate_jitter_merge_pa, visionzip]}
+  - {exp: E47, tier: P0, account: F, model: qwen3vl8b, groups: [omni_panel], methods: [gate_jitter_merge_pa, visionzip]}
+  - {exp: E47, tier: P0, account: D, model: lingshu7b, groups: [omni_panel], methods: [gate_jitter_merge_sched10_pa, gate_slic_merge_sched10_pa]}
+  - {exp: E47, tier: P0, account: D, model: qwen3vl8b, groups: [omni_panel], methods: [gate_jitter_merge_sched10_pa, gate_slic_merge_sched10_pa]}
+  - {exp: E47r, tier: P0, account: C, model: lingshu7b, groups: [rin_abn_closed, rin_open], methods: [gate_jitter_sink_merge_pa, gate_jitter_bgnull_pa]}
+  - {exp: E47r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [gate_jitter_sink_merge_pa, gate_jitter_bgnull_pa]}
+  - {exp: E47r, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed], methods: [gate_jitter_merge_sched10_pa, gate_slic_merge_sched10_pa]}
+  - {exp: E47r, tier: P0, account: C, model: lingshu7b, groups: [rin_anat_mc, rin_abn_closed, rin_open], methods: [gate_slic_merge_pa]}
+  - {exp: E47r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc], methods: [gate_jitter_merge_sched10_pa, gate_slic_merge_sched10_pa]}
+  - {exp: E47r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [gate_slic_merge_pa]}
+  - {exp: E47r, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [vispruner, divprune]}
+  - {exp: E47r, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [vispruner, divprune]}

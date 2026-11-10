@@ -28,8 +28,8 @@ from PIL import Image
 
 from .data import Sample, load_manifest
 from .masks import MaskStore
-from .remedy import (background_slot, fastv_matched_count, kmeans_plan, merge_plan, pool_plan, select_stratified,
-                     slic_plan)
+from .remedy import (background_slot, fastv_matched_count, flat_sched_counts, kmeans_plan, merge_plan, pool_plan,
+                     select_stratified, slic_plan)
 from .scoring import is_correct
 from .selection import (METHODS, MethodSpec, keep_count, pdrop_schedule, rng_for, sample_map, select_divprune,
                         select_inverse, select_random, select_topk, select_uniform, select_uniform_quota)
@@ -212,23 +212,40 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
             return np.sort(rng.choice(alive, size=max(1, min(k2, alive.size)), replace=False)).astype(np.int64)
 
         state.stages.append(Stage(layer, layer, select_later, score_kind="attn"))
-    elif rule == "stratified":  # E40: one random token per Hilbert stratum of the foreground
+    elif rule in ("stratified", "slic"):  # E40: one random token per Hilbert stratum; E46: SLIC clusters
         rng = rng_for(spec.seed, sample.qid)
         cut = None
         if method.sched_at is not None:  # E42b: token-matched read-then-prune schedule (stage-2 ratio 1/3)
-            from .baselines.vscan import vscan_schedule
+            cut = int(round(method.sched_at * adapter.num_layers))
+            if method.sched_flat:  # E47: matched to the flat count k of this budget
+                k, k2 = flat_sched_counts(k, n, adapter.num_layers, cut)
+            else:  # E42b / E43: matched to FastV's mean visual tokens per layer
+                from .baselines.vscan import vscan_schedule
 
-            f1, cut, f2 = vscan_schedule(spec.budget, adapter.num_layers,
-                                         layer=int(round(method.sched_at * adapter.num_layers)))
-            k, k2 = keep_count(n, f1), keep_count(n, f2)
-        emb = adapter.visual_embeddings(inputs) if method.merge in ("foreground", "bgsum") else None
-        slot = background_slot(emb, allowed) if method.merge == "bgsum" and allowed is not None and k > 1 else None
-        keep = select_stratified(inputs.rc, k - (slot is not None), rng, allowed, exclude=slot)
-        if slot is not None:
-            keep = np.sort(np.append(keep, slot))
-        state.apply_keep(keep, method.mask_from)
-        if emb is not None:  # "nearest" is built in run_one, as for every other merged keep-set
-            state.merge = merge_plan(emb, keep, allowed, summary=slot)
+                f1, cut, f2 = vscan_schedule(spec.budget, adapter.num_layers, layer=cut)
+                k, k2 = keep_count(n, f1), keep_count(n, f2)
+        if rule == "slic":  # E46: SLIC clusters (content + position) seeded by the strata, kept at their medoids
+            keep, state.merge = slic_plan(adapter.visual_embeddings(inputs), inputs.rc, k, rng, allowed)
+            state.apply_keep(keep, method.mask_from)
+        else:
+            emb = adapter.visual_embeddings(inputs) if method.merge in ("foreground", "bgsum") else None
+            slot = background_slot(emb, allowed) if method.merge == "bgsum" and allowed is not None and k > 1 else None
+            if method.sink and k > 1:  # E47 BG-S: token 0 kept as itself, the strata fill the other k - 1 slots
+                if slot is not None:
+                    raise ValueError(f"{method.name}: the sink and the background summary are separate variants")
+                keep = np.sort(np.append(select_stratified(inputs.rc, k - 1, rng, allowed, exclude=0), 0))
+            else:
+                keep = select_stratified(inputs.rc, k - (slot is not None), rng, allowed, exclude=slot)
+                if slot is not None:
+                    keep = np.sort(np.append(keep, slot))
+            state.apply_keep(keep, method.mask_from)
+            if emb is not None:  # "nearest" is built in run_one, as for every other merged keep-set
+                state.merge = merge_plan(emb, keep, allowed, summary=slot)
+            if method.bg_null:  # E47 BG-N: the summary keeps the background's attention mass, its value is zeroed
+                if method.merge != "bgsum":
+                    raise ValueError(f"{method.name}: bg_null needs the background summary (merge 'bgsum')")
+                if slot is not None:
+                    state.null_value = np.array([slot], dtype=np.int64)
         if cut is not None:
             rc = inputs.rc
 
@@ -236,10 +253,6 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
                 return select_stratified(rc, min(k2, int(survivors.sum())), rng, allowed=survivors)
 
             state.stages.append(Stage(cut, cut, select_later, score_kind="attn"))
-    elif rule == "slic":  # E46: SLIC clusters (content + position) seeded by the strata, kept at their medoids
-        keep, state.merge = slic_plan(adapter.visual_embeddings(inputs), inputs.rc, k, rng_for(spec.seed, sample.qid),
-                                      allowed)
-        state.apply_keep(keep, method.mask_from)
     elif rule == "kmeans":  # E43 (2A): k-means++ + Lloyd clusters inside the gate, each kept at its medoid
         keep, state.merge = kmeans_plan(adapter.visual_embeddings(inputs), inputs.rc, k, rng_for(spec.seed, sample.qid),
                                         allowed)

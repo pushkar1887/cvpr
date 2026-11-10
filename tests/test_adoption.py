@@ -116,3 +116,23 @@ def test_route_on_an_all_single_token_cell_needs_only_the_first_branch(tmp_path,
     monkeypatch.setattr(adoption, "load_cell", lambda r, m, d, meth, v: mixed if meth == "A" else real(r, m, d, meth, v))
     with pytest.raises(FileNotFoundError):  # generated-answer questions present: the missing branch is an error
         adoption.load_cell(tmp_path, "lingshu7b", "rin_open", "route:A|missing", {})
+
+
+def test_routec_also_sends_close_answers_to_the_first_row(tmp_path, monkeypatch):
+    """E47: "routec:A|B" routes mc, judgement and close (a single word or phrase) to A; only open answers stay on B."""
+    import pandas as pd
+
+    from medprune import adoption
+
+    frames = {
+        "A": pd.DataFrame({"c": [1.0, 1.0, 1.0, 1.0], "image": ["i0", "i1", "i2", "i3"], "gold": [True] * 4,
+                           "yes": [1.0] * 4, "atype": ["mc", "open", "yesno", "closed"]}, index=["q0", "q1", "q2", "q3"]),
+        "B": pd.DataFrame({"c": [0.0, 0.0, 0.0, 0.0], "image": ["i0", "i1", "i2", "i3"], "gold": [True] * 4,
+                           "yes": [0.0] * 4, "atype": ["mc", "open", "yesno", "closed"]}, index=["q0", "q1", "q2", "q3"]),
+    }
+    real = adoption.load_cell
+    monkeypatch.setattr(adoption, "load_cell", lambda r, m, d, meth, v: frames[meth] if meth in frames
+                        else real(r, m, d, meth, v))
+    slake = adoption.load_cell(tmp_path, "lingshu7b", "slake_en", "routec:A|B", {})
+    assert list(slake["c"]) == [1.0, 0.0, 1.0, 1.0]  # SLAKE's closed and yes / no questions ("close") now from A
+    assert list(adoption.load_cell(tmp_path, "lingshu7b", "slake_en", "route:A|B", {})["c"]) == [1.0, 0.0, 0.0, 0.0]

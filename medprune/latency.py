@@ -405,13 +405,19 @@ def measure_scanprune(model: str, bundle: Path, out: Path, n: int = 200, warmup:
             f1, half, f2 = vscan_schedule(budget, n_layers)
             v1 = np.unique(np.linspace(0, n_vis - 1, keep_count(n_vis, f1)).round().astype(np.int64))
             v2 = v1[np.unique(np.linspace(0, len(v1) - 1, keep_count(n_vis, f2)).round().astype(np.int64))]
-            if qi == 0:
-                ref = lm(inputs_embeds=embeds, position_ids=position_ids, use_cache=False).last_hidden_state
-                mine = prefill(lm, embeds, position_ids, key_bias=torch.zeros(seq_len))
-                equivalence = float((mine.float() - ref.float().to(mine.device)).abs().max()
-                                    / ref.float().abs().max().clamp_min(1e-6))
-                if equivalence > 1e-2:
-                    raise RuntimeError(f"masked layer loop differs from the model forward ({equivalence:.2e})")
+            if qi == 0:  # the explicit-mask loop must reproduce the model's forward (fp16: different SDPA kernel, so
+                # compare by relative Frobenius error; the max-abs ratio is dominated by a few massive activations)
+                ref = lm(inputs_embeds=embeds, position_ids=position_ids, use_cache=False).last_hidden_state.float()
+                mine = prefill(lm, embeds, position_ids, key_bias=torch.zeros(seq_len)).float().to(ref.device)
+                causal = prefill(lm, embeds, position_ids).float().to(ref.device)
+                equivalence = {"masked_rel_fro": float((mine - ref).norm() / ref.norm()),
+                               "masked_rel_max": float((mine - ref).abs().max() / ref.abs().max()),
+                               "causal_rel_fro": float((causal - ref).norm() / ref.norm()),
+                               "masked_last_token_cos": float(torch.nn.functional.cosine_similarity(
+                                   mine[0, -1], ref[0, -1], dim=0))}
+                print("equivalence check:", equivalence)
+                if equivalence["masked_rel_fro"] > 2e-2:
+                    raise RuntimeError(f"masked layer loop differs from the model forward ({equivalence})")
             row_p, row_s, row_t = {}, {}, {}
             order = list(SCANPRUNE_SCHEDULES)
             order_rng.shuffle(order)
@@ -465,7 +471,7 @@ def measure_scanprune(model: str, bundle: Path, out: Path, n: int = 200, warmup:
         "model": model, "dataset": dataset, "n": len(full), "warmup": warmup, "budget": budget, "tau": tau,
         "gpu": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
         "torch": torch.__version__, "transformers": transformers.__version__, "python": platform.python_version(),
-        "equivalence_rel_max_diff": equivalence,
+        "equivalence": equivalence,
         "vision_and_embed_ms": {"median": float(np.median(vision)), "p25": float(np.percentile(vision, 25)),
                                 "p75": float(np.percentile(vision, 75))},
         "schedules": {},

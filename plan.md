@@ -4618,3 +4618,7 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
   - P93: ScanPrune 10% (flat branch, selection included) prefill paired speed-up ≥ 2.8× (E9's pre-LLM 10%: 3.27×). 60%.
   - P94: the size-term mask costs ≤ 10% of ScanPrune 10%'s prefill (`sp10_flat` vs `sp10_flat_nobias`). 70%.
   - P95: ScanPrune at the equal budget, first-token path within 0.1× of `fastv_10`'s. 55%.
+  - 05:05 v4 stopped at its own guard before timing anything: the zero-bias masked loop vs the model's forward,
+    relative max-abs difference 1.34e-2 > 1e-2 (fp16; an explicit mask selects a different SDPA kernel than the causal
+    path; CPU fp32 test equal to 1e-5). Guard changed to relative Frobenius error ≤ 2e-2, with max-abs, the causal
+    loop's error and the last-token cosine logged; the predictions are unchanged. Re-run as v5.

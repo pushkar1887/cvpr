@@ -2317,6 +2317,11 @@ Rows (10% kept per image, 2B's rng stream; open answers judged in-session; code:
   README §6. [FLAG] Qwen3-VL's equal-budget route spends 15.2% per layer against VScan's 14.9% (E42b's integer rounding
   on 64-token images: 9.78 vs 9.00 tokens), 2% more tokens behind a +0.3 Qwen3-VL margin; the paper states it beside the
   number. Lingshu's route (16.3%) is below VScan's (16.4%).
+- 02:15 harvested C Qwen3-VL v4 (BG-S Lingshu RIN anatomy +0.60 vs 2B; Qwen3-VL RadImageNet seeds 1-2 of 2B and S10)
+  and D Qwen3-VL v10 (S10 seeds 1-2, Qwen3-VL SLAKE + OmniMedVQA); 0 missing verdicts. Seed check: Qwen3-VL RIN anatomy
+  three-seed S10 88.83 vs 2B 88.90 — S10's seed-0 +0.8 there was 2B's low seed 0 (88.3 vs 89.4 / 89.0); Qwen3-VL
+  OmniMedVQA S10 62.8 / 63.1 / 62.8 (2B seeds 1-2 pending). 02:20 C Qwen3-VL → E47bsr (BG-S RadImageNet seeds), D
+  Qwen3-VL → Lingshu BG-S SLAKE + OmniMedVQA seeds (E's copy later is skipped at merge).
 
 **E35 result (B `medprune-gpu-qwen3vl8b` v11, Nov 7 15:26, 0.86 h, 2 / 2 runs).** Qwen3-VL Random + merge: SLAKE +0.4,
 RIN abnormality +0.4 (both cells separate little). The Random + merge row is complete: −2.0 to +7.4 over eight cells.

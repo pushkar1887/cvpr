@@ -103,6 +103,7 @@ abnormality in balanced accuracy (its gold answers are 71.9% "yes"). Judged open
 | Random + merge | none + merge | 10% kept | 9.5 / 9.6% | 64.66 | 68.25 | 63.11 |
 | **Ours: gate + coverage + merge + size term (3 seeds)** | gate, strata, log s | 10% kept | 9.5 / 9.6% | **66.17** | **69.43** | **64.53** |
 | **Ours, final 10%: + schedule for one-token answers (3 seeds)** | + read-then-prune | ≤ the 10% count | 9.4 / 9.5% | **66.41** | **69.71** | **64.79** |
+| Ours + sink token kept (BG-S; seed 0, not adopted: +0.66, p 0.08) | + token 0 unmerged | 10% kept | 9.4 / 9.4% | 66.81 | 69.51 | 66.26 |
 | *FastV's tokens per layer (all tokens to layer 2, then 10%)* | | | | | | |
 | Random (K = 2) | none | FastV rule | 16.0 / 14.6% | 61.33 | 64.27 | 60.31 |
 | FastV | LLM attention, layer 2 | FastV rule | 16.0 / 14.6% | 40.89 | 41.50 | 45.27 |

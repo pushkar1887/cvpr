@@ -126,6 +126,10 @@ ScanPrune without the schedule − VisionZip +2.89 (SE 0.42); ScanPrune (equal b
 
 Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).
 
+Cost (T11; Lingshu SLAKE, 2 × T4, selection included): ScanPrune at 10% prefill 3.33× faster than Full, first token
+1.78×; at the equal budget 3.12× / 1.74×; its selection takes 10–12 ms and the size term adds no measurable time.
+Prefill FLOPs equal VisionZip's at 10% and VScan's at the equal budget.
+
 Contemporaneous work: MedSTP (arXiv 2610.22751, Oct 15, 2026; 10% kept, pre-LLM) is reported as a separate reference block, not as a baseline, because its SLAKE set and open-answer metric differ from ours. On the two benchmarks where the protocols align (OmniMedVQA, RadImageNet anatomy MC), our 10% row gains more over PruneSID than MedSTP reports, on both models (Qwen3-VL margins within noise; plan.md §A3.1).
 
 ---

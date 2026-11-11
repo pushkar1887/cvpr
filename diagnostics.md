@@ -800,6 +800,10 @@ Gate+FastV costs exactly FastV's FLOPs. Scoring overhead and decode were not tim
 the image encoder still runs in full.
 **What to do.** Report both numbers; never only the prefill one.
 
+**T11 (Nov 11): ScanPrune itself, same protocol.** Selection included (10-12 ms): ScanPrune 10% prefill 3.33× (paired
+0.300 of Full), first-token path 1.78×; ScanPrune at the equal budget 3.12× / 1.74×; the size-term mask costs nothing
+measurable (0.271 vs 0.281 of Full without it). Masked loop vs model forward: relative Frobenius error 0.0073.
+
 ---
 
 ## 5. Synthesis
@@ -906,7 +910,7 @@ Tested and not adopted:
 | G19 | ~~No vision-encoder-side pruner besides VisPruner~~ **Closed Nov 7 (E14):** VisionZip, HiPrune, CDPruner, FEATHER, VScan and TransPrune are in the table | title scope | done |
 | G20 | Positioning vs Wen et al. 2025, DART, VTC-Bench, MedSTP | "already known" objection | writing; MedSTP's bridge is computed (§9, plan.md §A3.1) |
 | G15 | Lingshu was trained on SLAKE-style data | contamination | limitation paragraph |
-| Latency (method) | The final row and 2B are untimed: E9 timed keep schedules with physical removal, accuracy runs mask | any speedup claim for the method | FLOPs from the runs' keep schedules (laptop); wall-clock needs the latency harness extended to merge, bias and a second cut, then ≈ 0.3 GPU-h |
+| Latency (method) | **Closed Nov 11 (T11)**: ScanPrune timed with its own selection, merge, size-term mask and second cut | — | ScanPrune 10% prefill 3.33×, first token 1.78×; equal budget 3.12× / 1.74×; selection 10-12 ms; mask cost nil; FLOPs = VisionZip's / VScan's |
 | Route confound | Format vs dataset: every routed cell is a whole dataset (MC or yes/no instructions) | the mechanism claim for step 5 | within-SLAKE split done (§9) supports format; a held-out set mixing formats would settle it |
 | Panel coverage | `omni_panel` is multiple choice: it confirms the schedule branch, not the flat branch | held-out evidence for generated answers | a held-out open-answer set |
 | Cell concentration | The final row's lead comes from OmniMedVQA (+6.05 / +2.67) and Lingshu open anatomy (+5.20); Qwen3-VL SLAKE −1.19 and RIN anatomy −0.70 | "better everywhere" is false | report per-cell; writing |
@@ -923,8 +927,9 @@ Tested and not adopted:
 | `results/all/judge/verdicts.jsonl` | open-answer verdicts (8,832) |
 | `results/all/tables/evidence_*.csv`, `layer_profile.csv`, `flops.csv` | D-20, D-14, D-28 |
 | `results/all/latency/lingshu7b__slake_en__t4x2.json` | D-28 |
+| `results/all/latency/lingshu7b__slake_en__scanprune__t4x2.json` | D-28 (T11) |
 | `python -m medprune.analysis {diagnosis,evidence,profile,baselines}` | regenerate the tables |
-| `python -m medprune.latency {measure,prompt-tokens,flops}` | E9 |
+| `python -m medprune.latency {measure,measure-scanprune,prompt-tokens,flops}` | E9, T11 |
 | `medprune.adoption` (`load_cell`, `paired_cells`, `nine_cell`; CLI `--reference X --candidate Y`) | §6.2, §9: nine-cell deltas, SEs and every adoption decision |
 
 ## 9. Additions, Nov 7-10 (E40-E46)

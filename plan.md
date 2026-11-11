@@ -4622,3 +4622,9 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
     relative max-abs difference 1.34e-2 > 1e-2 (fp16; an explicit mask selects a different SDPA kernel than the causal
     path; CPU fp32 test equal to 1e-5). Guard changed to relative Frobenius error ≤ 2e-2, with max-abs, the causal
     loop's error and the last-token cosine logged; the predictions are unchanged. Re-run as v5.
+  - **Result (v5, 05:18; 200 questions; masked loop rel. Frobenius 0.0073, last-token cos 0.99999).** Paired prefill /
+    Full: ScanPrune 10% flat 0.271 (3.60×), + selection 0.300 (**3.33×**), scheduled + selection 0.311 (3.21×); ScanPrune
+    eq flat + selection 0.320 (3.12×), scheduled 0.322 (3.11×); references without selection cost: pre-LLM 10% 0.282
+    (3.47×), FastV 0.308 (3.11×), VScan counts 0.295 (3.30×). Selection 9.8-12.2 ms median. First-token path (vision
+    187 ms + selection + prefill): ScanPrune 10% 0.563 (1.78×), eq 0.575-0.577 (1.74×); FastV 0.569 (1.76×). Size-term
+    mask cost: none measurable (0.271 vs 0.281 without). P93 ✓ (3.33× ≥ 2.8×), P94 ✓, P95 ✓ (0.577 vs 0.569, within 0.1×).

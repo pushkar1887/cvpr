@@ -549,3 +549,6 @@ blocks:
   - {exp: T12r, tier: P0, account: F, model: qwen3vl8b, groups: [rin_open], methods: [sparsevlm, btp, pdrop]}
   - {exp: T12r, tier: P0, account: F, model: qwen3vl8b, groups: [rin_anat_mc], methods: [pdrop]}
   - {exp: T12hr, tier: P0, account: E, model: huatuo7b, groups: [rin_anat_mc], methods: [inverse_gate, artifact_excl, static_map, fastv_k8, fastv_k16, random_l8, random_l16, fastv_merge]}
+  # Nov 13 - T12p (E48 addendum): PDrop on Qwen3-VL RIN abnormality, the one missing cell of Table 1's grey
+  # Qwen3-VL abnormality column (reported, kept out of every average). F's Qwen3-VL notebook (secret attached).
+  - {exp: T12p, tier: P0, account: F, model: qwen3vl8b, groups: [rin_abn_closed], methods: [pdrop]}

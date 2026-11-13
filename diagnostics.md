@@ -84,7 +84,7 @@ else is **exploratory** and dated; the paper must label it so (G13, G21).
 | D-12 | H3: attention sinks / artifacts? | DEAD | `artifact_excl` = FastV (−42.0 vs −41.7) | Present, irrelevant |
 | D-13/14 | Is the ranking question-aware? | NO at layer 1; YES from ~50% depth | 97.8% same keep-set across questions; question share 0.24 at layer 14 | Early layers have not read the question |
 | D-16 | Is early attention informative? | ANTI-informative (Qwen family) | least-attended − most-attended +40.0 (Lingshu RIN) | It ranks useful tokens last |
-| D-17 | Does a deeper K fix it? | YES, abruptly | K=2 −41.7, K=8 −43.9, K=16 +8.5 | Score late, not early |
+| D-17 | Does a deeper K fix it? | it stops hurting, abruptly | vs Random at the same K (E48): K=2 −41.7, K=8 −40.3, K=16 −0.1 (was "+8.5" against Random at K = 2: a budget effect) | Late attention is safe, not better |
 | D-19 | Is it token count / resolution? | NO | RIN at 256 tokens −48.9 (worse) | Not a resolution artefact |
 | D-18 | Is 10% just too extreme? | NO | −39.8 / −41.7 / −43.9 at 5 / 10 / 25% | Holds across budgets |
 | D-20 | H4: does it drop the asked-about organ? | REAL but MINOR | large organs kept at 0.20× chance; but FastV loses −16.4 where no organ is named vs −7.5 where one is | Illustration, not mechanism |
@@ -563,6 +563,22 @@ tokens, so prefill speedup drops from 2.95× to 1.47× (D-28).
 speed-up.
 **What to do.** Basis of the two-stage method (§6): cheap coverage early for speed, attention late for accuracy.
 
+**[FLAG] Correction, Nov 13 (E48).** Every column above is FastV at K against Random at K = 2. At K = 16 that sets 61%
+of the tokens per layer against 16%. Against Random cut at the same K (same tokens per layer):
+
+| FastV − Random at the same K | K=2 | K=8 | K=16 |
+|---|---|---|---|
+| Lingshu RIN anatomy | −41.7 | −40.3 [−44.0, −36.7] | **−0.1 [−0.7, +0.6]** |
+| Lingshu SLAKE | −13.4 | −12.0 [−15.3, −8.8] | +2.5 [+0.6, +4.4] |
+| Lingshu OmniMedVQA | −29.4 | — | +0.8 [+0.3, +1.2] |
+| Qwen3-VL RIN anatomy | −33.7 | −27.4 [−31.0, −23.7] | +0.9 [0.0, +1.9] |
+| Qwen3-VL SLAKE | −5.0 | −4.3 [−6.7, −2.0] | −6.2 [−7.9, −4.5] |
+
+The deep cut's "+8.5" was the budget, not the ranking. Past about half the depth, attention stops hurting and ties
+Random; it never clearly beats it. Qwen3-VL SLAKE at K = 16 (44% of 36 layers) still loses. The two-stage reading
+changes accordingly: late attention is *safe*, not *better*. So ScanPrune keeps tokens to 5/7 depth and never selects
+with attention. (SLAKE K = 2 is −13.4 here against the −12.4 above: the current scorer.)
+
 ### D-18 Is 10% just an extreme budget? (E5, G7)
 
 | FastV − Random (Gate+FastV − Random) | 5% | 10% | 25% | 50% (− Full) |
@@ -952,3 +968,17 @@ Numbers from plan.md (E40-E46 cards), recomputed from the run files on Nov 10 16
 | Format inside one dataset | SLAKE, flat schedule (E42b) − recipe: closed +2.40 (SE 0.99) / +0.24 (1.15), open −0.47 (0.99) / −1.24 (0.84), Lingshu / Qwen3-VL | The format pattern holds within a dataset; one dataset, two models: supports the account, does not prove it |
 | Per-cell profile of the final row | − VScan: Lingshu SLAKE −0.13, RIN anatomy +0.93, abnormality +2.86, OmniMedVQA +6.05, open anatomy +5.20; Qwen3-VL SLAKE −1.19, RIN anatomy −0.70, OmniMedVQA +2.67, open anatomy +0.40 | The lead is the nine-cell mean; VScan is stronger on Qwen3-VL SLAKE and RIN anatomy (not significant) |
 | MedSTP comparison (contemporaneous) | Protocols align on OmniMedVQA and RIN anatomy only (Full within 1.6 points); SLAKE (Full 80.2 / 66.0 vs 83.9 / 80.1) and RIN open (rubric score) do not. Bridge, each method − PruneSID in its own pipeline: ours +6.8 / +5.1 (OmniMedVQA), +9.1 / +2.4 (RIN anatomy) vs MedSTP's +3.6 / +4.9, +3.5 / +1.6 | Grey reference block + bridge; no raw win claim; Qwen3-VL margins within noise |
+
+## 10. Additions, Nov 13 (E48: table-completion runs)
+
+32 runs after the Nov 12 freeze (E and F; requested in chat; no predictions, no design decision). Seed 0, judged,
+paired image bootstrap [95% CI]. Full tables are in `status_2026-11-07.md` (Nov 13 section, Tables 8, 11, 12, 27).
+
+| Diagnostic | Finding | Consequence |
+|---|---|---|
+| Published attention scorers, nine cells | PDrop 41.2 (− FastV −1.99, SE 0.33; 15.0 / 15.1% tokens per layer), SparseVLM 47.9, BTP 56.8; open anatomy 14.6-31.2 (Full 56.6 / 52.6) | D-24 / D-25 complete: the more a method leans on early LLM attention, the lower it lands |
+| FastV vs Random at the same cut | See the D-17 correction: −40 at K = 8, a tie at K = 16 on Lingshu | Late attention is safe, not better |
+| Least-attended on RIN abnormality (Lingshu, balanced) | − FastV +8.2 [+4.8, +11.5]; − Full +1.9 [−1.8, +5.6] | D-16's inversion holds on all three Lingshu cells (+40.0 / +7.2 / +8.2) |
+| Every text token as the query (Lingshu) | − FastV +0.5 [−0.3, +1.3] (RIN anatomy), +0.2 [0.0, +0.7] (abnormality) | The last-token query is not the cause |
+| HuatuoGPT, the Lingshu interventions (D-22) | Background only − FastV −5.2 / −33.6 (SLAKE / RIN); static map −2.4 / −25.0; artifacts +0.5 / −0.2; FastV − Random at K 8 / 16: +3.5 / +0.6 (SLAKE), +0.3 / +0.1 (RIN) | Every Qwen-family symptom reverses: the contrast case for the mechanism section |
+| FastV + merge on HuatuoGPT (two-pass diagnostic) | +2.3 [+0.9, +3.6] SLAKE, +1.1 [−0.3, +2.5] RIN vs FastV (Lingshu +35 to +39, E18) | The merge repairs what selection lost; HuatuoGPT's selection lost little |

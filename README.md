@@ -109,15 +109,17 @@ abnormality in balanced accuracy (its gold answers are 71.9% "yes"). Judged open
 | Random (K = 2) | none | FastV rule | 16.0 / 14.6% | 61.33 | 64.27 | 60.31 |
 | FastV | LLM attention, layer 2 | FastV rule | 16.0 / 14.6% | 40.89 | 41.50 | 45.27 |
 | VScan | ViT + LLM attention, merge | FastV-matched, 2 stages | 16.4 / 14.9% | 65.53 | 68.23 | 65.11 |
-| SparseVLM ¹ | LLM attention, text raters | FastV-matched, 3 stages | 16.2 / 15.0% | 51.91 ¹ | | |
-| BTP ¹ | LLM attention + spatial | FastV-matched, 4 stages | 16.0 / 15.1% | 63.02 ¹ | | |
+| SparseVLM ¹ | LLM attention, text raters | FastV-matched, 3 stages | 16.2 / 15.0% | 45.64 | 39.10 | 58.88 |
+| PDrop ¹ | LLM attention | FastV-matched, 4 stages | 15.0 / 15.1% | 38.80 | 35.70 | 48.05 |
+| BTP ¹ | LLM attention + spatial | FastV-matched, 4 stages | 16.0 / 15.1% | 55.06 | 55.89 | 57.98 |
 | **ScanPrune, equal budget (3 seeds)** | gate, strata, log s, schedule | FastV-matched | 16.3 / 15.2% | **67.62** | **71.21** | **65.41** |
 | *Larger budgets (own rules)* | | | | | | |
 | FEATHER | RoPE-free LLM attention | 2 stages | 46.0 / 37.9% | 61.21 | 65.43 | 60.57 |
 | TransPrune | token transition | multi-stage | 43.4 / 35.9% | 60.91 | 62.50 | 64.27 |
 
-¹ No RadImageNet open-anatomy runs: mean over the seven other cells (same cells: Full 74.75, VScan 71.17, ours at the
-equal budget 73.06, ours at 10% 71.89). PDrop (Lingshu only, three cells) is in plan.md.
+¹ Cells completed Nov 13 (E48, after the freeze; seed 0): the open-anatomy cells of SparseVLM and BTP, and PDrop's
+six missing cells. ScanPrune (equal budget) − SparseVLM / PDrop / BTP: +20.74 / +27.44 / +11.81 (SE 0.60 / 0.64 / 0.55;
+balanced basis).
 
 Paired, images resampled jointly across models, three-seed means: ScanPrune (10%) − VisionZip **+3.16 (SE 0.42)**, −
 PruneSID +3.86 (SE 0.43), − 2B +0.27 (SE 0.20 with the residual seed term, p 0.08; held-out `omni_panel` +1.08, p 0.009);

@@ -4628,3 +4628,13 @@ anatomy **+3.4**; Qwen3-VL SLAKE −1.0, RIN anatomy +0.8, OmniMedVQA **+2.3**, 
     (3.47×), FastV 0.308 (3.11×), VScan counts 0.295 (3.30×). Selection 9.8-12.2 ms median. First-token path (vision
     187 ms + selection + prefill): ScanPrune 10% 0.563 (1.78×), eq 0.575-0.577 (1.74×); FastV 0.569 (1.76×). Size-term
     mask cost: none measurable (0.271 vs 0.281 without). P93 ✓ (3.33× ≥ 2.8×), P94 ✓, P95 ✓ (0.577 vs 0.569, within 0.1×).
+- **T12 — table-completion runs (Nov 13, after the Nov 12 freeze; requested in chat; no design decision uses them).**
+  32 runs on E and F only (A, B, D have no quota; C 2.4 h kept in reserve): T12a (no RadImageNet; PDrop on Lingshu
+  OmniMedVQA and Qwen3-VL SLAKE / OmniMedVQA; Random cut at 8 / 16 on SLAKE, both models, seed 0 like the row's other
+  cells), T12h (HuatuoGPT SLAKE: background-only, artifact exclusion, static map, K = 8 / 16, Random cut at 8 / 16,
+  FastV + merge), T12r (RadImageNet: SparseVLM / BTP / PDrop on open anatomy, PDrop on Qwen3-VL RIN anatomy, FastV with
+  every text token as query and least-attended on Lingshu RIN abnormality) and T12hr (HuatuoGPT RIN anatomy, the
+  T12h rows); T12r / T12hr wait for the `cvpr` secret on E / F. Code: `HuatuoAdapter.merged_kwargs` writes the merge
+  plan into LLaVA's spliced visual rows (test); HuatuoGPT static maps built from its Full runs' layer-1 attention on the
+  other anchor dataset (`analysis.build_static_maps`; 32 × 32), shipped inside the notebook. No predictions: these fill
+  Tables 1-2 cells.

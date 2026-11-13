@@ -170,10 +170,23 @@ class HuatuoAdapter:
         return PreparedInputs({"inputs_embeds": embeds, "attention_mask": mask}, vis_pos, (side, side), rc,
                               embeds.shape[1], torch.arange(len(ids_before) + n, embeds.shape[1]))
 
+    def merged_kwargs(self, inputs: PreparedInputs) -> dict:
+        """The model inputs with the active state's merge plan applied to the spliced visual rows (LLaVA has no vision
+        forward hook to write merged tokens into, unlike `QwenVLAdapter._apply_merge`): kept token i's row becomes the
+        weighted mean of the rows merged into it; dropped rows are masked by the pruning attention as usual."""
+        state = hook.ACTIVE
+        kw = inputs.model_kwargs
+        if state is None or state.merge is None or inputs.vis_pos.numel() == 0:
+            return kw
+        embeds = kw["inputs_embeds"].clone()
+        vis = inputs.vis_pos.to(embeds.device)
+        embeds[0, vis] = hook.merge_rows(embeds[0, vis], state.merge)
+        return {**kw, "inputs_embeds": embeds}
+
     @torch.inference_mode()
     def generate(self, inputs: PreparedInputs, max_new_tokens: int) -> tuple[str, int]:
         # with inputs_embeds and no input_ids, generate() returns only the new tokens
-        out = self.lm.generate(**inputs.model_kwargs, max_new_tokens=max_new_tokens, do_sample=False, use_cache=True,
+        out = self.lm.generate(**self.merged_kwargs(inputs), max_new_tokens=max_new_tokens, do_sample=False, use_cache=True,
                                temperature=None, top_p=None, top_k=None, eos_token_id=self.eos_token_id,
                                pad_token_id=self.eos_token_id)
         new = out[0]

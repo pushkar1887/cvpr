@@ -103,3 +103,28 @@ def test_fastv_state_selects_k_tokens_and_generates():
     assert hook.CALLS["decoder"] > calls and len(state.keep) == 58 and 1 <= n_new <= 4 and isinstance(text, str)
     assert state.logs["scores_l1"].shape == (576,) and state.logs["scores_ropefree_l1"].shape == (576,)
     assert state.logs["llm_norm_l1"].shape == (576,) and state.logs["vit_norm"].shape == (576,)
+
+
+def test_merge_plan_is_written_into_the_spliced_visual_rows():
+    """FastV + merge on HuatuoGPT (LLaVA): the active state's merge plan replaces each kept visual row by the weighted
+    mean of its cluster; text rows and the stored inputs are untouched; no state, no change."""
+    from medprune.baselines.vscan import merge_weights
+
+    adapter = tiny_adapter()
+    inputs = adapter.prepare(SAMPLE, IMAGE)
+    vis = inputs.vis_pos
+    rows = inputs.model_kwargs["inputs_embeds"][0, vis].clone()
+    keep = np.arange(0, 576, 10)
+    state = PruneState(vis_pos=vis)
+    state.apply_keep(keep, 0)
+    state.merge = (keep, merge_weights(rows.float(), torch.as_tensor(keep)))
+    assert adapter.merged_kwargs(inputs) is inputs.model_kwargs  # no active state
+    with pruning(state):
+        merged = adapter.merged_kwargs(inputs)["inputs_embeds"]
+        text, n_new = adapter.generate(inputs, max_new_tokens=3)
+    w = torch.as_tensor(state.merge[1], dtype=torch.float32)
+    torch.testing.assert_close(merged[0, vis[keep]].float(), w @ rows.float(), atol=1e-5, rtol=0)
+    other = torch.ones(merged.shape[1], dtype=torch.bool)
+    other[vis[keep]] = False
+    torch.testing.assert_close(merged[0, other], inputs.model_kwargs["inputs_embeds"][0, other])
+    assert torch.equal(inputs.model_kwargs["inputs_embeds"][0, vis], rows) and 1 <= n_new <= 3

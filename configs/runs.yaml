@@ -536,3 +536,16 @@ blocks:
   - {exp: E47bsr, tier: P0, account: C, model: qwen3vl8b, groups: [rin_anat_mc, rin_open], methods: [gate_jitter_sink_merge_pa], seeds: [1, 2]}
   # Nov 11 02:20 - Lingshu BG-S seeds also on D (free first; E's notebook would reach them ~1.5 h later; first copy merged).
   - {exp: E47bs, tier: P0, account: D, model: lingshu7b, groups: [slake_en, omni_anat], methods: [gate_jitter_sink_merge_pa], seeds: [1, 2]}
+
+  # Nov 13 - T12: table-completion runs after the freeze (no design decision uses them; plan.md T12). E and F only.
+  # T12a / T12h need no RadImageNet; T12r / T12hr wait for the `cvpr` secret on E / F.
+  - {exp: T12a, tier: P0, account: E, model: lingshu7b, groups: [omni_anat], methods: [pdrop]}
+  - {exp: T12a, tier: P0, account: E, model: lingshu7b, groups: [slake_en], methods: [random_l8, random_l16]}
+  - {exp: T12a, tier: P0, account: E, model: qwen3vl8b, groups: [slake_en, omni_anat], methods: [pdrop]}
+  - {exp: T12a, tier: P0, account: E, model: qwen3vl8b, groups: [slake_en], methods: [random_l8, random_l16]}
+  - {exp: T12h, tier: P0, account: F, model: huatuo7b, groups: [slake_en], methods: [inverse_gate, artifact_excl, static_map, fastv_k8, fastv_k16, random_l8, random_l16, fastv_merge]}
+  - {exp: T12r, tier: P0, account: F, model: lingshu7b, groups: [rin_open], methods: [sparsevlm, btp, pdrop]}
+  - {exp: T12r, tier: P0, account: F, model: lingshu7b, groups: [rin_abn_closed], methods: [fastv_text, fastv_bottom]}
+  - {exp: T12r, tier: P0, account: F, model: qwen3vl8b, groups: [rin_open], methods: [sparsevlm, btp, pdrop]}
+  - {exp: T12r, tier: P0, account: F, model: qwen3vl8b, groups: [rin_anat_mc], methods: [pdrop]}
+  - {exp: T12hr, tier: P0, account: E, model: huatuo7b, groups: [rin_anat_mc], methods: [inverse_gate, artifact_excl, static_map, fastv_k8, fastv_k16, random_l8, random_l16, fastv_merge]}

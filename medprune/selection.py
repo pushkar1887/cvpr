@@ -142,6 +142,17 @@ METHODS: dict[str, MethodSpec] = dict(
         _spec("gate_cdpruner", "cdpruner", mask_from=0, gate="foreground"),
         _spec("cdpruner_neg", "cdpruner", mask_from=0, invert=True),  # the released LLaVA code's relevance sign
         _spec("gate_cdpruner_neg", "cdpruner", mask_from=0, gate="foreground", invert=True),  # E17b
+        # E49 (Nov 14): the anatomy gate in front of every published pruner of the main table, one rule for all
+        # (medprune/baselines/__init__.py): candidates = the gate's foreground, the method's own ranking tops up.
+        _spec("gate_sparsevlm", "sparsevlm", score="raters", score_layer=2, mask_from=3, gate="foreground"),
+        _spec("gate_btp", "btp", score="attn", mask_from=3, gate="foreground"),
+        _spec("gate_vispruner", "vispruner", mask_from=0, gate="foreground"),
+        _spec("gate_prunesid", "prunesid", mask_from=0, gate="foreground"),
+        _spec("gate_hiprune", "hiprune", mask_from=0, gate="foreground"),
+        _spec("gate_feather", "feather", score="ropefree", mask_from=8, gate="foreground"),
+        _spec("gate_vscan", "vscan", mask_from=0, gate="foreground"),
+        _spec("gate_transprune", "transprune", score="text", mask_from=7, gate="foreground"),
+        _spec("gate_pool", "pool", mask_from=0, gate="foreground"),
         _spec("feather", "feather", score="ropefree", mask_from=8),
         _spec("vscan", "vscan", mask_from=0),
         _spec("transprune", "transprune", score="text", mask_from=7),

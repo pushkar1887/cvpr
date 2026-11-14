@@ -108,9 +108,10 @@ def test_pdrop_is_token_matched_to_fastv():
 
 
 def test_registry_is_consistent_with_fastv_definition():
-    assert len(METHODS) == 89  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
+    assert len(METHODS) == 98  # + sparsevlm, vispruner, prunesid, btp (E13); 2 rater ablations (E16); 8 pruners (E14);
     #                            FastV K = 3-6 (E17); the remedy's 6 rows (E40-E41); size term / schedule (E42); 10% size term, k-means (E43); bgsum + size term, SLIC (E46);
-    #                            10% schedule, SLIC flat / scheduled, sink, null background (E47); ScanPrune at 10% and at the equal budget
+    #                            10% schedule, SLIC flat / scheduled, sink, null background (E47); ScanPrune at 10% and at the equal budget;
+    #                            the gate in front of 9 more published pruners (E49)
     for spec in METHODS.values():
         if spec.rule == "topk" and spec.score is not None:
             assert spec.mask_from == spec.score_layer + 1 or spec.two_pass, spec.name

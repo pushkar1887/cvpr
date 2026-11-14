@@ -20,6 +20,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from . import keep_pool
+
 
 def pca_group(features: torch.Tensor, min_components: int = 32) -> tuple[torch.Tensor, torch.Tensor]:
     standard_features = torch.sigmoid(features.to(torch.float32)).permute(1, 0)
@@ -118,16 +120,26 @@ def prunesid_indices(hidden_states: torch.Tensor, need_token_num: int) -> torch.
     return important_indices
 
 
-def select_prunesid(feats: np.ndarray, k: int, seed: int) -> np.ndarray:
-    """k kept visual tokens (sorted indices) from LLM-input visual embeddings [N, C]."""
+def select_prunesid(feats: np.ndarray, k: int, seed: int, allowed: np.ndarray | None = None) -> np.ndarray:
+    """k kept visual tokens (sorted indices) from LLM-input visual embeddings [N, C].
+
+    With `allowed` (gate_prunesid), the official selection runs on the allowed tokens only (the 16-token floor is the
+    image's, so it is tested on N); a pool of at most k tokens, or one too small for the PCA, is kept whole and
+    topped up in raster order, PruneSID's own shortfall rule."""
     n = feats.shape[0]
     if n <= 16 or k >= n:  # official: images of <= 16 tokens are not pruned
         return np.arange(n, dtype=np.int64)
+    pool = np.arange(n) if allowed is None else np.flatnonzero(allowed)
+    if pool.size <= max(k, int(k / 4), 4):
+        return keep_pool(pool[:k], k, np.arange(n))
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(seed)
-        idx = prunesid_indices(torch.as_tensor(feats, dtype=torch.float32), k).cpu().numpy()
-    chosen = np.unique(idx.astype(np.int64))
+        idx = prunesid_indices(torch.as_tensor(feats[pool], dtype=torch.float32), k).cpu().numpy()
+    chosen = np.unique(pool[idx.astype(np.int64)])
     if chosen.size < k:  # the group allocation can fall short when NMS leaves few tokens; top up in raster order
-        rest = np.setdiff1d(np.arange(n), chosen)
+        rest = np.concatenate([pool, np.arange(n)])  # pool first: a gated top-up stays in the foreground if it can
+        rest = rest[~np.isin(rest, chosen)]
+        _, first = np.unique(rest, return_index=True)
+        rest = rest[np.sort(first)]
         chosen = np.concatenate([chosen, rest[: k - chosen.size]])
     return np.sort(chosen[:k])

@@ -18,6 +18,8 @@ from __future__ import annotations
 import numpy as np
 import torch
 
+from . import keep_pool
+
 ALPHA = 0.1  # HIPRUNE_ALPHA, official default
 OBJECT_LAYER = {"lingshu7b": 16, "qwen3vl8b": 14}  # 1-based; official 16 for Qwen2.5-VL (32 blocks)
 
@@ -55,12 +57,41 @@ def hiprune_indices(shallow_attention: torch.Tensor, deep_attention: torch.Tenso
     return torch.cat([shallow_token_indices, deep_token_indices])
 
 
+def gated_hiprune_indices(shallow: np.ndarray, deep: np.ndarray, width: int, k: int, allowed: np.ndarray,
+                          alpha: float = ALPHA) -> np.ndarray:
+    """hiprune_indices with the anchors, buffers and registers all taken from the allowed tokens (gate_hiprune):
+    anchors = top allowed by object-layer attention, buffers = their allowed 4-neighbours (same raster arithmetic and
+    clamp), registers = top remaining allowed tokens by output-layer attention."""
+    n = deep.shape[0]
+    allowed = np.asarray(allowed, dtype=bool)
+    n_anchor = round((k * alpha) / 5)
+    sh = np.where(allowed, np.asarray(shallow, dtype=np.float64), -np.inf)
+    anchors = np.argsort(-sh, kind="stable")[:n_anchor]
+    near = np.concatenate([anchors, anchors - 1, anchors + 1, anchors - width, anchors + width]).clip(0, n - 1)
+    near = np.unique(near[allowed[near]])[:k]
+    dp = np.where(allowed, np.asarray(deep, dtype=np.float64), -np.inf)
+    dp[near] = -np.inf
+    registers = np.argsort(-dp, kind="stable")[: k - near.size]
+    return np.concatenate([near, registers]).astype(np.int64)
+
+
 def select_hiprune(shallow: np.ndarray, deep: np.ndarray, grid_hw: tuple[int, int], k: int,
-                   alpha: float = ALPHA) -> np.ndarray:
-    """k kept tokens (sorted indices). `retain` is chosen so round(N x retain) == k exactly."""
+                   alpha: float = ALPHA, allowed: np.ndarray | None = None) -> np.ndarray:
+    """k kept tokens (sorted indices). `retain` is chosen so round(N x retain) == k exactly.
+
+    With `allowed` (gate_hiprune), selection stays inside the allowed tokens (`gated_hiprune_indices`); a pool of at
+    most k tokens is kept whole and topped up by output-layer attention."""
     n = deep.shape[0]
     if k >= n:
         return np.arange(n, dtype=np.int64)
+    if allowed is not None:
+        pool = np.flatnonzero(allowed)
+        if pool.size <= k:
+            return keep_pool(pool, k, np.argsort(-np.asarray(deep, dtype=np.float64), kind="stable"))
+        kept = np.unique(gated_hiprune_indices(shallow, deep, int(grid_hw[1]), k, allowed, alpha))
+        if kept.size != k:
+            raise RuntimeError(f"gated HiPrune kept {kept.size} tokens, budget {k}")
+        return kept
     kept = hiprune_indices(torch.as_tensor(shallow, dtype=torch.float32), torch.as_tensor(deep, dtype=torch.float32),
                            int(grid_hw[1]), k / n, alpha)
     kept = np.unique(kept.numpy()).astype(np.int64)

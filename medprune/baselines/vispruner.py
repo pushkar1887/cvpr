@@ -22,6 +22,8 @@ from __future__ import annotations
 import numpy as np
 import torch
 
+from . import keep_pool
+
 IMPORTANT_RATIO = 0.5  # official default (llava/eval/model_vqa*.py --important_ratio)
 
 
@@ -69,11 +71,17 @@ def vispruner_indices(image_features: torch.Tensor, image_attentions: torch.Tens
 
 
 def select_vispruner(importance: np.ndarray, feats: np.ndarray, k: int,
-                     important_ratio: float = IMPORTANT_RATIO) -> np.ndarray:
-    """k kept visual tokens (sorted indices) from per-token visual attention [N] and features [N, C]."""
+                     important_ratio: float = IMPORTANT_RATIO, allowed: np.ndarray | None = None) -> np.ndarray:
+    """k kept visual tokens (sorted indices) from per-token visual attention [N] and features [N, C].
+
+    With `allowed` (gate_vispruner), the official selection runs on the allowed tokens only; a pool of at most k
+    tokens is kept whole and topped up by visual attention."""
     n = importance.shape[0]
     if k >= n:
         return np.arange(n, dtype=np.int64)
-    mask = vispruner_indices(torch.as_tensor(feats, dtype=torch.float32)[None],
-                             torch.as_tensor(importance, dtype=torch.float32)[None, None], k, important_ratio)
-    return np.flatnonzero(mask[0].numpy()).astype(np.int64)
+    pool = np.arange(n) if allowed is None else np.flatnonzero(allowed)
+    if pool.size <= k:
+        return keep_pool(pool, k, np.argsort(-np.asarray(importance, dtype=np.float64), kind="stable"))
+    mask = vispruner_indices(torch.as_tensor(feats[pool], dtype=torch.float32)[None],
+                             torch.as_tensor(importance[pool], dtype=torch.float32)[None, None], k, important_ratio)
+    return np.sort(pool[np.flatnonzero(mask[0].numpy())]).astype(np.int64)

@@ -120,11 +120,42 @@ def window_selection(attn_weights, num_keep_tokens, token_h: int, token_w: int, 
     return keep_indices
 
 
-def stage1(local: np.ndarray, global_: np.ndarray, embeds: np.ndarray, grid_hw: tuple[int, int], k1: int):
-    """Stage-1 kept tokens (sorted) and the merge (rows, weights). local/global_ [N] attention; embeds [N, d]."""
+def gated_window_selection(attn: np.ndarray, num_keep: int, token_h: int, token_w: int, allowed: np.ndarray,
+                           window_size: int = WINDOW) -> np.ndarray:
+    """window_selection over the allowed tokens only (gate_vscan): the same windows and per-window limit, candidates
+    in descending attention; if the limit leaves fewer than `num_keep` allowed tokens, the best remaining allowed
+    tokens fill the rest regardless of window. Equals the official function when every token is allowed."""
+    nh, nw = token_h // window_size, token_w // window_size
+    limit = -(-num_keep // (nh * nw))
+    counter = np.zeros((nh, nw), dtype=int)
+    order = np.argsort(-np.asarray(attn, dtype=np.float64), kind="stable")
+    order = order[np.asarray(allowed, dtype=bool)[order]]
+    keep = []
+    for index in order:
+        x = min((index // token_w) // window_size, nh - 1)
+        y = min((index % token_w) // window_size, nw - 1)
+        if counter[x, y] < limit:
+            counter[x, y] += 1
+            keep.append(int(index))
+        if len(keep) >= num_keep:
+            break
+    if len(keep) < num_keep:
+        keep += [int(i) for i in order if i not in set(keep)][: num_keep - len(keep)]
+    return np.asarray(keep, dtype=np.int64)
+
+
+def stage1(local: np.ndarray, global_: np.ndarray, embeds: np.ndarray, grid_hw: tuple[int, int], k1: int,
+           allowed: np.ndarray | None = None):
+    """Stage-1 kept tokens (sorted) and the merge (rows, weights). local/global_ [N] attention; embeds [N, d].
+
+    With `allowed` (gate_vscan), local and global scans pick allowed tokens only and only dropped allowed tokens are
+    merged (into their most similar kept allowed token; `remedy.merge_plan`); dropped background tokens leave unmerged,
+    as in gate_visionzip. A pool of at most k1 tokens is kept whole, topped up by global attention, unmerged."""
     n = local.shape[0]
     if k1 >= n:
         return np.arange(n, dtype=np.int64), None
+    if allowed is not None:
+        return _gated_stage1(local, global_, embeds, grid_hw, k1, np.asarray(allowed, dtype=bool))
     h, w = int(grid_hw[0]), int(grid_hw[1])
     if h < WINDOW or w < WINDOW:  # no complete 4 x 4 window (the official code divides by zero): one window
         keep_local = torch.topk(torch.as_tensor(local, dtype=torch.float32), k1 // 2).indices
@@ -138,6 +169,29 @@ def stage1(local: np.ndarray, global_: np.ndarray, embeds: np.ndarray, grid_hw: 
         raise RuntimeError("VScan stage 1 selected a token twice")
     weights = merge_weights(torch.as_tensor(embeds), keep)
     return keep.numpy().astype(np.int64), (keep.numpy().astype(np.int64), weights)
+
+
+def _gated_stage1(local, global_, embeds, grid_hw, k1, allowed):
+    from ..remedy import merge_plan
+    from . import keep_pool
+
+    pool = np.flatnonzero(allowed)
+    if pool.size <= k1:
+        return keep_pool(pool, k1, np.argsort(-np.asarray(global_, dtype=np.float64), kind="stable")), None
+    h, w = int(grid_hw[0]), int(grid_hw[1])
+    if h < WINDOW or w < WINDOW:
+        loc = np.where(allowed, np.asarray(local, dtype=np.float64), -np.inf)
+        keep_local = np.argsort(-loc, kind="stable")[: k1 // 2]
+    else:
+        keep_local = gated_window_selection(local, k1 // 2, h, w, allowed)
+    g = np.where(allowed, np.asarray(global_, dtype=np.float64), -np.inf)
+    g[keep_local] = -np.inf  # avoid repetition (official: set to 0; attention is positive, so the order is the same)
+    keep_global = np.argsort(-g, kind="stable")[: k1 - k1 // 2]
+    keep = np.sort(np.concatenate([keep_local, keep_global])).astype(np.int64)
+    if np.unique(keep).size != k1 or not allowed[keep].all():
+        raise RuntimeError("gated VScan stage 1 selected a token twice or outside the gate")
+    rows, weights = merge_plan(np.asarray(embeds, dtype=np.float64), keep, allowed)
+    return keep, (rows, weights)
 
 
 def stage2_keep(scores: np.ndarray, survivors: np.ndarray, count: int) -> np.ndarray:

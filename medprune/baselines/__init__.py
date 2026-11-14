@@ -21,4 +21,23 @@ BTP's repository states no license, so `btp.py` is an independent implementation
 FEATHER has no public code, so `feather.py` follows the paper; the equivalence tests (tests/test_baselines.py,
 tests/test_new_baselines.py) run the official code from a local clone in third_party/, which is never
 committed. Deviations forced by the architectures or by matched budgets are listed in each module's docstring.
+
+Anatomy gate (gate_<method>, plan.md E49): one rule for every pruner. Only the gate's foreground tokens are candidates;
+a pre-LLM pruner runs its official selection on them, an in-LLM pruner's every stage picks among the surviving
+foreground tokens. When the foreground holds no more tokens than a selection keeps, all of it is kept and the method's
+own ranking fills the rest from the background. With every token in the foreground the gated variant is the
+ungated method, token for token (tests/test_gated_baselines.py).
 """
+
+from __future__ import annotations
+
+import numpy as np
+
+
+def keep_pool(pool: np.ndarray, k: int, order: np.ndarray) -> np.ndarray:
+    """Gate too tight: all of `pool`, topped up to k by `order` (the method's own ranking, best first)."""
+    pool = np.asarray(pool, dtype=np.int64)
+    rest = np.asarray(order, dtype=np.int64)
+    rest = rest[~np.isin(rest, pool)][: max(k - pool.size, 0)]
+    return np.sort(np.concatenate([pool, rest])).astype(np.int64)
+

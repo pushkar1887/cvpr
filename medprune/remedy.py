@@ -296,6 +296,73 @@ def slic_plan(emb: np.ndarray, rc: np.ndarray, k: int, rng: np.random.Generator,
     return keep, (keep, weights)
 
 
+def gated_pool_plan(rc: np.ndarray, k: int, allowed: np.ndarray) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray] | None]:
+    """Block pooling inside the anatomy gate (gate_pool): `pool_plan` on the foreground's bounding box, with the
+    smallest block count k' >= k that leaves at least k blocks holding foreground; each such block keeps its central
+    foreground token, which carries the mean of the block's foreground tokens (background leaves unmerged). If k'
+    gives more than k foreground blocks, the k with the most foreground are kept and the others' foreground tokens join
+    the nearest kept centre on the grid. A foreground of at most k tokens is kept whole (unmerged), topped up with
+    evenly spaced background tokens. With every token in the foreground this is `pool_plan`."""
+    from .selection import select_uniform
+
+    n = len(rc)
+    allowed = np.asarray(allowed, dtype=bool)
+    fg = np.flatnonzero(allowed)
+    if fg.size <= k:
+        return select_uniform(n, k, allowed), None
+    r0, c0 = rc[fg].min(axis=0)
+    r1, c1 = rc[fg].max(axis=0) + 1
+    box = np.flatnonzero((rc[:, 0] >= r0) & (rc[:, 0] < r1) & (rc[:, 1] >= c0) & (rc[:, 1] < c1))
+    local = rc[box] - np.array([r0, c0])
+    for kk in range(k, box.size + 1):
+        blocks = [box[m] for m in _pool_blocks(local, (int(r1 - r0), int(c1 - c0)), kk)]
+        blocks = [b[allowed[b]] for b in blocks]
+        blocks = [b for b in blocks if b.size]
+        if len(blocks) >= k:
+            break
+    blocks.sort(key=lambda b: -b.size)  # stable: equal sizes keep raster order of the blocks
+    kept_blocks, extra = blocks[:k], blocks[k:]
+
+    def centre(b):
+        mid = rc[b].mean(axis=0)
+        return int(b[np.argmin(((rc[b] - mid) ** 2).sum(axis=1))])
+
+    centres = np.array([centre(b) for b in kept_blocks], dtype=np.int64)
+    members = [list(b) for b in kept_blocks]
+    for b in extra:
+        for t in b:
+            members[int(np.argmin(((rc[centres] - rc[t]) ** 2).sum(axis=1)))].append(int(t))
+    order = np.argsort(centres)
+    keep = centres[order]
+    weights = np.zeros((k, n), dtype=np.float64)
+    for row, i in enumerate(order):
+        weights[row, members[i]] = 1.0 / len(members[i])
+    return keep, (keep, weights)
+
+
+def _pool_blocks(rc: np.ndarray, grid_hw: tuple[int, int], k: int) -> list[np.ndarray]:
+    """The k near-equal-area blocks of `pool_plan` (member indices into rc), in band-major order."""
+    h, w = grid_hw
+    n = len(rc)
+    k = max(1, min(int(k), n))
+    bands = int(np.clip(np.floor(np.sqrt(k * h / w) + 0.5), 1, min(h, k)))
+    while -(-k // bands) > w:
+        bands += 1
+    base, extra = divmod(k, bands)
+    counts = [base + (1 if b < extra else 0) for b in range(bands)]
+    row_edges = np.floor(h * np.cumsum([0] + counts) / k + 0.5).astype(int)
+    if np.any(np.diff(row_edges) < 1):
+        row_edges = np.floor(np.linspace(0, h, bands + 1) + 0.5).astype(int)
+    out = []
+    for b in range(bands):
+        ra, rb = row_edges[b], row_edges[b + 1]
+        col_edges = np.floor(np.linspace(0, w, counts[b] + 1) + 0.5).astype(int)
+        for j in range(counts[b]):
+            ca, cb = col_edges[j], col_edges[j + 1]
+            out.append(np.flatnonzero((rc[:, 0] >= ra) & (rc[:, 0] < rb) & (rc[:, 1] >= ca) & (rc[:, 1] < cb)))
+    return out
+
+
 def pool_plan(rc: np.ndarray, grid_hw: tuple[int, int], k: int) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """Average pooling to exactly k tokens: ceil-balanced horizontal bands, each split into equal-width blocks, so the
     k blocks have near-equal area. Returns (kept tokens, merge plan); a kept token is its block's central token and

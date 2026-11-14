@@ -552,3 +552,21 @@ blocks:
   # Nov 13 - T12p (E48 addendum): PDrop on Qwen3-VL RIN abnormality, the one missing cell of Table 1's grey
   # Qwen3-VL abnormality column (reported, kept out of every average). F's Qwen3-VL notebook (secret attached).
   - {exp: T12p, tier: P0, account: F, model: qwen3vl8b, groups: [rin_abn_closed], methods: [pdrop]}
+
+  # Nov 14 - E49: the anatomy gate in front of every published pruner of the main table (gate_<method>, one rule for
+  # all; medprune/baselines/__init__.py), nine cells each, plus DivPrune's two missing open-anatomy cells. Seed 0
+  # (PruneSID's PCA seed is per question). NOT LAUNCHED: launch plan in plan.md E49. One account per method pair.
+  - {exp: E49, tier: P0, account: A, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [gate_sparsevlm, gate_btp]}
+  - {exp: E49, tier: P0, account: A, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, omni_anat, rin_open], methods: [gate_sparsevlm, gate_btp]}
+  - {exp: E49, tier: P0, account: B, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [gate_vscan]}
+  - {exp: E49, tier: P0, account: B, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, omni_anat, rin_open], methods: [gate_vscan]}
+  - {exp: E49, tier: P0, account: C, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [gate_vispruner]}
+  - {exp: E49, tier: P0, account: C, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, omni_anat, rin_open], methods: [gate_vispruner]}
+  - {exp: E49, tier: P0, account: C, model: lingshu7b, groups: [rin_open], methods: [gate_divprune]}
+  - {exp: E49, tier: P0, account: C, model: qwen3vl8b, groups: [rin_open], methods: [gate_divprune]}
+  - {exp: E49, tier: P0, account: D, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [gate_hiprune, gate_prunesid]}
+  - {exp: E49, tier: P0, account: D, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, omni_anat, rin_open], methods: [gate_hiprune, gate_prunesid]}
+  - {exp: E49, tier: P0, account: E, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [gate_feather, gate_transprune]}
+  - {exp: E49, tier: P0, account: E, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, omni_anat, rin_open], methods: [gate_feather, gate_transprune]}
+  - {exp: E49, tier: P0, account: F, model: lingshu7b, groups: [slake_en, rin_anat_mc, rin_abn_closed, omni_anat, rin_open], methods: [gate_pool]}
+  - {exp: E49, tier: P0, account: F, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, omni_anat, rin_open], methods: [gate_pool]}

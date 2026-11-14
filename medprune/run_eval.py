@@ -28,8 +28,8 @@ from PIL import Image
 
 from .data import Sample, load_manifest
 from .masks import MaskStore
-from .remedy import (background_slot, fastv_matched_count, flat_sched_counts, kmeans_plan, merge_plan, pool_plan,
-                     select_stratified, slic_plan)
+from .remedy import (background_slot, fastv_matched_count, flat_sched_counts, gated_pool_plan, kmeans_plan, merge_plan,
+                     pool_plan, select_stratified, slic_plan)
 from .scoring import is_correct
 from .selection import (METHODS, MethodSpec, keep_count, pdrop_schedule, rng_for, sample_map, select_divprune,
                         select_inverse, select_random, select_topk, select_uniform, select_uniform_quota)
@@ -263,7 +263,10 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
                                         allowed)
         state.apply_keep(keep, method.mask_from)
     elif rule == "pool":  # E40: average pooling to k near-equal blocks (VTC-Bench's downsampling baseline)
-        keep, state.merge = pool_plan(inputs.rc, inputs.grid_hw, k)
+        if allowed is not None:  # E49: pooling inside the gate's foreground
+            keep, state.merge = gated_pool_plan(inputs.rc, k, allowed)
+        else:
+            keep, state.merge = pool_plan(inputs.rc, inputs.grid_hw, k)
         state.apply_keep(keep, method.mask_from)
     elif rule == "uniform":
         if method.bg_quota > 0 and allowed is not None:  # E20: background quota for the coverage selector
@@ -305,10 +308,7 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
 
             state.stages.append(Stage(boundary - 1, boundary, select, score_kind="attn"))
     elif rule in BASELINES:
-        if allowed is not None and rule not in GATED_BASELINES:
-            raise ValueError(f"{method.name}: this published pruner runs without the gate")
-        extra = {"allowed": allowed} if rule in GATED_BASELINES else {}
-        BASELINES[rule](state, spec, sample, inputs, adapter, n, k, **extra)
+        BASELINES[rule](state, spec, sample, inputs, adapter, n, k, allowed=allowed)
     else:
         raise ValueError(f"unknown rule {rule!r}")
     return state
@@ -316,32 +316,53 @@ def build_state(spec: RunSpec, method: MethodSpec, sample: Sample, inputs, gate_
 
 # --------------------------------------------------------------------------------------- published pruners
 
-def _sparsevlm(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _gate_stage(pick, allowed, count: int):
+    """An in-LLM stage selector `pick(scores, survivors, count, *rest)` as the hook calls it, `(scores, survivors,
+    *rest)`. With the gate (`allowed`), the stage picks among the surviving foreground tokens; when they are no more
+    than `count`, all are kept and `pick` fills the rest from the surviving background (plan.md E49). Without the gate
+    it is `pick` with `count`, unchanged."""
+    if allowed is None:
+        return lambda scores, survivors, *rest: pick(scores, survivors, count, *rest)
+
+    def select(scores, survivors, *rest):
+        fg = survivors & allowed
+        if int(fg.sum()) > count:
+            return pick(scores, fg, count, *rest)
+        keep = np.flatnonzero(fg)
+        bg = survivors & ~allowed
+        need = count - keep.size
+        if need > 0 and bg.any():
+            keep = np.union1d(keep, pick(scores, bg, need, *rest))
+        return np.sort(keep).astype(np.int64)
+
+    return select
+
+
+def _sparsevlm(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .attention_hook import Stage
     from .baselines.sparsevlm import sparsevlm_schedule, stage_keep
 
     state.need_raters = True
     for score_layer, mask_from, fraction in sparsevlm_schedule(spec.budget, adapter.num_layers):
-        count = keep_count(n, fraction)
-        state.stages.append(Stage(score_layer, mask_from, lambda s, surv, count=count: stage_keep(s, surv, count),
+        state.stages.append(Stage(score_layer, mask_from, _gate_stage(stage_keep, allowed, keep_count(n, fraction)),
                                   score_kind="raters"))
 
 
-def _vispruner(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _vispruner(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .baselines.vispruner import select_vispruner
 
     importance, feats = adapter.vision_cues(inputs)
-    state.apply_keep(select_vispruner(importance, feats, k), 0)
+    state.apply_keep(select_vispruner(importance, feats, k, allowed=allowed), 0)
 
 
-def _prunesid(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _prunesid(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .baselines.prunesid import select_prunesid
 
     seed = int(rng_for(spec.seed, sample.qid).integers(2**31))
-    state.apply_keep(select_prunesid(adapter.visual_embeddings(inputs), k, seed), 0)
+    state.apply_keep(select_prunesid(adapter.visual_embeddings(inputs), k, seed, allowed), 0)
 
 
-def _btp(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _btp(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .attention_hook import Stage
     from .baselines.btp import btp_first_fraction, btp_layers, stage_attention, stage_balanced
 
@@ -350,15 +371,17 @@ def _btp(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
     counts = (k1, k1 // 2, k1 // 4)
 
     def on_survivors(fn):  # BTP indexes the surviving image tokens in raster order; map back to 0..N-1
-        def select(scores, survivors, hidden):
+        def pick(scores, survivors, count, hidden):
             alive = np.flatnonzero(survivors)
-            return alive[fn(scores[alive], hidden[alive])]
-        return select
+            return alive[fn(scores[alive], hidden[alive], count)]
+        return pick
 
     stages = [
-        (l1, on_survivors(lambda a, h: stage_balanced(a, h, counts[0], attn_share=0.1, extend=1.2))),
-        (l2, on_survivors(lambda a, h: stage_balanced(a, h, counts[1], attn_share=0.4, extend=1.0))),
-        (l3, on_survivors(lambda a, h: stage_attention(a, counts[2]))),
+        (l1, _gate_stage(on_survivors(lambda a, h, c: stage_balanced(a, h, c, attn_share=0.1, extend=1.2)),
+                         allowed, counts[0])),
+        (l2, _gate_stage(on_survivors(lambda a, h, c: stage_balanced(a, h, c, attn_share=0.4, extend=1.0)),
+                         allowed, counts[1])),
+        (l3, _gate_stage(on_survivors(lambda a, h, c: stage_attention(a, c)), allowed, counts[2])),
         (l4, lambda scores, survivors, hidden: np.empty(0, dtype=np.int64)),  # every visual token leaves
     ]
     for mask_from, select in stages:
@@ -374,12 +397,13 @@ def _visionzip(state, spec, sample, inputs, adapter, n: int, k: int, allowed=Non
     state.apply_keep(kept, 0)
 
 
-def _hiprune(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _hiprune(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .baselines.hiprune import object_block, select_hiprune
 
     obj = object_block(adapter.name)
     cues = adapter.vision_attention(inputs, (obj,))
-    state.apply_keep(select_hiprune(cues["attn"][obj], cues["attn"][max(cues["attn"])], inputs.grid_hw, k), 0)
+    state.apply_keep(select_hiprune(cues["attn"][obj], cues["attn"][max(cues["attn"])], inputs.grid_hw, k,
+                                    allowed=allowed), 0)
 
 
 def _cdpruner(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
@@ -390,7 +414,7 @@ def _cdpruner(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None
     state.apply_keep(kept, 0)
 
 
-def _feather(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _feather(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .attention_hook import Stage
     from .baselines.feather import STAGE_LAYERS, feather_fractions, stage1_keep, stage2_keep, uniform_grid
 
@@ -398,12 +422,12 @@ def _feather(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
     k1, k2 = keep_count(n, f1), keep_count(n, f2)
     uniform = uniform_grid(inputs.rc)
     first, second = STAGE_LAYERS
-    state.stages.append(Stage(first - 1, first, lambda s, surv: stage1_keep(s, surv, uniform, k1),
-                              score_kind="ropefree"))
-    state.stages.append(Stage(second - 1, second, lambda s, surv: stage2_keep(s, surv, k2), score_kind="ropefree"))
+    state.stages.append(Stage(first - 1, first, _gate_stage(lambda s, surv, c: stage1_keep(s, surv, uniform, c),
+                                                            allowed, k1), score_kind="ropefree"))
+    state.stages.append(Stage(second - 1, second, _gate_stage(stage2_keep, allowed, k2), score_kind="ropefree"))
 
 
-def _vscan(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _vscan(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .attention_hook import Stage
     from .baselines.vscan import LOCAL_BLOCK, stage1, stage2_keep, vscan_schedule
 
@@ -411,31 +435,31 @@ def _vscan(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
     k1, k2 = keep_count(n, f1), keep_count(n, f2)
     local = LOCAL_BLOCK[adapter.name]
     cues = adapter.vision_attention(inputs, (local,))
-    kept, merge = stage1(cues["attn"][local], cues["attn"][max(cues["attn"])], cues["embeds"], inputs.grid_hw, k1)
+    kept, merge = stage1(cues["attn"][local], cues["attn"][max(cues["attn"])], cues["embeds"], inputs.grid_hw, k1,
+                         allowed)
     state.merge = None if METHODS[spec.method].merge == "off" else merge
     state.apply_keep(kept, 0)
-    state.stages.append(Stage(layer, layer, lambda s, surv: stage2_keep(s, surv, k2), score_kind="ropefree"))
+    state.stages.append(Stage(layer, layer, _gate_stage(stage2_keep, allowed, k2), score_kind="ropefree"))
 
 
-def _transprune(state, spec, sample, inputs, adapter, n: int, k: int) -> None:
+def _transprune(state, spec, sample, inputs, adapter, n: int, k: int, allowed=None) -> None:
     from .attention_hook import Stage
     from .baselines.transprune import ACCUMULATING_LAYERS, stage_keep, transprune_schedule
 
     state.ttv_layers = ACCUMULATING_LAYERS
     for layer, fraction in transprune_schedule(spec.budget):
-        count = keep_count(n, fraction)
-
-        def select(scores, survivors, layer=layer, count=count):
+        def pick(scores, survivors, count, layer=layer):
             ttv = sum((state.ttv[l] for l in ACCUMULATING_LAYERS if l < layer), np.zeros(n))
             return stage_keep(scores, ttv, survivors, count)
 
-        state.stages.append(Stage(layer, layer, select, score_kind="text"))
+        state.stages.append(Stage(layer, layer, _gate_stage(pick, allowed, keep_count(n, fraction)),
+                                  score_kind="text"))
 
 
 BASELINES = {"sparsevlm": _sparsevlm, "vispruner": _vispruner, "prunesid": _prunesid, "btp": _btp,
              "visionzip": _visionzip, "hiprune": _hiprune, "cdpruner": _cdpruner, "feather": _feather,
              "vscan": _vscan, "transprune": _transprune}
-GATED_BASELINES = {"visionzip", "cdpruner"}  # pruners with a gated variant (gate_visionzip, gate_cdpruner)
+GATED_BASELINES = set(BASELINES)  # every published pruner takes the gate (gate_<method>; plan.md E49)
 
 
 # ----------------------------------------------------------------------------------------------- running

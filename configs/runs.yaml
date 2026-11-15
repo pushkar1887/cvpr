@@ -577,3 +577,7 @@ blocks:
   - {exp: E49j, tier: P0, account: E, model: qwen3vl8b, groups: [rin_open], methods: [gate_sparsevlm, gate_btp, gate_vscan, gate_vispruner, gate_hiprune]}
   - {exp: E49j, tier: P0, account: F, model: lingshu7b, groups: [rin_open], methods: [gate_prunesid, gate_feather, gate_transprune, gate_pool, gate_divprune]}
   - {exp: E49j, tier: P0, account: F, model: qwen3vl8b, groups: [rin_open], methods: [gate_prunesid, gate_feather, gate_transprune, gate_pool, gate_divprune]}
+  # Nov 15 - E49p: gate+PDrop's six missing cells (PDrop is in tab:failure; section 7 quotes its gate gain), judged
+  # in-session.
+  - {exp: E49p, tier: P0, account: E, model: lingshu7b, groups: [omni_anat, rin_open], methods: [gate_pdrop]}
+  - {exp: E49p, tier: P0, account: F, model: qwen3vl8b, groups: [slake_en, rin_anat_mc, omni_anat, rin_open], methods: [gate_pdrop]}

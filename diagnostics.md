@@ -737,6 +737,9 @@ Qwen3-VL RIN (BRR 1.47): Qwen3-VL's vision tower is also edge-biased at 64 token
 **What to do.** **[FLAG] The gate is not a state-of-the-art pruner** and must not be sold as one. It is the most
 consistent method on Lingshu (the only one ≥ 0 on all four datasets) and adds nothing over coverage on Qwen3-VL.
 Position: Gate+Uniform is the minimal remedy the diagnosis predicts.
+**Update Nov 17 (E49).** With the gate in front of all 14 published pruners (§11), it lifts 12 of them beyond 2 SE,
+on Qwen3-VL too (gated VisPruner +6.2 and gated HiPrune +13.7 on Qwen3-VL RIN anatomy). "Adds nothing on Qwen3-VL"
+held for coverage selectors only. The gate is still not a pruner on its own; it is a correction every pruner gains from.
 
 ### D-25 Multi-stage attention pruning: PDrop ± gate (E6-P2, G19)
 
@@ -753,6 +756,8 @@ repairs PDrop on SLAKE like FastV. PDrop's published robustness at 80% kept does
 attention; the gate fixes it on CT/MRI here too.
 **What to do.** Use for G19 ("not only FastV"); scope the title to early-layer LLM attention unless a vision-encoder
 method is added.
+**Update Nov 17 (E49p).** Nine cells (§11): PDrop 41.2 → gated 50.9 (+9.66, SE 0.47), positive in all nine cells and
+equal to gated FastV (50.8). The three-cell gain above (and the paper's "+15.3") overstates it.
 
 ### D-26 Gate robustness: τ and background quota (E6-P2)
 
@@ -982,3 +987,19 @@ paired image bootstrap [95% CI]. Full tables are in `status_2026-11-07.md` (Nov 
 | Every text token as the query (Lingshu) | − FastV +0.5 [−0.3, +1.3] (RIN anatomy), +0.2 [0.0, +0.7] (abnormality) | The last-token query is not the cause |
 | HuatuoGPT, the Lingshu interventions (D-22) | Background only − FastV −5.2 / −33.6 (SLAKE / RIN); static map −2.4 / −25.0; artifacts +0.5 / −0.2; FastV − Random at K 8 / 16: +3.5 / +0.6 (SLAKE), +0.3 / +0.1 (RIN) | Every Qwen-family symptom reverses: the contrast case for the mechanism section |
 | FastV + merge on HuatuoGPT (two-pass diagnostic) | +2.3 [+0.9, +3.6] SLAKE, +1.1 [−0.3, +2.5] RIN vs FastV (Lingshu +35 to +39, E18) | The merge repairs what selection lost; HuatuoGPT's selection lost little |
+
+## 11. Additions, Nov 15-17 (E49: the gate in front of every published pruner)
+
+109 runs after the freeze (E49 83, E49j 20 judged re-runs of E49's open-anatomy cells, E49p 6; accounts A–F). Seed 0,
+judged; paired joint image bootstrap over the nine cells (SE). Gated rows keep their method's tokens per layer.
+Full tables: `status_2026-11-07.md`, Nov 17 section, Tables 28–29.
+
+| Diagnostic | Finding | Consequence |
+|---|---|---|
+| Gate − method, early LLM attention | PDrop +9.66 (0.47), FastV +7.61 (0.46), SparseVLM +3.98 (0.40), BTP +2.40 (0.38) | The more a method trusts early attention, the more the gate repairs (D-24, D-25) |
+| Gate − method, vision-encoder / diversity | HiPrune +3.58, DivPrune +2.90, VisPruner +2.44, pooling +2.00, PruneSID +1.11, CDPruner +0.83; VisionZip −0.13 | Vision-encoder attention also spends tokens on background (P97 contradicted) |
+| Gate − method, merging pruners | VScan +0.28 (0.31), VisionZip −0.13 (0.39) | A merge already carries what the gate would add |
+| Gate − method, larger budgets | FEATHER +3.51, TransPrune +2.89 | The correction holds at 36–46% of the tokens too |
+| The gate on Qwen3-VL open anatomy | VisionZip −5.2, VScan −5.2, CDPruner −2.6, PruneSID −1.8, DivPrune −1.8 | Open answers use context outside the anatomy; merging (ScanPrune 43.5) keeps it |
+| ScanPrune − best gated pruner | +2.05 (0.32) at 10% (pooling); +1.51 (0.35) at FastV's budget (VScan) | Tiling + merging add ≈ 1.5–2 points over the gate |
+

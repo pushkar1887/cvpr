@@ -128,6 +128,20 @@ ScanPrune without the schedule − VisionZip +2.89 (SE 0.42); ScanPrune (equal b
 
 Per model at VScan's budget, three seeds: Lingshu +3.0, Qwen3-VL +0.3 (every seed above VScan).
 
+**The gate in front of every published pruner (E49, Nov 15; seed 0, judged; `status_2026-11-07.md` Tables 28–29).**
+Each gated version keeps its method's tokens per layer and, with every token in the foreground, its method's exact
+tokens (`tests/test_gated_baselines.py`). Nine-cell accuracy (balanced basis), method → gated:
+
+| Group | Method → + gate (gate − method, SE) |
+|---|---|
+| 10% kept | VisionZip 64.4 → 64.2 (−0.13, 0.39) · PruneSID 63.7 → 64.8 (+1.11, 0.42) · CDPruner 63.4 → 64.3 (+0.83, 0.32) · VisPruner 61.3 → 63.8 (+2.44, 0.42) · HiPrune 59.8 → 63.3 (+3.58, 0.41) · DivPrune 59.0 → 61.9 (+2.90, 0.44) · Pool 63.5 → 65.5 (+2.00, 0.33) · **ScanPrune 67.5** |
+| FastV's budget | FastV 43.2 → 50.8 (+7.61, 0.46) · SparseVLM 47.9 → 51.9 (+3.98, 0.40) · PDrop 41.2 → 50.9 (+9.66, 0.47) · BTP 56.8 → 59.2 (+2.40, 0.38) · VScan 66.8 → 67.1 (+0.28, 0.31) · **ScanPrune-eq 68.6** |
+| Larger budgets | FEATHER 63.3 → 66.8 (+3.51, 0.37) · TransPrune 63.3 → 66.2 (+2.89, 0.38) |
+
+ScanPrune − best gated pruner: +2.05 (SE 0.32) at 10% (gated pooling), +1.51 (SE 0.35) at FastV's budget (gated
+VScan). The gate is a general correction (12 of 14 pruners gain beyond 2 SE); tiling and merging add the rest.
+PDrop and DivPrune are our implementations; the check against their official code is in progress.
+
 Cost (T11; Lingshu SLAKE, 2 × T4, selection included): ScanPrune at 10% prefill 3.33× faster than Full, first token
 1.78×; at the equal budget 3.12× / 1.74×; its selection takes 10–12 ms and the size term adds no measurable time.
 Prefill FLOPs equal VisionZip's at 10% and VScan's at the equal budget.
